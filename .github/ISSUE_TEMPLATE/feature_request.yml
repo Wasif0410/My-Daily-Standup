@@ -1,0 +1,55 @@
+name: Feature request
+description: Suggest an idea or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening this, please check the
+        [PR sequence plan](https://github.com/Wasif0410/My-Daily-Standup/blob/main/docs/superpowers/plans/2026-08-20-pr-sequence.md).
+        Much of the roadmap is already scheduled, and your idea may be planned for a
+        later milestone.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is difficult or impossible today? Describe the situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Sticky-note boards
+        - Obsidian integration
+        - Local LLM / standup conversation
+        - Voice (speech recognition or synthesis)
+        - Reviews (evening, weekly, monthly)
+        - Settings and onboarding
+        - Packaging and platform support
+        - Something else
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Compatibility with the project's constraints
+      description: >
+        This project is local-first by design. Requests that require a cloud service,
+        an account, telemetry, or always-on inference are out of scope.
+      options:
+        - label: This works fully offline and needs no account or cloud service
+          required: true
+        - label: This does not require a model to stay loaded outside an active session
+          required: true

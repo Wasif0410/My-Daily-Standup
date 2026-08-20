@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Wasif0410/My-Daily-Standup/security/advisories/new
+    about: Report privately through GitHub Security Advisories. Never in a public issue.
+  - name: Roadmap and PR sequence
+    url: https://github.com/Wasif0410/My-Daily-Standup/blob/main/docs/superpowers/plans/2026-08-20-pr-sequence.md
+    about: Check what is already planned before opening a feature request.
