@@ -67,6 +67,36 @@ Weekly/monthly progress written back to Obsidian
 
 Tauri 2 · React + TypeScript · Rust · SQLite · llama.cpp · whisper.cpp · Sherpa-ONNX
 
+## Hardware
+
+One installer, one binary. The profile is detected at runtime and can be overridden in settings — there is no separate "laptop build."
+
+| Profile | Minimum | Model | Session footprint |
+|---|---|---|---|
+| Lightweight | 8 GB RAM, no dGPU | Qwen3-1.7B | ~2 GB RAM |
+| Balanced | 16 GB RAM, iGPU or entry dGPU | Qwen3-4B | ~3.7 GB RAM |
+| High Quality | 16 GB RAM + ≥8 GB VRAM | Qwen3-8B | ~6 GB VRAM + ~1 GB RAM |
+
+VRAM is what gates the High Quality profile, not system RAM — when the model is fully offloaded, the weights and KV cache live on the GPU.
+
+With the boards open and no session running, the app uses **under 1 GB and no model memory at all.**
+
+## Documentation
+
+- [Product and technical specification](docs/spec.md) — the full design
+- [PR sequence and contribution guide](docs/superpowers/plans/2026-08-20-pr-sequence.md) — how the project is being built, PR by PR
+- [Contributing](CONTRIBUTING.md) — setup, workflow, and what a change must satisfy
+- [Security policy](SECURITY.md) — threat model and privacy commitments
+
+## Contributing
+
+The project is being built in a strict sequence of pull requests. Read the
+[PR sequence](docs/superpowers/plans/2026-08-20-pr-sequence.md) before proposing work —
+most of the roadmap is already scheduled.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow, and note that **Windows builds
+require the Visual Studio Build Tools with the "Desktop development with C++" workload.**
+
 ## License
 
 [MIT](LICENSE)
