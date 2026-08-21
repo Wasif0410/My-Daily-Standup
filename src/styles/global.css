@@ -1,0 +1,70 @@
+/*
+ * Minimal scaffold styling. The real theme, design tokens, and board chrome
+ * arrive in PR 10 (Board shell component & theme) — this file exists only so
+ * the scaffold window is legible rather than unstyled.
+ */
+
+:root {
+  --bg: #1a1b1e;
+  --fg: #e8e6e3;
+  --muted: #9a9691;
+  --accent: #7aa2f7;
+
+  color-scheme: dark;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.shell h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.bridge {
+  margin: 0.5rem 0 0;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem;
+}

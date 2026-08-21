@@ -8,7 +8,7 @@
 
 **Architecture:** Two hard-separated tiers. A **lightweight tier** (Tauri shell, sticky-note windows, system tray, SQLite) runs whenever the app is enabled and never loads a model. A **session tier** (llama.cpp, whisper.cpp, Sherpa-ONNX) spawns as sidecar processes only during an explicit AI session and is fully terminated afterward. Rust owns all state, file access, and process lifecycle; the LLM only produces text and structured proposals that Rust validates before anything is persisted.
 
-**Tech Stack:** Tauri 2 · React 18 + TypeScript · Vite · Rust · rusqlite (bundled SQLite) · zustand · Vitest + Testing Library · llama.cpp · whisper.cpp · Sherpa-ONNX
+**Tech Stack:** Tauri 2 · React 19 + TypeScript · Vite · Rust · rusqlite (bundled SQLite) · zustand · Vitest + Testing Library · llama.cpp · whisper.cpp · Sherpa-ONNX
 
 ---
 
@@ -98,7 +98,7 @@ Configure once in **Settings → General → Pull Requests**: allow squash mergi
 
 Settings → Branches → Add rule for `main`:
 - Require a pull request before merging
-- Require approvals: 1
+- Require approvals: **0** — GitHub forbids a PR author from approving their own PR, and on a solo repo the author is always you, so requiring 1 would deadlock every merge. The review gate is manual, not enforced by GitHub.
 - Require status checks to pass (add the CI jobs once PR 3 lands)
 - Do not allow bypassing the above settings
 
@@ -902,6 +902,7 @@ Write this wave's PR sequence after the RC, not before.
 | Risk | Where it bites | Guard |
 |---|---|---|
 | Sidecar binaries bloat the repo | PR 23, 29, 30 | Never commit binaries. Vendor at build time via a script; document in `binaries/README.md`. |
+| Windows Smart App Control blocks unsigned sidecars | PR 23, 29, 30 | **Confirmed real on 2026-08-20:** Smart App Control blocked `rustdoc.exe`, `rustfmt.exe`, and cargo build scripts on the dev machine, failing release builds outright. It judges on *reputation*, not signatures, so freshly-built zero-reputation binaries are exactly what it rejects — the same profile as a bundled `llama.cpp`, `whisper.cpp`, or Sherpa-ONNX sidecar. It ships enabled by default on many Windows 11 installs and has **no allowlist**; disabling it is irreversible without a system reset, so "turn off your security feature" is not an acceptable install step. Treat code-signing the sidecars as a shipping requirement, not a nice-to-have, and detect-and-explain the failure rather than letting a session hang. |
 | Model process leaks memory between sessions | PR 23 | Task Manager **and `nvidia-smi`** check is part of PR 23's DoD, repeated at every later voice/session PR. |
 | Excluded folders leak into a prompt | PR 18, 20, 24, 27 | Four independent guards, including PR 24's decoy-content test and PR 27's refusal of excluded paths in `needs_context`. |
 | VRAM misdetected, wrong profile chosen | PR 22 | Use DXGI/`nvidia-smi`, never WMI `AdapterRAM`. Regression test pinned to the 8 GB-reports-as-4,095 MB case, plus an empirical benchmark that overrides the heuristic. |
