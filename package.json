@@ -11,7 +11,7 @@
     "url": "https://github.com/Wasif0410/My-Daily-Standup.git"
   },
   "engines": {
-    "node": ">=20.19.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "scripts": {
     "dev": "vite",
