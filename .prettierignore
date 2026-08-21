@@ -1,0 +1,14 @@
+dist
+coverage
+node_modules
+src-tauri/target
+src-tauri/gen
+src-tauri/icons
+package-lock.json
+Cargo.lock
+
+# Prose is hand-formatted. Prettier reflows paragraphs, rewrites list markers,
+# and reshapes tables, which makes documentation diffs unreadable without
+# improving anything. Code formatting is the job here, not prose.
+*.md
+docs/
