@@ -6,12 +6,18 @@
 
 mod db;
 mod migrations;
+mod task;
+mod task_repo;
 
+#[cfg(test)]
+mod task_repo_tests;
 #[cfg(test)]
 mod tests;
 
 pub use db::Db;
 pub use migrations::{run_migrations, schema_version, LATEST_VERSION};
+pub use task::{NewTask, Task, TaskHorizon, TaskPatch, TaskSource, TaskStatus};
+pub use task_repo::TaskRepo;
 
 /// Filename of the application database inside the app data directory.
 ///
@@ -26,6 +32,9 @@ pub enum StorageError {
 
     #[error("could not create the database directory: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("no task with id {id}")]
+    TaskNotFound { id: String },
 
     #[error("migration {version} failed: {source}")]
     Migration {
