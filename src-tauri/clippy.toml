@@ -1,0 +1,3 @@
+# Fail on any function that could silently swallow an error path.
+# Tightened as the codebase grows; see docs/superpowers/plans for context.
+too-many-arguments-threshold = 8

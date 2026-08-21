@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per ecosystem cluster keeps the sequential PR workflow from
+      # being buried under a dozen single-dependency bumps.
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      tooling:
+        patterns:
+          [
+            "eslint*",
+            "@eslint/*",
+            "typescript-eslint",
+            "prettier",
+            "vitest",
+            "@vitest/*",
+            "@testing-library/*",
+          ]
+      tauri:
+        patterns: ["@tauri-apps/*"]
+
+  - package-ecosystem: cargo
+    directory: "/src-tauri"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      tauri:
+        patterns: ["tauri", "tauri-build"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
