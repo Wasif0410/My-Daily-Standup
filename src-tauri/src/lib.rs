@@ -4,6 +4,8 @@
 //! The frontend renders and collects input; the language model contributes
 //! language only. See `docs/spec.md` §3.6.
 
+pub mod storage;
+
 /// Scaffold command proving the IPC bridge works end to end.
 ///
 /// Removed in PR 6, when the typed command layer (`commands::tasks`) replaces

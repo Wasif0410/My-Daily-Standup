@@ -6,6 +6,13 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7 (the native rewrite) is ahead of the lint ecosystem: no
+      # typescript-eslint release supports it, so taking a major bump would
+      # silently disable type-aware linting. Minor and patch 5.x updates still
+      # come through. Revisit when typescript-eslint declares TS 7 support.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       # One PR per ecosystem cluster keeps the sequential PR workflow from
       # being buried under a dozen single-dependency bumps.
