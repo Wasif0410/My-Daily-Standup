@@ -1,88 +1,44 @@
-import { useCallback, useEffect, useState } from "react";
-import { createTask, listTasksByHorizon, toCommandError, updateTask } from "@/lib/ipc";
-import type { CommandError, Task } from "@/types/task";
+import { useEffect, useMemo, useState } from "react";
+import { sortTasks, useTaskStore } from "@/stores/taskStore";
 
 /**
  * Development shell.
  *
- * Proves the whole pipeline end to end — React through typed IPC, into Rust,
- * into SQLite, and back. The real boards arrive in Wave 2 (PRs 8-14); this
- * exists so PR 6 has something demonstrable rather than only unit-tested.
+ * Exercises the store end to end — React through zustand, typed IPC, Rust, and
+ * SQLite. The real boards arrive in Wave 2 (PRs 9-14); this exists so the
+ * plumbing is demonstrable rather than only unit-tested.
  */
 export function App() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [title, setTitle] = useState("");
-  const [error, setError] = useState<CommandError | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Select the raw record and derive the ordering here. Calling a store method
+  // inside the selector returns a new array each render and loops forever.
+  const taskMap = useTaskStore((s) => s.tasks);
+  const tasks = useMemo(() => sortTasks(Object.values(taskMap)), [taskMap]);
+  const loading = useTaskStore((s) => s.loading);
+  const error = useTaskStore((s) => s.error);
+  const load = useTaskStore((s) => s.load);
+  const add = useTaskStore((s) => s.add);
+  const complete = useTaskStore((s) => s.complete);
+  const uncomplete = useTaskStore((s) => s.uncomplete);
+  const remove = useTaskStore((s) => s.remove);
 
-  const refresh = useCallback(async () => {
-    try {
-      setTasks(await listTasksByHorizon("daily"));
-      setError(null);
-    } catch (caught) {
-      setError(toCommandError(caught));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [title, setTitle] = useState("");
 
   useEffect(() => {
-    // The `ignore` flag is the canonical guard against a response arriving
-    // after unmount, which would otherwise set state on a dead component.
-    let ignore = false;
-
-    async function load() {
-      try {
-        const loaded = await listTasksByHorizon("daily");
-        if (!ignore) {
-          setTasks(loaded);
-          setError(null);
-        }
-      } catch (caught) {
-        if (!ignore) setError(toCommandError(caught));
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-
-    void load();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
+    void load({ kind: "horizon", horizon: "daily" });
+  }, [load]);
 
   async function addTask(event: React.FormEvent) {
     event.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) return;
 
-    try {
-      await createTask({
-        title: trimmed,
-        horizon: "daily",
-        status: "planned",
-        sourceType: "manual",
-      });
-      setTitle("");
-      await refresh();
-    } catch (caught) {
-      setError(toCommandError(caught));
-    }
-  }
-
-  async function toggle(task: Task) {
-    try {
-      await updateTask(task.id, {
-        status: task.status === "completed" ? "planned" : "completed",
-        // Clearing on un-complete is exactly the case the doubled option in
-        // TaskPatch exists for.
-        completedAt: task.status === "completed" ? null : new Date().toISOString(),
-      });
-      await refresh();
-    } catch (caught) {
-      setError(toCommandError(caught));
-    }
+    setTitle("");
+    await add({
+      title: trimmed,
+      horizon: "daily",
+      status: "planned",
+      sourceType: "manual",
+    });
   }
 
   return (
@@ -120,10 +76,22 @@ export function App() {
                 <input
                   type="checkbox"
                   checked={task.status === "completed"}
-                  onChange={() => void toggle(task)}
+                  onChange={() =>
+                    void (task.status === "completed"
+                      ? uncomplete(task.id)
+                      : complete(task.id))
+                  }
                 />
                 <span>{task.title}</span>
               </label>
+              <button
+                type="button"
+                aria-label={`Delete ${task.title}`}
+                className="delete"
+                onClick={() => void remove(task.id)}
+              >
+                ×
+              </button>
             </li>
           ))}
         </ul>
