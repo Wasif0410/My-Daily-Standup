@@ -160,6 +160,8 @@ Each milestone is a usable product. You can stop at any tag and still have somet
 
 The repo is empty and has no default branch, so there is nothing to open a PR *against*. This one commit is pushed straight to `main`, then branch protection goes on and every later change is a PR.
 
+**What this gives the app:** Creates the repository itself and establishes `main`, so every later change can arrive as a reviewable pull request.
+
 ```bash
 git init
 git branch -M main
@@ -185,6 +187,7 @@ Then enable branch protection per the settings above.
 ### - [ ] PR 1 — Project docs & governance
 **Branch:** `docs/pr-01-repo-docs`
 **Depends on:** PR 0
+**What this gives the app:** Writes down what is being built and the rules for building it, so the design lives in the repo rather than in one person's head.
 
 Establishes the paperwork so every later PR has a home to update.
 
@@ -198,6 +201,7 @@ Establishes the paperwork so every later PR has a home to update.
 ### - [ ] PR 2 — Tauri 2 + React + TypeScript scaffold
 **Branch:** `feat/pr-02-tauri-scaffold`
 **Depends on:** PR 1
+**What this gives the app:** Turns the project into something you can actually double-click and see. A window opens with the app's name in it.
 
 The app compiles, launches, and shows a window. Nothing else.
 
@@ -215,6 +219,7 @@ The app compiles, launches, and shows a window. Nothing else.
 ### - [ ] PR 3 — CI pipeline & test harness
 **Branch:** `ci/pr-03-pipeline`
 **Depends on:** PR 2
+**What this gives the app:** Puts a robot in charge of checking every change. From here on, a mistake gets caught automatically before it can reach `main`.
 
 Every later PR's green checkmark comes from here, so this lands before any real code.
 
@@ -232,6 +237,7 @@ Every later PR's green checkmark comes from here, so this lands before any real 
 ### - [ ] PR 4 — SQLite setup & migration runner
 **Branch:** `feat/pr-04-sqlite-migrations`
 **Depends on:** PR 3
+**What this gives the app:** Gives the app a memory. Somewhere to keep your tasks that survives closing the app, restarting the machine, or crashing.
 
 **Creates:** `src-tauri/src/storage/mod.rs`, `storage/db.rs`, `storage/migrations.rs`, `src-tauri/migrations/001_initial.sql`.
 
@@ -251,6 +257,7 @@ DB lives at the Tauri app data dir (`app_handle.path().app_data_dir()`), file `s
 ### - [ ] PR 5 — Task repository
 **Branch:** `feat/pr-05-task-repository`
 **Depends on:** PR 4
+**What this gives the app:** Teaches the app to actually use that memory — add a task, read it back, change it, delete it.
 
 Pure Rust data access, no Tauri coupling, so it is fully unit-testable.
 
@@ -277,6 +284,7 @@ IDs are UUIDv4 strings, generated in Rust — never supplied by the frontend or 
 ### - [ ] PR 6 — Tauri command layer & shared types
 **Branch:** `feat/pr-06-command-layer`
 **Depends on:** PR 5
+**What this gives the app:** Connects the Rust engine to the screen. Until now the two halves could not talk about real data; after this they can.
 
 Bridges Rust to the frontend with types that cannot silently drift apart.
 
@@ -297,6 +305,7 @@ Commands: `task_create`, `task_get`, `task_update`, `task_delete`, `task_list_by
 ### - [ ] PR 7 — Progress & rollover engine
 **Branch:** `feat/pr-07-progress-engine`
 **Depends on:** PR 6
+**What this gives the app:** Teaches the app arithmetic: how far along a goal is, and how many times you have pushed a task to tomorrow.
 
 The spec's calculation rules, isolated in one pure module so a model never does arithmetic.
 
@@ -325,6 +334,7 @@ fn period_stats(tasks: &[Task]) -> PeriodStats  // planned, completed, rate, car
 ### - [ ] PR 8 — Frontend store & data hooks
 **Branch:** `feat/pr-08-store`
 **Depends on:** PR 7
+**What this gives the app:** Makes the interface feel instant. Ticking a checkbox updates immediately instead of waiting on the database.
 
 **Creates:** `src/stores/taskStore.ts` (zustand), `src/features/boards/hooks/useTasks.ts`, `src/features/boards/hooks/useBoardActions.ts`.
 
@@ -340,6 +350,7 @@ Optimistic updates: mutate local state immediately, call IPC, roll back and surf
 ### - [ ] PR 9 — Sticky window manager
 **Branch:** `feat/pr-09-window-manager`
 **Depends on:** PR 8
+**What this gives the app:** Real sticky notes appear on your desktop as separate windows, and they remember where you left them.
 
 The core of the lightweight tier: real frameless desktop windows that survive the main window closing.
 
@@ -357,6 +368,7 @@ Each board is a separate `WebviewWindow` created with `decorations: false`, `tra
 ### - [ ] PR 10 — Board shell component & theme
 **Branch:** `feat/pr-10-board-shell`
 **Depends on:** PR 9
+**What this gives the app:** Gives the boards their look — dark, minimal, controls that stay hidden until you hover.
 
 The shared visual chassis every board renders inside.
 
@@ -374,6 +386,7 @@ CSS custom properties for accent, opacity, and font size so PR 15 can drive them
 ### - [ ] PR 11 — Priority Tasks board
 **Branch:** `feat/pr-11-priority-board`
 **Depends on:** PR 10
+**What this gives the app:** Your first working board: the important things that span more than a single day.
 
 First real board. Long-lived important items grouped by area.
 
@@ -391,6 +404,7 @@ Renders tasks where `horizon != 'daily'` and `priority >= threshold`, grouped by
 ### - [ ] PR 12 — Weekly Tasks board & task interactions
 **Branch:** `feat/pr-12-weekly-board`
 **Depends on:** PR 11
+**What this gives the app:** The week's commitments on screen, plus every way you would want to change a task — complete it, edit it, move it, block it.
 
 **Creates:** `src/features/boards/WeeklyBoard.tsx`, `src/features/boards/components/QuickAdd.tsx`, `src/features/boards/components/TaskContextMenu.tsx`.
 
@@ -406,6 +420,7 @@ Grouped by project, current period only (`period_start`/`period_end` covering to
 ### - [ ] PR 13 — Weekly Progress board
 **Branch:** `feat/pr-13-weekly-progress-board`
 **Depends on:** PR 12
+**What this gives the app:** A visible record of your week. Finished work stays on screen, dimmed rather than deleted, so you can see what the week actually held.
 
 **Creates:** `src/features/boards/WeeklyProgressBoard.tsx`, `components/DaySection.tsx`.
 
@@ -419,6 +434,7 @@ Day-by-day view of the current week. Completed items stay visible but dimmed and
 ### - [ ] PR 14 — Monthly Progress board
 **Branch:** `feat/pr-14-monthly-board`
 **Depends on:** PR 13
+**What this gives the app:** The monthly view: progress bars showing how far along each commitment is, rather than a list of every task.
 
 **Creates:** `src/features/boards/MonthlyBoard.tsx`, `components/ProgressBar.tsx`.
 
@@ -436,6 +452,7 @@ Progress values come from PR 7's `compute_progress`, never computed in the compo
 ### - [ ] PR 15 — Window behaviors
 **Branch:** `feat/pr-15-window-behaviors`
 **Depends on:** PR 14
+**What this gives the app:** Control over how the notes behave — always on top, see-through, locked in place, pinned to one monitor.
 
 **Creates:** `src-tauri/src/windows/behaviors.rs`, `src/features/boards/components/BoardMenu.tsx`.
 
@@ -451,6 +468,7 @@ Always-on-top, desktop-level mode, lock position, click-through when locked (`se
 ### - [ ] PR 16 — System tray & quick add
 **Branch:** `feat/pr-16-system-tray`
 **Depends on:** PR 15
+**What this gives the app:** A tray icon, so the app is one click away without a window taking up space.
 
 **Creates:** `src-tauri/src/tray.rs`, `src/features/quick-add/QuickAddWindow.tsx`.
 
@@ -468,6 +486,7 @@ Adds `tauri-plugin-autostart` for launch-at-login.
 ### - [ ] PR 17 — Settings & reminders → **tag `v0.1.0`**
 **Branch:** `feat/pr-17-settings-reminders`
 **Depends on:** PR 16
+**What this gives the app:** Settings you can change and reminders that nudge you morning and evening. **This is the first version genuinely worth using every day.**
 
 **Creates:** `src-tauri/src/storage/settings.rs`, `migrations/003_settings.sql`, `src/features/settings/SettingsWindow.tsx`, `settings/sections/{General,StickyNotes,Planning}.tsx`, `src-tauri/src/reminders.rs`.
 
@@ -487,6 +506,7 @@ Reminders: morning and evening notification at configurable times via `tauri-plu
 ### - [ ] PR 18 — Vault selection & folder scoping
 **Branch:** `feat/pr-18-vault-config`
 **Depends on:** PR 17
+**What this gives the app:** Lets the app point at your Obsidian vault — and lets you decide which folders it must never look at.
 
 **Creates:** `src-tauri/src/obsidian/mod.rs`, `obsidian/config.rs`, `migrations/004_vault.sql`, `src/features/settings/sections/Obsidian.tsx`.
 
@@ -504,6 +524,7 @@ Exclusion is enforced by a single `is_indexable(path) -> bool` function that eve
 ### - [ ] PR 19 — Markdown parser
 **Branch:** `feat/pr-19-markdown-parser`
 **Depends on:** PR 18
+**What this gives the app:** Teaches the app to read your notes: the checkboxes, the tags, the priorities, the links between them.
 
 Pure parsing library, zero I/O, so it can be tested exhaustively against fixtures.
 
@@ -530,6 +551,7 @@ struct ParsedTask { text, checked, line: usize, heading_path: Vec<String> }
 ### - [ ] PR 20 — Vault indexer & file watcher
 **Branch:** `feat/pr-20-vault-indexer`
 **Depends on:** PR 19
+**What this gives the app:** Builds a fast index of your vault and keeps it current as you edit in Obsidian, so nothing has to be re-read from scratch.
 
 **Creates:** `src-tauri/src/obsidian/indexer.rs`, `obsidian/watcher.rs`, `migrations/005_vault_index.sql`.
 
@@ -555,6 +577,7 @@ File watcher via `notify`, debounced 1s, triggering targeted reindex. Full scan 
 ### - [ ] PR 21 — Relevance ranking & promote-to-board → **tag `v0.2.0`**
 **Branch:** `feat/pr-21-ranking-promote`
 **Depends on:** PR 20
+**What this gives the app:** The app can now tell you which vault tasks matter most today, and you can pull one onto a board with a link back to the note it came from.
 
 **Creates:** `src-tauri/src/obsidian/ranking.rs`, `src/features/vault/VaultBrowser.tsx`, `src/features/vault/components/SourceBadge.tsx`.
 
@@ -574,6 +597,7 @@ UI: browse ranked candidate tasks, promote one onto a board. Promotion copies te
 ### - [ ] PR 22 — Model registry, hardware detection & download
 **Branch:** `feat/pr-22-model-registry`
 **Depends on:** PR 21
+**What this gives the app:** The app works out what your computer can handle and downloads a language model that fits it.
 
 **Creates:** `src-tauri/src/inference/mod.rs`, `inference/registry.rs`, `inference/hardware.rs`, `inference/benchmark.rs`, `inference/download.rs`, `models/catalog.json`, `src/features/settings/sections/AI.tsx`.
 
@@ -599,6 +623,7 @@ Downloads with progress, resume, and **SHA-256 verification before the file is a
 ### - [ ] PR 23 — llama.cpp sidecar lifecycle
 **Branch:** `feat/pr-23-llama-lifecycle`
 **Depends on:** PR 22
+**What this gives the app:** The AI starts only when you ask for it and shuts down completely when you are done. **This is the promise the entire product rests on.**
 
 **The single most important PR in the project.** §26 says the boards are always available but inference is always on demand — this is where that becomes true or doesn't.
 
@@ -627,6 +652,7 @@ Also covers §17.1: if the model fails to start, show a clear error with diagnos
 ### - [ ] PR 24 — Vault map & tiered context builder
 **Branch:** `feat/pr-24-vault-map-context`
 **Depends on:** PR 23
+**What this gives the app:** Gives the AI a map of your goals instead of your whole vault, so it knows where to look without having to read everything.
 
 Per §9.2, **never send the whole vault** — a 500-note vault is ~260k tokens, which is roughly 33 GB of KV cache and ~9 minutes of prefill. Instead the model gets a small **map** of what exists plus a small set of ranked excerpts, and can request more.
 
@@ -671,6 +697,7 @@ fn render_prompt(template, &SessionContext) -> String
 ### - [ ] PR 25 — Standup session state machine & chat UI
 **Branch:** `feat/pr-25-standup-session`
 **Depends on:** PR 24
+**What this gives the app:** An actual standup conversation you can type. The app asks the questions, in order, and keeps control of the conversation.
 
 **Creates:** `src-tauri/src/session/mod.rs`, `session/state_machine.rs`, `src/features/standup/StandupWindow.tsx`, `standup/components/{MessageList,Composer,StageIndicator,ContextPanel}.tsx`.
 
@@ -688,6 +715,7 @@ UI shows streaming responses, a stage indicator, the retrieved Obsidian context 
 ### - [ ] PR 26 — Structured output, validation & approval
 **Branch:** `feat/pr-26-structured-approval`
 **Depends on:** PR 25
+**What this gives the app:** Everything the AI suggests gets checked by real code and shown to you for approval before a single task is saved.
 
 **Creates:** `src-tauri/src/session/proposal.rs`, `session/validator.rs`, `src/features/standup/components/ApprovalPanel.tsx`.
 
@@ -703,6 +731,7 @@ Approval UI: every proposed task can be individually approved, edited, or reject
 ### - [ ] PR 27 — Bounded context expansion → **tag `v0.3.0`**
 **Branch:** `feat/pr-27-context-expansion`
 **Depends on:** PR 26
+**What this gives the app:** Lets the AI ask to see a specific note, or ask you a question, when what it has is not enough to answer well.
 
 Lets the model say "I need to look at that note" or "I don't know where you track this" — **without tool-calling.** Small quantized models are unreliable at tool-use protocols, and every tool call is another 5–10s round trip.
 
@@ -737,6 +766,7 @@ This works with a weak model because it is only JSON output — not a protocol t
 ### - [ ] PR 28 — Audio capture, push-to-talk & VAD
 **Branch:** `feat/pr-28-audio-capture`
 **Depends on:** PR 27
+**What this gives the app:** Your microphone, on a push-to-talk key, with nothing written to disk.
 
 **Creates:** `src-tauri/src/audio/mod.rs`, `audio/capture.rs`, `audio/vad.rs`, `src/features/settings/sections/Voice.tsx`.
 
@@ -754,6 +784,7 @@ This works with a weak model because it is only JSON output — not a protocol t
 ### - [ ] PR 29 — whisper.cpp transcription
 **Branch:** `feat/pr-29-whisper`
 **Depends on:** PR 28
+**What this gives the app:** What you say becomes text, transcribed on your own machine and nowhere else.
 
 **Creates:** `src-tauri/src/audio/whisper.rs`, extends `inference/registry.rs` with Whisper models.
 
@@ -773,6 +804,7 @@ Runs whisper.cpp on the captured buffer, resampling to 16kHz mono. Whisper model
 ### - [ ] PR 30 — Sherpa-ONNX text-to-speech
 **Branch:** `feat/pr-30-tts`
 **Depends on:** PR 29
+**What this gives the app:** The assistant talks back out loud, with a voice generated locally.
 
 **Creates:** `src-tauri/src/audio/tts.rs`, `audio/playback.rs`, `audio/segmentation.rs`.
 
@@ -790,6 +822,7 @@ Per §12.3 the assistant summarizes rather than reading long task lists aloud �
 ### - [ ] PR 31 — Onboarding wizard → **tag `v0.4.0` (MVP)**
 **Branch:** `feat/pr-31-onboarding`
 **Depends on:** PR 30
+**What this gives the app:** A first-run walkthrough that takes a new user from install to their first standup without ever opening Settings.
 
 **Creates:** `src/features/onboarding/OnboardingWizard.tsx` and one step component per §5.1 stage.
 
@@ -809,6 +842,7 @@ The hardware step surfaces PR 22's benchmark result plainly — measured tokens/
 ### - [ ] PR 32 — Evening check-in
 **Branch:** `feat/pr-32-evening-checkin`
 **Depends on:** PR 31
+**What this gives the app:** An end-of-day check-in that asks what happened, and what to do with whatever did not.
 
 Shorter session per §5.3. Distinguishes the five outcomes the spec names: still important / blocked externally / too large / no longer wanted / recurring avoidance. Reschedule, backlog, delegate, or drop each unfinished task. Language stays non-judgmental (§10.3).
 
@@ -821,6 +855,7 @@ Shorter session per §5.3. Distinguishes the five outcomes the spec names: still
 ### - [ ] PR 33 — Weekly planning & retrospective
 **Branch:** `feat/pr-33-weekly-review`
 **Depends on:** PR 32
+**What this gives the app:** A weekly review built on real numbers — planned versus completed — and a realistic plan for the week ahead.
 
 Per §5.4, using PR 7's `period_stats` for all numbers — **the model never calculates completion rates.**
 
@@ -833,6 +868,7 @@ Per §5.4, using PR 7's `period_stats` for all numbers — **the model never cal
 ### - [ ] PR 34 — Monthly planning & retrospective
 **Branch:** `feat/pr-34-monthly-review`
 **Depends on:** PR 33
+**What this gives the app:** A monthly review that compares what you actually did against the long-term goals in your vault.
 
 Per §5.5 — compares completed work to long-term goals, surfaces neglected areas, sets a limited number of measurable monthly commitments, seeds initial weekly milestones.
 
@@ -845,6 +881,7 @@ Per §5.5 — compares completed work to long-term goals, surfaces neglected are
 ### - [ ] PR 35 — Obsidian writer (append-only review notes)
 **Branch:** `feat/pr-35-obsidian-writer`
 **Depends on:** PR 34
+**What this gives the app:** Your standups and reviews get written back into Obsidian — but only after you approve the exact change.
 
 **Creates:** `src-tauri/src/obsidian/writer.rs`, `obsidian/diff.rs`, `src/features/approval/DiffApproval.tsx`.
 
@@ -860,6 +897,7 @@ Writes daily/weekly/monthly notes into the **dedicated folders only** (§9.5), i
 ### - [ ] PR 36 — Conflict detection, backups & source-task updates
 **Branch:** `feat/pr-36-write-conflicts`
 **Depends on:** PR 35
+**What this gives the app:** Protects your notes. Detects if you edited a file first, backs up before touching anything, and refuses to overwrite newer work.
 
 **Creates:** `src-tauri/src/obsidian/conflict.rs`, `obsidian/backup.rs`.
 
@@ -875,6 +913,7 @@ Adds the one case where original notes may change: ticking a source checkbox (`-
 ### - [ ] PR 37 — Contextual AI helpers → **tag `v1.0.0-rc`**
 **Branch:** `feat/pr-37-ai-helpers`
 **Depends on:** PR 36
+**What this gives the app:** Small AI helpers on a single task — break this down, help me unblock this — without starting a whole session.
 
 The remaining §14 actions that may start AI after confirmation, invoked from a task's context menu rather than from a full session: **Break This Task Down**, **Help Me Resolve This Blocker**, **Summarize Progress**, **Suggest Priorities**.
 
