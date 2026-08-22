@@ -224,14 +224,32 @@ impl NewTask {
     }
 }
 
+/// Distinguishes an absent JSON field from an explicit `null`.
+///
+/// Serde's default handling collapses both onto `None`, which would make
+/// "clear this field" indistinguishable from "leave it alone" — and silently
+/// turn every clear into a no-op. Deserialising the inner `Option` and then
+/// wrapping it in `Some` keeps the two apart, because this function only runs
+/// when the field is actually present.
+fn double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    Deserialize::deserialize(deserializer).map(Some)
+}
+
 /// A partial update.
 ///
 /// Nullable fields use a doubled option so "leave alone" and "clear this" stay
 /// distinguishable: `None` means unchanged, `Some(None)` clears the column, and
 /// `Some(Some(v))` sets it. Without that distinction there would be no way to
 /// resolve a blocker or un-complete a task.
+///
+/// Unknown fields are rejected rather than ignored: a typo in a field name
+/// should fail loudly instead of silently doing nothing.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TaskPatch {
     #[serde(default)]
     pub title: Option<String>,
@@ -240,40 +258,42 @@ pub struct TaskPatch {
     #[serde(default)]
     pub status: Option<TaskStatus>,
 
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub description: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub parent_task_id: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub area: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub project: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub priority: Option<Option<i64>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub scheduled_date: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub period_start: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub period_end: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub due_date: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub completed_at: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub progress_current: Option<Option<f64>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub progress_target: Option<Option<f64>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub progress_unit: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub blocker: Option<Option<String>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "double_option")]
     pub notes: Option<Option<String>>,
 
     /// Set only by the domain layer's reschedule path (spec §10.3). Editing a
-    /// title or adding a blocker must never touch it, so it is not part of the
-    /// serialised patch the frontend can send.
+    /// title or adding a blocker must never touch it, so it is deliberately
+    /// absent from the wire format: sending it is an error, not a silent
+    /// no-op, so a client cannot fake the "you have moved this five times"
+    /// signal.
     #[serde(skip)]
     pub rollover_count: Option<i64>,
 }

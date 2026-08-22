@@ -4,16 +4,12 @@
 //! The frontend renders and collects input; the language model contributes
 //! language only. See `docs/spec.md` §3.6.
 
+pub mod commands;
 pub mod storage;
 
-/// Scaffold command proving the IPC bridge works end to end.
-///
-/// Removed in PR 6, when the typed command layer (`commands::tasks`) replaces
-/// it. It exists purely so PR 2 has something verifiable to assert.
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("IPC bridge connected — hello, {name}.")
-}
+use tauri::Manager;
+
+use commands::AppState;
 
 /// Builds and runs the Tauri application.
 ///
@@ -22,28 +18,26 @@ fn greet(name: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![greet])
+        .setup(|app| {
+            // The database lives in the OS-designated app data directory, not
+            // beside the executable, so it survives reinstalls and respects
+            // per-user separation.
+            let app_data_dir = app.path().app_data_dir()?;
+            let state = AppState::new(&app_data_dir)?;
+            app.manage(state);
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::tasks::task_create,
+            commands::tasks::task_get,
+            commands::tasks::task_update,
+            commands::tasks::task_delete,
+            commands::tasks::task_list_by_horizon,
+            commands::tasks::task_list_for_date,
+            commands::tasks::task_list_for_period,
+            commands::tasks::task_children_of,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn greet_includes_the_supplied_name() {
-        let result = greet("Wasif");
-        assert!(
-            result.contains("Wasif"),
-            "expected the greeting to contain the name, got: {result}"
-        );
-    }
-
-    #[test]
-    fn greet_reports_the_bridge_is_connected() {
-        // The frontend surfaces this string directly, so the wording is part
-        // of the contract until PR 6 removes the canary.
-        assert!(greet("anyone").starts_with("IPC bridge connected"));
-    }
 }
