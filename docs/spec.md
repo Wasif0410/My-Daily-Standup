@@ -438,28 +438,43 @@ Travel
 
 ## 6.4 Weekly Progress Board
 
-The Weekly Progress board shows completed and planned work organized by day.
+The Weekly Progress board shows the whole week, Monday through Sunday, as a set of collapsible days.
 
-Example:
+Every day is always listed, even when empty, so the week reads as a complete shape rather than a list of only the busy days. Each day header summarises what is inside it without needing to be opened: how many tasks are done, and how much time was spent.
+
+Collapsed:
 
 ```text
-WEEKLY PROGRESS
+WEEKLY PROGRESS                    2026-W34
 
-Monday
-✓ Submit application to Company A
-✓ Draft project specification
-○ Email professor
-
-Tuesday
-✓ Complete onboarding task
-○ Schedule dental appointment
-
-Wednesday
-○ Apply to Company B
-○ Compare hotels
+▸ Monday      2/3    1h 45m
+▾ Tuesday     1/2      35m
+▸ Wednesday   0/2         —
+▸ Thursday    0/0         —
+▸ Friday      0/1         —
+▸ Saturday    0/0         —
+▸ Sunday      0/0         —
 ```
 
-Completed items should remain visible but become dimmed or crossed out. This provides a record of the week rather than making completed work disappear.
+Expanded, a day reveals its tasks with priority, completion, and time:
+
+```text
+▾ Tuesday     1/2      35m
+
+  P8  ☑  Complete onboarding task           35m
+  P5  ☐  Schedule dental appointment          —  ▶
+```
+
+Each row shows four things:
+
+- **Priority** — the task's importance, so the most significant work is identifiable at a glance rather than by reading every title.
+- **A checkbox** — done or not.
+- **Time spent** — accumulated actual time, not an estimate.
+- **A timer control** — start or stop tracking on that task.
+
+Today's day should be expanded by default and visually distinguished. The user's expand and collapse choices persist.
+
+Completed items remain visible but dimmed or crossed out. This makes the board a record of the week rather than a list that empties as work is finished.
 
 ## 6.5 Monthly Board
 
@@ -490,6 +505,10 @@ Users should be able to:
 - Complete a task.
 - Uncomplete a task.
 - Edit task text.
+- Set or change a task's priority.
+- Start and stop a timer on a task.
+- Correct recorded time when a timer was left running or forgotten.
+- Expand and collapse a day or section.
 - Move a task to another day.
 - Promote a daily task to weekly.
 - Move a weekly task to another week.
@@ -500,7 +519,7 @@ Users should be able to:
 - Delete or archive a task.
 - Ask the AI for help when explicitly requested.
 
-Normal task operations must not start the LLM.
+Normal task operations, including timing work, must not start the LLM.
 
 ## 6.7 Window Behaviors
 
@@ -917,6 +936,22 @@ interface Task {
   createdAt: string;
   updatedAt: string;
 }
+
+interface TimeEntry {
+  id: string;
+  taskId: string;
+
+  startedAt: string;
+  /** Null while the timer is still running. */
+  endedAt?: string;
+  /** Recorded on stop. Null while running; derive from startedAt instead. */
+  seconds?: number;
+
+  /** True when the duration was typed in or corrected by the user. */
+  manual: boolean;
+
+  createdAt: string;
+}
 ```
 
 ## 10.1 Parent-Child Relationships
@@ -962,6 +997,38 @@ The assistant can use this information during reflection:
 
 The application should avoid using judgmental language.
 
+## 10.4 Time Tracking
+
+Tasks record how long work actually took, not how long it was estimated to take. Estimates are guesses; recorded time is evidence, and it is the only honest basis for the question "was that week realistic?"
+
+### Why entries rather than a total
+
+Time is stored as a list of `TimeEntry` rows rather than a single total on the task. A running total cannot answer "how many hours went into this week", because a task worked on across a week boundary has no way to split its total between the two weeks. Entries carry their own timestamps, so any period can be summed correctly.
+
+Entries also record *when* work happened, which makes patterns visible during reflection — that a task is only ever touched late at night, for instance.
+
+### Rules
+
+- **At most one timer runs at a time.** Starting a timer stops whatever was running. People work on one thing at once, and multiple running timers produce numbers nobody trusts.
+- **Elapsed time for a running entry is derived**, never stored, so a crash cannot leave a stale figure behind.
+- **A task's total** is the sum of its finished entries plus any currently running one.
+- **Time in a period** is the sum of entries overlapping that period, not of tasks scheduled in it.
+- **Deleting a task deletes its entries.** A time entry has no meaning without the work it measured.
+
+### Forgotten timers
+
+A timer left running overnight would otherwise record fourteen hours of "work" and quietly corrupt every summary built on it.
+
+When an entry exceeds a configurable threshold — eight hours by default — the application should flag it for review rather than silently counting it. The evening check-in is the natural place to surface this: *"Tuesday shows 14 hours on the résumé task. Should that be corrected?"*
+
+The user must always be able to edit a recorded duration by hand. Corrected entries are marked `manual` so the distinction between measured and estimated time is never lost.
+
+### What this enables
+
+- A weekly recap of hours spent, broken down by area and project (§13.2).
+- Comparing planned capacity against time actually spent (§11.3).
+- Noticing that a task deferred five times has zero recorded minutes, which says something different from one deferred five times with six hours on it.
+
 ---
 
 # 11. Standup Conversation Design
@@ -1001,6 +1068,8 @@ Example:
 > How much focused time do you realistically have today?
 
 This helps prevent generating an unrealistic plan.
+
+Once time tracking has history, the assistant can compare the answer against what the past few weeks actually took, rather than accepting an estimate at face value.
 
 ## 11.4 Task Proposal
 
@@ -1173,6 +1242,15 @@ week: 2026-W34
 - Completion rate: 71%
 - Tasks carried forward: 3
 - Cancelled tasks: 1
+- Time tracked: 18h 20m across 5 days
+
+## Time by Area
+
+| Area              | Tracked | Share |
+| ----------------- | ------- | ----- |
+| Job Search        | 7h 10m  | 39%   |
+| AI Daily Assistant| 9h 45m  | 53%   |
+| Health            | 1h 25m  | 8%    |
 
 ## Progress by Area
 
@@ -1180,16 +1258,18 @@ week: 2026-W34
 
 - Completed three applications.
 - Weekly target was five.
+- 7h 10m tracked, averaging 2h 23m per application.
 
 ### Health
 
 - Dental appointment remains unscheduled.
-- Task has been moved three times.
+- Task has been moved three times, with no time recorded against it.
 
 ### AI Daily Assistant
 
 - Product specification completed.
 - Prototype not started.
+- 9h 45m tracked, the largest share of the week.
 
 ## Blockers
 
@@ -1259,6 +1339,9 @@ Lightweight mode should support:
 - Viewing boards.
 - Completing tasks.
 - Editing task text.
+- Starting and stopping timers.
+- Correcting recorded time.
+- Expanding and collapsing days.
 - Moving tasks between dates.
 - Adding tasks.
 - Opening linked Obsidian notes.
@@ -1476,6 +1559,14 @@ Suggested settings categories:
 - Monitor assignment.
 - Completed-task appearance.
 
+## Time Tracking
+
+- Forgotten-timer threshold (default 8 hours).
+- Whether to stop the running timer when the machine locks or sleeps.
+- Whether to prompt to start a timer when a task is marked in-progress.
+- Rounding for displayed durations.
+- Whether to show tracked time on the boards.
+
 ## Planning
 
 - Maximum recommended daily tasks.
@@ -1605,6 +1696,9 @@ The first release should be deliberately focused.
 - Weekly Tasks board.
 - Weekly Progress board.
 - Monthly Progress board.
+- Per-task time tracking with start/stop timers.
+- Expandable Monday-to-Sunday weekly view.
+- Priority shown on every task row.
 - Movable and resizable sticky windows.
 - Persistent window positions.
 - System-tray controls.
@@ -1733,7 +1827,11 @@ The MVP is successful when all of the following are true:
 - Boards remain visible after the main window closes.
 - Boards restore their positions after restarting.
 - Completing a task updates progress immediately.
-- Board interactions do not load the LLM.
+- Each task row shows its priority, completion state, and tracked time.
+- The weekly board lists Monday to Sunday, and days expand and collapse.
+- Starting a timer stops any timer already running.
+- Tracked time survives a restart.
+- Board interactions, including timing, do not load the LLM.
 
 ## Obsidian
 
@@ -1767,6 +1865,7 @@ The MVP is successful when all of the following are true:
 - Weekly progress contributes to monthly progress.
 - Rollover counts are preserved.
 - Weekly and monthly summaries can be saved as Markdown.
+- The weekly review reports hours tracked, broken down by area.
 
 ---
 
