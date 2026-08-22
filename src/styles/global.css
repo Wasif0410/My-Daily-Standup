@@ -72,3 +72,65 @@ body {
   font-family: "Cascadia Code", Consolas, monospace;
   font-size: 0.85rem;
 }
+
+/* Development shell only. Replaced by the real board chrome in PR 10. */
+.add-task {
+  display: flex;
+  gap: 0.5rem;
+  width: min(28rem, 100%);
+}
+
+.add-task input {
+  flex: 1;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--fg);
+  font: inherit;
+}
+
+.add-task button {
+  padding: 0.45rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.task-list {
+  width: min(28rem, 100%);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.task-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+}
+
+.task-list li[data-completed="true"] span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.task-list label {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: #f7768e;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem;
+}

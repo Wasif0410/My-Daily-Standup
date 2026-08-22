@@ -10,6 +10,8 @@ mod task;
 mod task_repo;
 
 #[cfg(test)]
+mod patch_tests;
+#[cfg(test)]
 mod task_repo_tests;
 #[cfg(test)]
 mod tests;
