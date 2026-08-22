@@ -5,6 +5,7 @@
 //! language only. See `docs/spec.md` §3.6.
 
 pub mod commands;
+pub mod domain;
 pub mod storage;
 
 use tauri::Manager;

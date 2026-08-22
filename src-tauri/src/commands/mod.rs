@@ -33,6 +33,8 @@ pub struct CommandError {
 pub enum ErrorKind {
     /// The requested task does not exist.
     NotFound,
+    /// The request itself was malformed — a date that is not a date, say.
+    InvalidInput,
     /// The database rejected the operation — a constraint, or a bad value.
     Storage,
     /// A lock was poisoned by a panic elsewhere. Not recoverable in place.
@@ -43,6 +45,7 @@ impl From<StorageError> for CommandError {
     fn from(error: StorageError) -> Self {
         let kind = match error {
             StorageError::TaskNotFound { .. } => ErrorKind::NotFound,
+            StorageError::InvalidDate { .. } => ErrorKind::InvalidInput,
             StorageError::Sqlite(_) | StorageError::Migration { .. } => ErrorKind::Storage,
             StorageError::Io(_) => ErrorKind::Internal,
         };

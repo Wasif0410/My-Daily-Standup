@@ -130,7 +130,7 @@ export interface TaskPatch {
 }
 
 /** What went wrong, in a form the UI can branch on. */
-export type ErrorKind = "not-found" | "storage" | "internal";
+export type ErrorKind = "not-found" | "invalid-input" | "storage" | "internal";
 
 export interface CommandError {
   kind: ErrorKind;

@@ -35,6 +35,9 @@ pub enum StorageError {
     #[error("could not create the database directory: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("not a valid ISO-8601 date: {value}")]
+    InvalidDate { value: String },
+
     #[error("no task with id {id}")]
     TaskNotFound { id: String },
 
