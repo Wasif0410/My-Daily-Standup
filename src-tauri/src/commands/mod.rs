@@ -5,6 +5,7 @@
 //! rather than in the command functions means it can be tested directly,
 //! without constructing a Tauri runtime.
 
+pub mod boards;
 pub mod tasks;
 
 use std::path::Path;
@@ -13,7 +14,8 @@ use std::sync::Mutex;
 use serde::Serialize;
 
 use crate::storage::{
-    Db, NewTask, StorageError, Task, TaskHorizon, TaskPatch, TaskRepo, DATABASE_FILENAME,
+    BoardKind, BoardRepo, BoardWindow, Db, NewTask, StorageError, Task, TaskHorizon, TaskPatch,
+    TaskRepo, DATABASE_FILENAME,
 };
 
 /// How an error is reported across the IPC boundary.
@@ -64,6 +66,7 @@ impl From<StorageError> for CommandError {
 pub struct AppState {
     db: Mutex<Db>,
     repo: TaskRepo,
+    boards: BoardRepo,
 }
 
 impl AppState {
@@ -74,6 +77,7 @@ impl AppState {
         Ok(Self {
             db: Mutex::new(db),
             repo: TaskRepo::new(),
+            boards: BoardRepo::new(),
         })
     }
 
@@ -82,6 +86,7 @@ impl AppState {
         Ok(Self {
             db: Mutex::new(Db::open_in_memory()?),
             repo: TaskRepo::new(),
+            boards: BoardRepo::new(),
         })
     }
 
@@ -146,3 +151,33 @@ impl AppState {
 
 #[cfg(test)]
 mod tests;
+
+impl AppState {
+    /// One board's saved window state, or its defaults.
+    pub fn board(&self, kind: BoardKind) -> Result<BoardWindow, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.boards
+            .get(guard.conn(), kind)
+            .map_err(CommandError::from)
+    }
+
+    /// Every board's state, for restoring the layout at startup.
+    pub fn boards(&self) -> Result<Vec<BoardWindow>, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.boards.all(guard.conn()).map_err(CommandError::from)
+    }
+
+    pub fn save_board(&self, window: &BoardWindow) -> Result<(), CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.boards
+            .save(guard.conn(), window)
+            .map_err(CommandError::from)
+    }
+}
+
+fn poisoned<T>(_: T) -> CommandError {
+    CommandError {
+        kind: ErrorKind::Internal,
+        message: "database lock was poisoned by an earlier panic".to_string(),
+    }
+}

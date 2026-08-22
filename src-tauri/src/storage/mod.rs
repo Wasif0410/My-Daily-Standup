@@ -4,11 +4,14 @@
 //! their progress. Long-term knowledge lives in the user's Obsidian vault
 //! (spec §3.2), never here.
 
+mod board;
 mod db;
 mod migrations;
 mod task;
 mod task_repo;
 
+#[cfg(test)]
+mod board_tests;
 #[cfg(test)]
 mod patch_tests;
 #[cfg(test)]
@@ -16,6 +19,7 @@ mod task_repo_tests;
 #[cfg(test)]
 mod tests;
 
+pub use board::{BoardKind, BoardRepo, BoardWindow};
 pub use db::Db;
 pub use migrations::{run_migrations, schema_version, LATEST_VERSION};
 pub use task::{NewTask, Task, TaskHorizon, TaskPatch, TaskSource, TaskStatus};
