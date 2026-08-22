@@ -438,28 +438,42 @@ Travel
 
 ## 6.4 Weekly Progress Board
 
-The Weekly Progress board shows completed and planned work organized by day.
+The Weekly Progress board shows the whole week, Monday through Sunday, as a set of collapsible days.
 
-Example:
+Every day is always listed, even when empty, so the week reads as a complete shape rather than a list of only the busy days. Each day header summarises what is inside it without needing to be opened: how many tasks are done, and how much time was spent.
+
+Collapsed:
 
 ```text
-WEEKLY PROGRESS
+WEEKLY PROGRESS                    2026-W34
 
-Monday
-✓ Submit application to Company A
-✓ Draft project specification
-○ Email professor
-
-Tuesday
-✓ Complete onboarding task
-○ Schedule dental appointment
-
-Wednesday
-○ Apply to Company B
-○ Compare hotels
+▸ Monday      2/3    1h 45m
+▾ Tuesday     1/2      35m
+▸ Wednesday   0/2         —
+▸ Thursday    0/0         —
+▸ Friday      0/1         —
+▸ Saturday    0/0         —
+▸ Sunday      0/0         —
 ```
 
-Completed items should remain visible but become dimmed or crossed out. This provides a record of the week rather than making completed work disappear.
+Expanded, a day reveals its tasks with priority, completion, and time:
+
+```text
+▾ Tuesday     1/2      35m
+
+  P8  ☑  Complete onboarding task           35m
+  P5  ☐  Schedule dental appointment           —
+```
+
+Each row shows four things:
+
+- **Priority** — the task's importance, so the most significant work is identifiable at a glance rather than by reading every title.
+- **A checkbox** — done or not.
+- **Time spent** — how long it actually took, or a dash when nothing was recorded. Click to set or change it.
+
+Today's day should be expanded by default and visually distinguished. The user's expand and collapse choices persist.
+
+Completed items remain visible but dimmed or crossed out. This makes the board a record of the week rather than a list that empties as work is finished.
 
 ## 6.5 Monthly Board
 
@@ -490,6 +504,9 @@ Users should be able to:
 - Complete a task.
 - Uncomplete a task.
 - Edit task text.
+- Set or change a task's priority.
+- Record or change how long a task took.
+- Expand and collapse a day or section.
 - Move a task to another day.
 - Promote a daily task to weekly.
 - Move a weekly task to another week.
@@ -500,7 +517,7 @@ Users should be able to:
 - Delete or archive a task.
 - Ask the AI for help when explicitly requested.
 
-Normal task operations must not start the LLM.
+Normal task operations, including recording how long something took, must not start the LLM.
 
 ## 6.7 Window Behaviors
 
@@ -913,6 +930,9 @@ interface Task {
   blocker?: string;
   notes?: string;
 
+  /** How long the task actually took, in minutes. Null until recorded. */
+  timeSpentMinutes?: number;
+
   rolloverCount: number;
   createdAt: string;
   updatedAt: string;
@@ -962,6 +982,32 @@ The assistant can use this information during reflection:
 
 The application should avoid using judgmental language.
 
+## 10.4 Recording How Long Work Took
+
+Tasks record how long they actually took, so a week can be totalled at the end of it. Estimates are guesses; a recorded duration is evidence, and it is the only honest basis for the question "was that week realistic?"
+
+### A logged duration, not a stopwatch
+
+The user types or picks how long something took — usually when marking it done. The application does not run a live timer.
+
+This is deliberate. A stopwatch demands that the user remember to start it, remember to stop it, and work in uninterrupted blocks. In practice it produces a mixture of forgotten starts and timers left running overnight, and every total built on it becomes untrustworthy. A duration entered from memory is approximate, but it is approximate in a way the user knows about.
+
+One number per task is enough because a task belongs to a single day. Summing a period means summing the tasks scheduled inside it — there is no work spanning a week boundary that needs splitting.
+
+### Rules
+
+- **Duration is optional.** Completing a task must never be blocked by a request for a number. A task with no recorded time simply contributes nothing to the total.
+- **Recording is one gesture.** Common values are offered as presets — 15m, 30m, 1h, 2h — with a free-text field for anything else. If logging takes longer than a few seconds, it stops happening.
+- **A duration can be edited at any time**, not only at completion.
+- **Time for a period** is the sum of `timeSpentMinutes` across tasks scheduled in that period.
+- **Implausible values are questioned, not rejected.** A task logged at eighteen hours is more likely a typo than a marathon, and is worth surfacing during the evening check-in — but the user may be right, so the application asks rather than refusing.
+
+### What this enables
+
+- A weekly recap of hours spent, broken down by area and project (§13.2).
+- Comparing planned capacity against time actually spent (§11.3).
+- Noticing that a task deferred five times has no recorded time at all, which says something different from one deferred five times with six hours behind it.
+
 ---
 
 # 11. Standup Conversation Design
@@ -1001,6 +1047,8 @@ Example:
 > How much focused time do you realistically have today?
 
 This helps prevent generating an unrealistic plan.
+
+Once a few weeks of recorded durations exist, the assistant can compare the answer against what similar work actually took, rather than accepting an estimate at face value.
 
 ## 11.4 Task Proposal
 
@@ -1173,6 +1221,15 @@ week: 2026-W34
 - Completion rate: 71%
 - Tasks carried forward: 3
 - Cancelled tasks: 1
+- Time tracked: 18h 20m across 5 days
+
+## Time by Area
+
+| Area              | Tracked | Share |
+| ----------------- | ------- | ----- |
+| Job Search        | 7h 10m  | 39%   |
+| AI Daily Assistant| 9h 45m  | 53%   |
+| Health            | 1h 25m  | 8%    |
 
 ## Progress by Area
 
@@ -1180,16 +1237,18 @@ week: 2026-W34
 
 - Completed three applications.
 - Weekly target was five.
+- 7h 10m tracked, averaging 2h 23m per application.
 
 ### Health
 
 - Dental appointment remains unscheduled.
-- Task has been moved three times.
+- Task has been moved three times, with no time recorded against it.
 
 ### AI Daily Assistant
 
 - Product specification completed.
 - Prototype not started.
+- 9h 45m tracked, the largest share of the week.
 
 ## Blockers
 
@@ -1259,6 +1318,8 @@ Lightweight mode should support:
 - Viewing boards.
 - Completing tasks.
 - Editing task text.
+- Recording how long a task took.
+- Expanding and collapsing days.
 - Moving tasks between dates.
 - Adding tasks.
 - Opening linked Obsidian notes.
@@ -1476,6 +1537,13 @@ Suggested settings categories:
 - Monitor assignment.
 - Completed-task appearance.
 
+## Time Logging
+
+- Whether to prompt for a duration when a task is completed.
+- Duration presets offered (default 15m, 30m, 1h, 2h).
+- Threshold above which a logged duration is queried as a likely typo (default 8 hours).
+- Whether to show recorded time on the boards.
+
 ## Planning
 
 - Maximum recommended daily tasks.
@@ -1605,6 +1673,9 @@ The first release should be deliberately focused.
 - Weekly Tasks board.
 - Weekly Progress board.
 - Monthly Progress board.
+- Recording how long each task took.
+- Expandable Monday-to-Sunday weekly view.
+- Priority shown on every task row.
 - Movable and resizable sticky windows.
 - Persistent window positions.
 - System-tray controls.
@@ -1733,7 +1804,11 @@ The MVP is successful when all of the following are true:
 - Boards remain visible after the main window closes.
 - Boards restore their positions after restarting.
 - Completing a task updates progress immediately.
-- Board interactions do not load the LLM.
+- Each task row shows its priority, completion state, and recorded time.
+- The weekly board lists Monday to Sunday, and days expand and collapse.
+- A task can be completed without recording a duration.
+- Recorded time survives a restart.
+- Board interactions, including recording time, do not load the LLM.
 
 ## Obsidian
 
@@ -1767,6 +1842,7 @@ The MVP is successful when all of the following are true:
 - Weekly progress contributes to monthly progress.
 - Rollover counts are preserved.
 - Weekly and monthly summaries can be saved as Markdown.
+- The weekly review reports hours tracked, broken down by area.
 
 ---
 

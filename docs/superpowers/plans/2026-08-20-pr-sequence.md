@@ -19,7 +19,7 @@ Every PR's requirements implicitly include this section. A PR that violates any 
 - **Windows-first.** The MVP targets Windows 11. macOS/Linux are Wave 8 only. Never add a platform-specific dependency without a `cfg` guard.
 - **Local-first.** All core functionality must work with no internet connection after models are downloaded. No feature may hard-depend on a network call.
 - **No telemetry, no remote logging, no accounts.** Not behind a flag, not opt-out. Absent.
-- **The LLM must not be loaded merely because sticky notes are visible.** Any board interaction (complete, uncomplete, edit, move, add, delete) that starts an inference process is a bug.
+- **The LLM must not be loaded merely because sticky notes are visible.** Any board interaction (complete, uncomplete, edit, move, add, delete, expand a day, record how long something took) that starts an inference process is a bug.
 - **Idle shutdown default: 5 minutes.** Configurable to: immediate / 5 min / 15 min / manual. The default favors resource conservation.
 - **No Obsidian write without explicit per-change approval.** The user must see the affected file, the proposed diff, and the reason, with approve / edit / reject.
 - **Excluded vault folders are never indexed, searched, or sent to a model.** Enforced in the indexer, not the UI.
@@ -64,7 +64,7 @@ One installer, one binary. The profile is detected at runtime and overridable in
 <type>/pr-<NN>-<short-slug>
 ```
 
-Examples: `chore/pr-01-repo-docs`, `feat/pr-11-priority-board`, `feat/pr-23-llama-lifecycle`.
+Examples: `chore/pr-01-repo-docs`, `feat/pr-12-priority-board`, `feat/pr-24-llama-lifecycle`.
 
 Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`.
 
@@ -146,11 +146,11 @@ A PR is not ready for your review until all of these hold:
 
 | Tag | After PR | What you can do |
 |---|---|---|
-| `v0.1.0` | 17 | Use it as a full non-AI desktop planner with persistent sticky boards |
-| `v0.2.0` | 21 | Promote real tasks out of your Obsidian vault onto the boards |
-| `v0.3.0` | 27 | Run a typed local-LLM standup that proposes and saves a daily plan |
-| `v0.4.0` | 31 | Run the whole standup by voice — MVP feature-complete |
-| `v1.0.0-rc` | 37 | Evening/weekly/monthly reviews with approved Obsidian writeback |
+| `v0.1.0` | 18 | A full non-AI desktop planner: persistent sticky boards, an expandable Monday-to-Sunday week, priorities, and per-task time tracking |
+| `v0.2.0` | 22 | Promote real tasks out of your Obsidian vault onto the boards |
+| `v0.3.0` | 28 | Run a typed local-LLM standup that proposes and saves a daily plan |
+| `v0.4.0` | 32 | Run the whole standup by voice — MVP feature-complete |
+| `v1.0.0-rc` | 38 | Evening/weekly/monthly reviews with approved Obsidian writeback |
 
 Each milestone is a usable product. You can stop at any tag and still have something worth running.
 
@@ -329,7 +329,7 @@ fn period_stats(tasks: &[Task]) -> PeriodStats  // planned, completed, rate, car
 
 ---
 
-# Wave 2 — Sticky-note boards (PR 8–14)
+# Wave 2 — Sticky-note boards (PR 8–15)
 
 ### - [ ] PR 8 — Frontend store & data hooks
 **Branch:** `feat/pr-08-store`
@@ -383,27 +383,86 @@ CSS custom properties for accent, opacity, and font size so PR 15 can drive them
 
 ---
 
-### - [ ] PR 11 — Priority Tasks board
-**Branch:** `feat/pr-11-priority-board`
+### - [ ] PR 11 — Recording how long tasks took
+**Branch:** `feat/pr-11-time-logging`
 **Depends on:** PR 10
-**What this gives the app:** Your first working board: the important things that span more than a single day.
+**What this gives the app:** A place to record how long each task actually took, so the week can be totalled at the end of it.
 
-First real board. Long-lived important items grouped by area.
+**Creates:** `src-tauri/migrations/003_time_spent.sql`, `src-tauri/src/domain/time_spent.rs`. **Modifies:** `storage/task.rs`, `storage/task_repo.rs`, `commands/mod.rs`, `src/types/task.ts`, `src/stores/taskStore.ts`.
 
-**Creates:** `src/features/boards/PriorityBoard.tsx`, `src/features/boards/components/TaskRow.tsx`, `components/AreaGroup.tsx`.
+**A logged duration, not a stopwatch.** The user types or picks how long something took, usually when marking it done. Nothing runs in the background.
 
-Renders tasks where `horizon != 'daily'` and `priority >= threshold`, grouped by `area`. `TaskRow` is the shared row primitive used by every later board — inline edit on double-click, checkbox, hover actions.
+That is a deliberate choice rather than a simplification. A stopwatch requires remembering to start it, remembering to stop it, and working in uninterrupted blocks. What it actually produces is forgotten starts and timers left running overnight, and every total built on that becomes untrustworthy. A duration entered from memory is approximate, but the user knows it is approximate.
 
-**Interfaces produced:** `<TaskRow task onComplete onEdit onMove onDelete />`.
+**One column, not a table.** A task belongs to a single day, so summing a period means summing the tasks scheduled inside it. There is no work spanning a week boundary that needs splitting, and therefore no reason for per-session rows.
 
-**DoD:** Board shows real tasks from SQLite. Completing one persists and survives restart. **Confirm no inference process exists** — Task Manager shows no sidecar.
-**Test:** Vitest — grouping, empty state, inline edit commit/cancel, checkbox fires the right action.
+```sql
+ALTER TABLE tasks ADD COLUMN time_spent_minutes INTEGER
+    CHECK (time_spent_minutes IS NULL OR time_spent_minutes >= 0);
+```
+
+**Rules to implement exactly:**
+
+- **Duration is optional and never blocks completion.** A task with no recorded time contributes nothing to the total; it does not count as zero and it does not nag.
+- **Recording is one gesture.** Presets — 15m, 30m, 1h, 2h — plus a free-text field. If logging takes more than a few seconds it stops happening, and the recap becomes worthless.
+- **Editable at any time**, not only at completion.
+- **Period totals sum `time_spent_minutes` across tasks scheduled in the period**, grouped by area and project for the weekly recap.
+- **Implausible values are questioned, not rejected.** Eighteen hours on one task is more likely a typo than a marathon, but the user may be right — surface it in the evening check-in rather than refusing the input.
+
+**Interfaces produced:**
+```rust
+fn set_time_spent(repo, conn, id: &str, minutes: Option<i64>) -> Result<Task>
+fn minutes_in_period(tasks: &[Task]) -> i64
+fn minutes_by_area(tasks: &[Task]) -> Vec<(String, i64)>
+fn minutes_by_project(tasks: &[Task]) -> Vec<(String, i64)>
+fn implausible_durations(tasks: &[Task], threshold_minutes: i64) -> Vec<&Task>
+```
+
+Extends PR 7's `PeriodStats` with `minutes_tracked`, so the weekly review draws every number from one place.
+
+**DoD:** A duration can be set, changed, and cleared, and survives a restart. Completing a task without recording one works and leaves the total unaffected. A negative value is rejected by the schema.
+**Test:** Rust — set, change, and clear round-trip; negative rejected; period totals ignore tasks with no duration rather than treating them as zero; by-area grouping handles tasks with no area; an implausible value is flagged but still stored. Frontend — presets dispatch the right value, free-text parses "1h 30m" and "90".
 
 ---
 
-### - [ ] PR 12 — Weekly Tasks board & task interactions
-**Branch:** `feat/pr-12-weekly-board`
+### - [ ] PR 12 — Priority Tasks board & the shared task row
+**Branch:** `feat/pr-12-priority-board`
 **Depends on:** PR 11
+**What this gives the app:** Your first working board, and the task row every other board reuses — priority, a checkbox, and how long the task took.
+
+First real board. Long-lived important items grouped by area.
+
+**Creates:** `src/features/boards/PriorityBoard.tsx`, `src/features/boards/components/TaskRow.tsx`, `components/PriorityBadge.tsx`, `components/DurationField.tsx`, `components/AreaGroup.tsx`.
+
+Renders tasks where `horizon != 'daily'` and `priority >= threshold`, grouped by `area`.
+
+**`TaskRow` is the primitive every later board builds on**, so its anatomy is settled here rather than four times over:
+
+```text
+P8  ☑  Complete onboarding task           35m
+P5  ☐  Schedule dental appointment           —
+```
+
+| Element | Behaviour |
+|---|---|
+| **Priority badge** | The 0–10 value, so importance is visible without reading titles. Colour-graded, but never colour *alone* — the number is always present, since colour-blind users and low-opacity boards both defeat hue. |
+| **Checkbox** | Complete / uncomplete. Optimistic, per PR 8. |
+| **Time spent** | How long it took, or `—` when nothing was recorded. Click to set or change it: presets plus free text. |
+| **Title** | Inline edit on double-click. |
+| **Hover actions** | Move, delete. Hidden until hover, per §6.1. |
+
+A board is 340px wide by default, so the row has to stay legible when narrow — the duration collapses before the title truncates.
+
+**Interfaces produced:** `<TaskRow task onComplete onEdit onMove onDelete onSetTimeSpent />`.
+
+**DoD:** Board shows real tasks from SQLite. Completing one persists and survives restart. A duration can be set from the row and is visible afterwards. **Confirm no inference process exists** — Task Manager shows no sidecar.
+**Test:** Vitest — grouping, empty state, inline edit commit/cancel, checkbox dispatch, priority rendered as a number not only a colour, duration formatted for none / minutes / hours, presets and free text both dispatch.
+
+---
+
+### - [ ] PR 13 — Weekly Tasks board & task interactions
+**Branch:** `feat/pr-13-weekly-board`
+**Depends on:** PR 12
 **What this gives the app:** The week's commitments on screen, plus every way you would want to change a task — complete it, edit it, move it, block it.
 
 **Creates:** `src/features/boards/WeeklyBoard.tsx`, `src/features/boards/components/QuickAdd.tsx`, `src/features/boards/components/TaskContextMenu.tsx`.
@@ -417,23 +476,47 @@ Grouped by project, current period only (`period_start`/`period_end` covering to
 
 ---
 
-### - [ ] PR 13 — Weekly Progress board
-**Branch:** `feat/pr-13-weekly-progress-board`
-**Depends on:** PR 12
-**What this gives the app:** A visible record of your week. Finished work stays on screen, dimmed rather than deleted, so you can see what the week actually held.
+### - [ ] PR 14 — Weekly Progress board (expandable Monday–Sunday)
+**Branch:** `feat/pr-14-weekly-progress-board`
+**Depends on:** PR 13
+**What this gives the app:** The whole week at a glance — seven collapsible days, each showing how much got done and how long it took, opening to reveal the tasks inside.
 
-**Creates:** `src/features/boards/WeeklyProgressBoard.tsx`, `components/DaySection.tsx`.
+**Creates:** `src/features/boards/WeeklyProgressBoard.tsx`, `components/DaySection.tsx`, `components/DaySummary.tsx`.
 
-Day-by-day view of the current week. Completed items stay visible but dimmed and struck through — the board is a record of the week, not a disappearing list. Today's section is highlighted. Week start day comes from settings (default Monday).
+**Every day is listed, Monday through Sunday, even when empty.** A week with three empty days *is* the information — showing only the busy days hides the shape of the week.
 
-**DoD:** Matches the spec's example layout. Completing a task on the Weekly Tasks board updates this board live (shared store, no refetch).
-**Test:** Vitest — correct day bucketing across a week boundary, completed styling applied, week-start setting respected.
+Each day header summarises its contents without being opened, so a collapsed board still answers "how did the week go":
+
+```text
+WEEKLY PROGRESS                    2026-W34
+
+▸ Monday      2/3    1h 45m
+▾ Tuesday     1/2      35m
+▸ Wednesday   0/2         —
+▸ Thursday    0/0         —
+```
+
+Expanding a day reveals its rows, each carrying priority, completion, and how long the task took:
+
+```text
+▾ Tuesday     1/2      35m
+
+  P8  ☑  Complete onboarding task           35m
+  P5  ☐  Schedule dental appointment           —
+```
+
+**Today is expanded by default** and visually distinguished. Expand and collapse choices persist per board, so a user who works one day at a time is not re-collapsing six days every launch.
+
+Completed items stay visible but dimmed and struck through — a record of the week, not a list that empties as work is done. Week start day comes from settings (default Monday).
+
+**DoD:** All seven days render on an empty week. A day's summary matches its contents when collapsed. Today is expanded on first open. Collapse state survives a restart. Completing a task on the Weekly Tasks board updates this board live.
+**Test:** Vitest — day bucketing across a week boundary, empty days still rendered, summary counts and durations correct, collapse state persisted, week-start setting respected, today highlighted.
 
 ---
 
-### - [ ] PR 14 — Monthly Progress board
-**Branch:** `feat/pr-14-monthly-board`
-**Depends on:** PR 13
+### - [ ] PR 15 — Monthly Progress board
+**Branch:** `feat/pr-15-monthly-board`
+**Depends on:** PR 14
 **What this gives the app:** The monthly view: progress bars showing how far along each commitment is, rather than a list of every task.
 
 **Creates:** `src/features/boards/MonthlyBoard.tsx`, `components/ProgressBar.tsx`.
@@ -447,11 +530,11 @@ Progress values come from PR 7's `compute_progress`, never computed in the compo
 
 ---
 
-# Wave 3 — Desktop shell (PR 15–17)
+# Wave 3 — Desktop shell (PR 16–18)
 
-### - [ ] PR 15 — Window behaviors
-**Branch:** `feat/pr-15-window-behaviors`
-**Depends on:** PR 14
+### - [ ] PR 16 — Window behaviors
+**Branch:** `feat/pr-16-window-behaviors`
+**Depends on:** PR 15
 **What this gives the app:** Control over how the notes behave — always on top, see-through, locked in place, pinned to one monitor.
 
 **Creates:** `src-tauri/src/windows/behaviors.rs`, `src/features/boards/components/BoardMenu.tsx`.
@@ -465,9 +548,9 @@ Always-on-top, desktop-level mode, lock position, click-through when locked (`se
 
 ---
 
-### - [ ] PR 16 — System tray & quick add
-**Branch:** `feat/pr-16-system-tray`
-**Depends on:** PR 15
+### - [ ] PR 17 — System tray & quick add
+**Branch:** `feat/pr-17-system-tray`
+**Depends on:** PR 16
 **What this gives the app:** A tray icon, so the app is one click away without a window taking up space.
 
 **Creates:** `src-tauri/src/tray.rs`, `src/features/quick-add/QuickAddWindow.tsx`.
@@ -483,9 +566,9 @@ Adds `tauri-plugin-autostart` for launch-at-login.
 
 ---
 
-### - [ ] PR 17 — Settings & reminders → **tag `v0.1.0`**
-**Branch:** `feat/pr-17-settings-reminders`
-**Depends on:** PR 16
+### - [ ] PR 18 — Settings & reminders → **tag `v0.1.0`**
+**Branch:** `feat/pr-18-settings-reminders`
+**Depends on:** PR 17
 **What this gives the app:** Settings you can change and reminders that nudge you morning and evening. **This is the first version genuinely worth using every day.**
 
 **Creates:** `src-tauri/src/storage/settings.rs`, `migrations/003_settings.sql`, `src/features/settings/SettingsWindow.tsx`, `settings/sections/{General,StickyNotes,Planning}.tsx`, `src-tauri/src/reminders.rs`.
@@ -501,11 +584,11 @@ Reminders: morning and evening notification at configurable times via `tauri-plu
 
 ---
 
-# Wave 4 — Obsidian read integration (PR 18–21)
+# Wave 4 — Obsidian read integration (PR 19–22)
 
-### - [ ] PR 18 — Vault selection & folder scoping
-**Branch:** `feat/pr-18-vault-config`
-**Depends on:** PR 17
+### - [ ] PR 19 — Vault selection & folder scoping
+**Branch:** `feat/pr-19-vault-config`
+**Depends on:** PR 18
 **What this gives the app:** Lets the app point at your Obsidian vault — and lets you decide which folders it must never look at.
 
 **Creates:** `src-tauri/src/obsidian/mod.rs`, `obsidian/config.rs`, `migrations/004_vault.sql`, `src/features/settings/sections/Obsidian.tsx`.
@@ -521,9 +604,9 @@ Exclusion is enforced by a single `is_indexable(path) -> bool` function that eve
 
 ---
 
-### - [ ] PR 19 — Markdown parser
-**Branch:** `feat/pr-19-markdown-parser`
-**Depends on:** PR 18
+### - [ ] PR 20 — Markdown parser
+**Branch:** `feat/pr-20-markdown-parser`
+**Depends on:** PR 19
 **What this gives the app:** Teaches the app to read your notes: the checkboxes, the tags, the priorities, the links between them.
 
 Pure parsing library, zero I/O, so it can be tested exhaustively against fixtures.
@@ -532,7 +615,7 @@ Pure parsing library, zero I/O, so it can be tested exhaustively against fixture
 
 Parses per §9.1: YAML frontmatter (`serde_yaml`), note title, headings, markdown checkboxes with line numbers, wikilinks, `parent` relationships, tags, `status`, `priority`, due dates, `last_updated`, callouts.
 
-Also extracts a **`summary_line`** — the one-line description that feeds the vault map in PR 24. Resolution order, first hit wins: the `desired_outcome` frontmatter field (§9.6) → the first non-empty prose line after the H1 → the title alone. Truncate to 100 characters at a word boundary. Fully deterministic; no model involved.
+Also extracts a **`summary_line`** — the one-line description that feeds the vault map in PR 25. Resolution order, first hit wins: the `desired_outcome` frontmatter field (§9.6) → the first non-empty prose line after the H1 → the title alone. Truncate to 100 characters at a word boundary. Fully deterministic; no model involved.
 
 **Interfaces produced:**
 ```rust
@@ -548,9 +631,9 @@ struct ParsedTask { text, checked, line: usize, heading_path: Vec<String> }
 
 ---
 
-### - [ ] PR 20 — Vault indexer & file watcher
-**Branch:** `feat/pr-20-vault-indexer`
-**Depends on:** PR 19
+### - [ ] PR 21 — Vault indexer & file watcher
+**Branch:** `feat/pr-21-vault-indexer`
+**Depends on:** PR 20
 **What this gives the app:** Builds a fast index of your vault and keeps it current as you edit in Obsidian, so nothing has to be re-read from scratch.
 
 **Creates:** `src-tauri/src/obsidian/indexer.rs`, `obsidian/watcher.rs`, `migrations/005_vault_index.sql`.
@@ -561,7 +644,7 @@ Walks the vault (honoring `is_indexable`), parses each note, writes a lightweigh
 - `note_tasks` — note_path, line, text, checked
 - **`note_links`** — an edge list (`from_path`, `to_path`, `kind`) built from wikilinks and `parent:` frontmatter
 
-The edge table is what makes the vault a real graph rather than a flat list. It costs almost nothing to populate and buys three things: rendering the hierarchy in PR 24's map, **neighbor expansion** (pulling in a note's parent summary alongside the note itself), and §5.5's "identify neglected areas" as a graph query. Ancestor and descendant traversal is a recursive CTE — roughly eight lines of SQL.
+The edge table is what makes the vault a real graph rather than a flat list. It costs almost nothing to populate and buys three things: rendering the hierarchy in PR 25's map, **neighbor expansion** (pulling in a note's parent summary alongside the note itself), and §5.5's "identify neglected areas" as a graph query. Ancestor and descendant traversal is a recursive CTE — roughly eight lines of SQL.
 
 Incremental — reindex a file only when mtime or hash changed.
 
@@ -574,9 +657,9 @@ File watcher via `notify`, debounced 1s, triggering targeted reindex. Full scan 
 
 ---
 
-### - [ ] PR 21 — Relevance ranking & promote-to-board → **tag `v0.2.0`**
-**Branch:** `feat/pr-21-ranking-promote`
-**Depends on:** PR 20
+### - [ ] PR 22 — Relevance ranking & promote-to-board → **tag `v0.2.0`**
+**Branch:** `feat/pr-22-ranking-promote`
+**Depends on:** PR 21
 **What this gives the app:** The app can now tell you which vault tasks matter most today, and you can pull one onto a board with a link back to the note it came from.
 
 **Creates:** `src-tauri/src/obsidian/ranking.rs`, `src/features/vault/VaultBrowser.tsx`, `src/features/vault/components/SourceBadge.tsx`.
@@ -592,11 +675,11 @@ UI: browse ranked candidate tasks, promote one onto a board. Promotion copies te
 
 ---
 
-# Wave 5 — Local LLM text standup (PR 22–27)
+# Wave 5 — Local LLM text standup (PR 23–28)
 
-### - [ ] PR 22 — Model registry, hardware detection & download
-**Branch:** `feat/pr-22-model-registry`
-**Depends on:** PR 21
+### - [ ] PR 23 — Model registry, hardware detection & download
+**Branch:** `feat/pr-23-model-registry`
+**Depends on:** PR 22
 **What this gives the app:** The app works out what your computer can handle and downloads a language model that fits it.
 
 **Creates:** `src-tauri/src/inference/mod.rs`, `inference/registry.rs`, `inference/hardware.rs`, `inference/benchmark.rs`, `inference/download.rs`, `models/catalog.json`, `src/features/settings/sections/AI.tsx`.
@@ -620,9 +703,9 @@ Downloads with progress, resume, and **SHA-256 verification before the file is a
 
 ---
 
-### - [ ] PR 23 — llama.cpp sidecar lifecycle
-**Branch:** `feat/pr-23-llama-lifecycle`
-**Depends on:** PR 22
+### - [ ] PR 24 — llama.cpp sidecar lifecycle
+**Branch:** `feat/pr-24-llama-lifecycle`
+**Depends on:** PR 23
 **What this gives the app:** The AI starts only when you ask for it and shuts down completely when you are done. **This is the promise the entire product rests on.**
 
 **The single most important PR in the project.** §26 says the boards are always available but inference is always on demand — this is where that becomes true or doesn't.
@@ -631,7 +714,7 @@ Downloads with progress, resume, and **SHA-256 verification before the file is a
 
 Spawns `llama-server` as a Tauri sidecar on a **random free localhost port**, bound to `127.0.0.1` only, with `--host 127.0.0.1`. Waits for a health check before reporting ready. Terminates on session end, on idle timeout (default 5 min, configurable per §7.4), and on app quit. Detects and reaps orphaned processes from a previous crash by recording the PID in SQLite at spawn.
 
-**Backend selection and GPU offload:** picks the backend binary chosen in PR 22 and computes `--n-gpu-layers` from detected VRAM minus a safety margin, rather than hard-coding a layer count. If the GPU-offloaded spawn fails — driver mismatch, VRAM exhausted, another process holding memory — **fall back to the CPU backend automatically and tell the user what happened.** A failed offload must degrade to slow, never to broken.
+**Backend selection and GPU offload:** picks the backend binary chosen in PR 23 and computes `--n-gpu-layers` from detected VRAM minus a safety margin, rather than hard-coding a layer count. If the GPU-offloaded spawn fails — driver mismatch, VRAM exhausted, another process holding memory — **fall back to the CPU backend automatically and tell the user what happened.** A failed offload must degrade to slow, never to broken.
 
 **Interfaces produced:**
 ```rust
@@ -649,9 +732,9 @@ Also covers §17.1: if the model fails to start, show a clear error with diagnos
 
 ---
 
-### - [ ] PR 24 — Vault map & tiered context builder
-**Branch:** `feat/pr-24-vault-map-context`
-**Depends on:** PR 23
+### - [ ] PR 25 — Vault map & tiered context builder
+**Branch:** `feat/pr-25-vault-map-context`
+**Depends on:** PR 24
 **What this gives the app:** Gives the AI a map of your goals instead of your whole vault, so it knows where to look without having to read everything.
 
 Per §9.2, **never send the whole vault** — a 500-note vault is ~260k tokens, which is roughly 33 GB of KV cache and ~9 minutes of prefill. Instead the model gets a small **map** of what exists plus a small set of ranked excerpts, and can request more.
@@ -671,9 +754,9 @@ Health [p8, ongoing] — Clear the backlog of overdue appointments
   → Dental.md ............ routine cleaning, not scheduled
 ```
 
-**Tier 2 — ranked excerpts (~2,000 token budget).** Top-N candidates from PR 21's scorer with their surrounding note context, plus current weekly/monthly commitments, yesterday's incomplete tasks, upcoming due dates, and repeatedly-deferred tasks per §11.2.
+**Tier 2 — ranked excerpts (~2,000 token budget).** Top-N candidates from PR 22's scorer with their surrounding note context, plus current weekly/monthly commitments, yesterday's incomplete tasks, upcoming due dates, and repeatedly-deferred tasks per §11.2.
 
-**Tier 3 — on demand.** Fetch a single note by path for PR 27's expansion loop.
+**Tier 3 — on demand.** Fetch a single note by path for PR 28's expansion loop.
 
 The division of labor matters: **the map tells the model what exists; the ranker tells it what is urgent.** Dropping the ranker would force the model to infer priority from the map, which is exactly the judgment §3.6 says must stay deterministic.
 
@@ -683,7 +766,7 @@ Prompts live in editable markdown files with a `{{variable}}` substitution layer
 ```rust
 fn build_map(cfg: &VaultConfig, budget: usize) -> Result<VaultMap>
 fn build_context(session_kind, budget: TokenBudget) -> Result<SessionContext>
-fn fetch_note(path: &str) -> Result<NoteExcerpt>   // Tier 3, used by PR 27
+fn fetch_note(path: &str) -> Result<NoteExcerpt>   // Tier 3, used by PR 28
 fn render_prompt(template, &SessionContext) -> String
 ```
 
@@ -694,9 +777,9 @@ fn render_prompt(template, &SessionContext) -> String
 
 ---
 
-### - [ ] PR 25 — Standup session state machine & chat UI
-**Branch:** `feat/pr-25-standup-session`
-**Depends on:** PR 24
+### - [ ] PR 26 — Standup session state machine & chat UI
+**Branch:** `feat/pr-26-standup-session`
+**Depends on:** PR 25
 **What this gives the app:** An actual standup conversation you can type. The app asks the questions, in order, and keeps control of the conversation.
 
 **Creates:** `src-tauri/src/session/mod.rs`, `session/state_machine.rs`, `src/features/standup/StandupWindow.tsx`, `standup/components/{MessageList,Composer,StageIndicator,ContextPanel}.tsx`.
@@ -712,9 +795,9 @@ UI shows streaming responses, a stage indicator, the retrieved Obsidian context 
 
 ---
 
-### - [ ] PR 26 — Structured output, validation & approval
-**Branch:** `feat/pr-26-structured-approval`
-**Depends on:** PR 25
+### - [ ] PR 27 — Structured output, validation & approval
+**Branch:** `feat/pr-27-structured-approval`
+**Depends on:** PR 26
 **What this gives the app:** Everything the AI suggests gets checked by real code and shown to you for approval before a single task is saved.
 
 **Creates:** `src-tauri/src/session/proposal.rs`, `session/validator.rs`, `src/features/standup/components/ApprovalPanel.tsx`.
@@ -728,16 +811,16 @@ Approval UI: every proposed task can be individually approved, edited, or reject
 
 ---
 
-### - [ ] PR 27 — Bounded context expansion → **tag `v0.3.0`**
-**Branch:** `feat/pr-27-context-expansion`
-**Depends on:** PR 26
+### - [ ] PR 28 — Bounded context expansion → **tag `v0.3.0`**
+**Branch:** `feat/pr-28-context-expansion`
+**Depends on:** PR 27
 **What this gives the app:** Lets the AI ask to see a specific note, or ask you a question, when what it has is not enough to answer well.
 
 Lets the model say "I need to look at that note" or "I don't know where you track this" — **without tool-calling.** Small quantized models are unreliable at tool-use protocols, and every tool call is another 5–10s round trip.
 
 **Creates:** `src-tauri/src/session/expansion.rs`. **Modifies:** `session/proposal.rs`, `session/validator.rs`, `src/features/standup/components/MessageList.tsx`.
 
-Extends PR 26's validated envelope with two optional fields:
+Extends PR 27's validated envelope with two optional fields:
 
 ```json
 {
@@ -746,7 +829,7 @@ Extends PR 26's validated envelope with two optional fields:
 }
 ```
 
-Rust validates each requested path (exists, inside the vault, passes `is_indexable`), fetches it via PR 24's `fetch_note`, appends it, and re-prompts. **Capped at 2 expansion rounds** so a request loop cannot spiral into a minute of latency. Neighbor expansion comes free from `note_links` — fetching `Dental.md` also pulls its parent `Health.md` summary.
+Rust validates each requested path (exists, inside the vault, passes `is_indexable`), fetches it via PR 25's `fetch_note`, appends it, and re-prompts. **Capped at 2 expansion rounds** so a request loop cannot spiral into a minute of latency. Neighbor expansion comes free from `note_links` — fetching `Dental.md` also pulls its parent `Health.md` summary.
 
 `question_for_user` costs nothing extra: it just renders in the chat and waits for a reply.
 
@@ -761,11 +844,11 @@ This works with a weak model because it is only JSON output — not a protocol t
 
 ---
 
-# Wave 6 — Voice (PR 28–31)
+# Wave 6 — Voice (PR 29–32)
 
-### - [ ] PR 28 — Audio capture, push-to-talk & VAD
-**Branch:** `feat/pr-28-audio-capture`
-**Depends on:** PR 27
+### - [ ] PR 29 — Audio capture, push-to-talk & VAD
+**Branch:** `feat/pr-29-audio-capture`
+**Depends on:** PR 28
 **What this gives the app:** Your microphone, on a push-to-talk key, with nothing written to disk.
 
 **Creates:** `src-tauri/src/audio/mod.rs`, `audio/capture.rs`, `audio/vad.rs`, `src/features/settings/sections/Voice.tsx`.
@@ -781,9 +864,9 @@ This works with a weak model because it is only JSON output — not a protocol t
 
 ---
 
-### - [ ] PR 29 — whisper.cpp transcription
-**Branch:** `feat/pr-29-whisper`
-**Depends on:** PR 28
+### - [ ] PR 30 — whisper.cpp transcription
+**Branch:** `feat/pr-30-whisper`
+**Depends on:** PR 29
 **What this gives the app:** What you say becomes text, transcribed on your own machine and nowhere else.
 
 **Creates:** `src-tauri/src/audio/whisper.rs`, extends `inference/registry.rs` with Whisper models.
@@ -801,9 +884,9 @@ Runs whisper.cpp on the captured buffer, resampling to 16kHz mono. Whisper model
 
 ---
 
-### - [ ] PR 30 — Sherpa-ONNX text-to-speech
-**Branch:** `feat/pr-30-tts`
-**Depends on:** PR 29
+### - [ ] PR 31 — Sherpa-ONNX text-to-speech
+**Branch:** `feat/pr-31-tts`
+**Depends on:** PR 30
 **What this gives the app:** The assistant talks back out loud, with a voice generated locally.
 
 **Creates:** `src-tauri/src/audio/tts.rs`, `audio/playback.rs`, `audio/segmentation.rs`.
@@ -819,16 +902,16 @@ Per §12.3 the assistant summarizes rather than reading long task lists aloud �
 
 ---
 
-### - [ ] PR 31 — Onboarding wizard → **tag `v0.4.0` (MVP)**
-**Branch:** `feat/pr-31-onboarding`
-**Depends on:** PR 30
+### - [ ] PR 32 — Onboarding wizard → **tag `v0.4.0` (MVP)**
+**Branch:** `feat/pr-32-onboarding`
+**Depends on:** PR 31
 **What this gives the app:** A first-run walkthrough that takes a new user from install to their first standup without ever opening Settings.
 
 **Creates:** `src/features/onboarding/OnboardingWizard.tsx` and one step component per §5.1 stage.
 
 All twelve steps: explain local processing → pick vault → read-only first → scan → show discovered structure → exclude folders → detect hardware → recommend models → download after confirmation → test mic and voice → place boards → choose daily-only or all horizons.
 
-The hardware step surfaces PR 22's benchmark result plainly — measured tokens/sec, the selected profile, and the expected turn latency — so the §7.5 startup tradeoff is set as an expectation before first use rather than discovered as a surprise. Offer the CUDA backend download here when an NVIDIA GPU is present.
+The hardware step surfaces PR 23's benchmark result plainly — measured tokens/sec, the selected profile, and the expected turn latency — so the §7.5 startup tradeoff is set as an expectation before first use rather than discovered as a surprise. Offer the CUDA backend download here when an NVIDIA GPU is present.
 
 **DoD:** A fresh install walks a new user from zero to a working first standup without touching Settings. Re-runnable from Settings.
 **Test:** Vitest on step navigation, back/forward state retention, and the skip paths.
@@ -837,14 +920,18 @@ The hardware step surfaces PR 22's benchmark result plainly — measured tokens/
 
 ---
 
-# Wave 7 — Reviews & Obsidian writeback (PR 32–37)
+# Wave 7 — Reviews & Obsidian writeback (PR 33–38)
 
-### - [ ] PR 32 — Evening check-in
-**Branch:** `feat/pr-32-evening-checkin`
-**Depends on:** PR 31
+### - [ ] PR 33 — Evening check-in
+**Branch:** `feat/pr-33-evening-checkin`
+**Depends on:** PR 32
 **What this gives the app:** An end-of-day check-in that asks what happened, and what to do with whatever did not.
 
-Shorter session per §5.3. Distinguishes the five outcomes the spec names: still important / blocked externally / too large / no longer wanted / recurring avoidance. Reschedule, backlog, delegate, or drop each unfinished task. Language stays non-judgmental (§10.3).
+Shorter session per §5.3.
+
+**Queries implausible durations.** A task logged at eighteen hours is more likely a typo than a marathon, so it is raised here for confirmation. The user may be right, so this asks rather than refusing — but an unchallenged typo distorts every total built on it.
+
+Distinguishes the five outcomes the spec names: still important / blocked externally / too large / no longer wanted / recurring avoidance. Reschedule, backlog, delegate, or drop each unfinished task. Language stays non-judgmental (§10.3).
 
 **Creates:** `src-tauri/src/session/evening.rs`, `src/features/evening/EveningWindow.tsx`.
 **DoD:** Unfinished tasks are triaged and the outcome persists with correct rollover accounting.
@@ -852,25 +939,31 @@ Shorter session per §5.3. Distinguishes the five outcomes the spec names: still
 
 ---
 
-### - [ ] PR 33 — Weekly planning & retrospective
-**Branch:** `feat/pr-33-weekly-review`
-**Depends on:** PR 32
+### - [ ] PR 34 — Weekly planning & retrospective
+**Branch:** `feat/pr-34-weekly-review`
+**Depends on:** PR 33
 **What this gives the app:** A weekly review built on real numbers — planned versus completed — and a realistic plan for the week ahead.
 
-Per §5.4, using PR 7's `period_stats` for all numbers — **the model never calculates completion rates.**
+Per §5.4, using PR 7's `period_stats` for all numbers — **the model never calculates completion rates or hour totals.**
+
+**Includes the hours recap:** total time tracked for the week, broken down by area and project, from PR 11's `seconds_in_period`. Rust sums it; the model only narrates it. A week where the numbers and the narrative disagree is worse than no narrative.
+
+Also surfaces the mismatches worth reflecting on: a task deferred five times with zero minutes recorded says something different from one deferred five times with six hours on it.
 
 **Creates:** `src-tauri/src/session/weekly.rs`, `src/features/weekly-review/WeeklyReviewWindow.tsx`.
-**DoD:** A weekly session reviews real stats, sets milestones, and refreshes the weekly boards.
-**Test:** Rust tests on stat computation across a week boundary; snapshot test on the generated review structure.
+**DoD:** A weekly session reviews real stats including hours by area, sets milestones, and refreshes the weekly boards.
+**Test:** Rust tests on stat computation across a week boundary; hours attributed to the correct week when a task spans the boundary; snapshot test on the generated review structure.
 
 ---
 
-### - [ ] PR 34 — Monthly planning & retrospective
-**Branch:** `feat/pr-34-monthly-review`
-**Depends on:** PR 33
+### - [ ] PR 35 — Monthly planning & retrospective
+**Branch:** `feat/pr-35-monthly-review`
+**Depends on:** PR 34
 **What this gives the app:** A monthly review that compares what you actually did against the long-term goals in your vault.
 
 Per §5.5 — compares completed work to long-term goals, surfaces neglected areas, sets a limited number of measurable monthly commitments, seeds initial weekly milestones.
+
+Uses tracked hours to make "neglected" concrete: an area with commitments but almost no recorded time is a clearer signal than one inferred from task counts alone.
 
 **Creates:** `src-tauri/src/session/monthly.rs`, `src/features/monthly-review/MonthlyReviewWindow.tsx`.
 **DoD:** A monthly session produces commitments with measurable targets that the Monthly board renders.
@@ -878,9 +971,9 @@ Per §5.5 — compares completed work to long-term goals, surfaces neglected are
 
 ---
 
-### - [ ] PR 35 — Obsidian writer (append-only review notes)
-**Branch:** `feat/pr-35-obsidian-writer`
-**Depends on:** PR 34
+### - [ ] PR 36 — Obsidian writer (append-only review notes)
+**Branch:** `feat/pr-36-obsidian-writer`
+**Depends on:** PR 35
 **What this gives the app:** Your standups and reviews get written back into Obsidian — but only after you approve the exact change.
 
 **Creates:** `src-tauri/src/obsidian/writer.rs`, `obsidian/diff.rs`, `src/features/approval/DiffApproval.tsx`.
@@ -894,9 +987,9 @@ Writes daily/weekly/monthly notes into the **dedicated folders only** (§9.5), i
 
 ---
 
-### - [ ] PR 36 — Conflict detection, backups & source-task updates
-**Branch:** `feat/pr-36-write-conflicts`
-**Depends on:** PR 35
+### - [ ] PR 37 — Conflict detection, backups & source-task updates
+**Branch:** `feat/pr-37-write-conflicts`
+**Depends on:** PR 36
 **What this gives the app:** Protects your notes. Detects if you edited a file first, backs up before touching anything, and refuses to overwrite newer work.
 
 **Creates:** `src-tauri/src/obsidian/conflict.rs`, `obsidian/backup.rs`.
@@ -910,16 +1003,16 @@ Adds the one case where original notes may change: ticking a source checkbox (`-
 
 ---
 
-### - [ ] PR 37 — Contextual AI helpers → **tag `v1.0.0-rc`**
-**Branch:** `feat/pr-37-ai-helpers`
-**Depends on:** PR 36
+### - [ ] PR 38 — Contextual AI helpers → **tag `v1.0.0-rc`**
+**Branch:** `feat/pr-38-ai-helpers`
+**Depends on:** PR 37
 **What this gives the app:** Small AI helpers on a single task — break this down, help me unblock this — without starting a whole session.
 
 The remaining §14 actions that may start AI after confirmation, invoked from a task's context menu rather than from a full session: **Break This Task Down**, **Help Me Resolve This Blocker**, **Summarize Progress**, **Suggest Priorities**.
 
 **Creates:** `src-tauri/src/session/helpers.rs`, `src/features/boards/components/AiHelperMenu.tsx`, `prompts/helpers/*.md`.
 
-Each is a single-shot request reusing PR 23's lifecycle and PR 26's validation and approval path — no new inference machinery. Every one shows a confirmation first ("This will start the local model, ~8s") because a board interaction must never silently spawn a process.
+Each is a single-shot request reusing PR 24's lifecycle and PR 27's validation and approval path — no new inference machinery. Every one shows a confirmation first ("This will start the local model, ~8s") because a board interaction must never silently spawn a process.
 
 **DoD:** Each helper produces an approvable proposal and shuts the model down afterward per the idle-timeout setting. Cancelling at the confirmation dialog starts nothing.
 **Test:** Rust tests that each helper routes through the same validator as PR 26; Vitest asserting the confirmation dialog gates the spawn call.
@@ -942,12 +1035,13 @@ Write this wave's PR sequence after the RC, not before.
 |---|---|---|
 | Sidecar binaries bloat the repo | PR 23, 29, 30 | Never commit binaries. Vendor at build time via a script; document in `binaries/README.md`. |
 | Windows Smart App Control blocks unsigned sidecars | PR 23, 29, 30 | **Confirmed real on 2026-08-20:** Smart App Control blocked `rustdoc.exe`, `rustfmt.exe`, and cargo build scripts on the dev machine, failing release builds outright. It judges on *reputation*, not signatures, so freshly-built zero-reputation binaries are exactly what it rejects — the same profile as a bundled `llama.cpp`, `whisper.cpp`, or Sherpa-ONNX sidecar. It ships enabled by default on many Windows 11 installs and has **no allowlist**; disabling it is irreversible without a system reset, so "turn off your security feature" is not an acceptable install step. Treat code-signing the sidecars as a shipping requirement, not a nice-to-have, and detect-and-explain the failure rather than letting a session hang. |
-| Model process leaks memory between sessions | PR 23 | Task Manager **and `nvidia-smi`** check is part of PR 23's DoD, repeated at every later voice/session PR. |
-| Excluded folders leak into a prompt | PR 18, 20, 24, 27 | Four independent guards, including PR 24's decoy-content test and PR 27's refusal of excluded paths in `needs_context`. |
+| Model process leaks memory between sessions | PR 23 | Task Manager **and `nvidia-smi`** check is part of PR 24's DoD, repeated at every later voice/session PR. |
+| Excluded folders leak into a prompt | PR 18, 20, 24, 27 | Four independent guards, including PR 25's decoy-content test and PR 28's refusal of excluded paths in `needs_context`. |
 | VRAM misdetected, wrong profile chosen | PR 22 | Use DXGI/`nvidia-smi`, never WMI `AdapterRAM`. Regression test pinned to the 8 GB-reports-as-4,095 MB case, plus an empirical benchmark that overrides the heuristic. |
 | Context expansion spirals into latency | PR 27 | Hard cap of 2 rounds and 3 notes per round, enforced in Rust, not requested of the model. |
 | Vault map grows past its budget on a large vault | PR 24 | Capped by token count *and* node count; overflow drops lowest-ranked goals first, with a test. |
 | Window management fights the OS | PR 9, 15 | Keep behaviors in `behaviors.rs` behind a trait so platform quirks stay isolated in Wave 8. |
+| Nobody logs durations, so the recap is empty | PR 11, 12, 33 | Logging must be one gesture with presets, offered at the natural moment (completion), and never mandatory. A recap built on a third of the week is still useful; a prompt users learn to dismiss is not. Implausible values are queried rather than rejected. |
 | Scope creep inside a PR | Everywhere | The DoD line "touches only its stated scope." Spin extras into new issues. |
 | CI build times balloon | PR 3 onward | Rust cache from day one; gate model-dependent tests behind an env var. |
 
