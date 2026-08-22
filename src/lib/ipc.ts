@@ -7,6 +7,7 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
+import type { BoardKind, BoardWindow } from "@/types/board";
 import type {
   CommandError,
   ErrorKind,
@@ -117,4 +118,29 @@ export function rescheduleTask(id: string, to: string): Promise<Task> {
 
 export function childrenOfTask(parentId: string): Promise<Task[]> {
   return call<Task[]>("task_children_of", { parentId });
+}
+
+// --- boards -----------------------------------------------------------------
+
+export function openBoard(kind: BoardKind): Promise<void> {
+  return call<void>("board_open", { kind });
+}
+
+export function closeBoard(kind: BoardKind): Promise<void> {
+  return call<void>("board_close", { kind });
+}
+
+/** Records a board's position and size. Callers should debounce this. */
+export function saveBoardGeometry(
+  kind: BoardKind,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): Promise<void> {
+  return call<void>("board_save_geometry", { kind, x, y, width, height });
+}
+
+export function listBoards(): Promise<BoardWindow[]> {
+  return call<BoardWindow[]>("board_list");
 }

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
+import { openBoard } from "@/lib/ipc";
+import { BOARD_KINDS } from "@/types/board";
 
 /**
  * Development shell.
@@ -47,6 +49,14 @@ export function App() {
       <p className="tagline">
         Long-term goals in, realistic daily actions out — entirely on your own machine.
       </p>
+
+      <div className="board-launcher">
+        {BOARD_KINDS.map((kind) => (
+          <button key={kind} type="button" onClick={() => void openBoard(kind)}>
+            {kind.replace(/-/g, " ")}
+          </button>
+        ))}
+      </div>
 
       <form className="add-task" onSubmit={(e) => void addTask(e)}>
         <input

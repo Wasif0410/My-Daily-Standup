@@ -7,6 +7,7 @@
 pub mod commands;
 pub mod domain;
 pub mod storage;
+pub mod windows;
 
 use tauri::Manager;
 
@@ -27,6 +28,12 @@ pub fn run() {
             let state = AppState::new(&app_data_dir)?;
             app.manage(state);
 
+            // Reopen whatever was on the desktop when the app last closed
+            // (spec §23). A board that fails to open must not stop the others.
+            for (kind, error) in windows::restore_boards(app.handle()) {
+                eprintln!("could not restore the {kind:?} board: {}", error.message);
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -39,6 +46,10 @@ pub fn run() {
             commands::tasks::task_list_for_period,
             commands::tasks::task_reschedule,
             commands::tasks::task_children_of,
+            commands::boards::board_open,
+            commands::boards::board_close,
+            commands::boards::board_save_geometry,
+            commands::boards::board_list,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
