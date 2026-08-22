@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { BoardShell } from "@/components/BoardShell";
-import { listBoards, saveBoardGeometry, setBoardCollapsed } from "@/lib/ipc";
+import {
+  listBoards,
+  saveBoardGeometry,
+  setBoardCollapsed,
+  toCommandError,
+} from "@/lib/ipc";
 import type { BoardKind, BoardWindow } from "@/types/board";
+import type { CommandError } from "@/types/task";
 
 /** How long the window must sit still before its position is written. */
 const GEOMETRY_DEBOUNCE_MS = 500;
@@ -27,6 +33,7 @@ const TITLES: Record<BoardKind, string> = {
  */
 export function BoardRoot({ kind }: { kind: BoardKind }) {
   const [board, setBoard] = useState<BoardWindow | null>(null);
+  const [failure, setFailure] = useState<CommandError | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Height to restore when expanding. Kept in a ref so collapsing twice in a
    *  row cannot overwrite it with the collapsed height. */
@@ -104,15 +111,28 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
       setBoard((current) => (current ? { ...current, collapsed } : current));
 
       void (async () => {
-        const window = getCurrentWindow();
-        const width = board?.width ?? 340;
-        const height = collapsed ? COLLAPSED_HEIGHT : (expandedHeight.current ?? 460);
+        try {
+          const window = getCurrentWindow();
+          const width = board?.width ?? 340;
+          const height = collapsed ? COLLAPSED_HEIGHT : (expandedHeight.current ?? 460);
 
-        await window.setSize(new LogicalSize(width, height));
-        await setBoardCollapsed(kind, collapsed);
+          await window.setSize(new LogicalSize(width, height));
+          await setBoardCollapsed(kind, collapsed);
+        } catch (error) {
+          // Roll back rather than leaving the chevron disagreeing with the
+          // window. A silent failure here previously made collapse look like
+          // it worked while the window stayed full height.
+          setBoard((current) =>
+            current ? { ...current, collapsed: !collapsed } : current,
+          );
+          setFailure(toCommandError(error));
+        }
       })();
     },
-    [kind, board?.width],
+    // Depend on the whole board: an optional chain still reads `board`, and
+    // the React Compiler refuses to optimise when the stated deps are
+    // narrower than the inferred ones.
+    [kind, board],
   );
 
   return (
@@ -125,6 +145,11 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
       onToggleCollapsed={toggleCollapsed}
       onClose={() => void getCurrentWindow().close()}
     >
+      {failure && (
+        <p className="board-error" role="alert">
+          {failure.message}
+        </p>
+      )}
       <p className="board-empty">No tasks yet.</p>
     </BoardShell>
   );

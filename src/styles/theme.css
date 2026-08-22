@@ -172,3 +172,11 @@ body.board-window {
   color: var(--text-dim);
   font-size: var(--font-size-small);
 }
+
+/* A board-local failure. Small and inline: a sticky note has no room for a
+   dialog, but a silent failure is worse than a cramped message. */
+.board-error {
+  margin: 0 0 var(--space-2);
+  color: var(--status-blocked);
+  font-size: var(--font-size-small);
+}
