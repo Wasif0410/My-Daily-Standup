@@ -26,6 +26,23 @@ export type TaskFilter =
   | { kind: "date"; date: string }
   | { kind: "period"; start: string; end: string };
 
+/**
+ * Sorts tasks for display: highest priority first, then oldest first.
+ *
+ * A standalone pure function rather than only a store method, because calling
+ * a method inside a zustand selector returns a fresh array on every render and
+ * sends React into an infinite loop. Components memoise this instead.
+ */
+export function sortTasks(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => {
+    // Unprioritised work sinks to the bottom rather than interleaving.
+    const left = a.priority ?? -1;
+    const right = b.priority ?? -1;
+    if (left !== right) return right - left;
+    return a.createdAt.localeCompare(b.createdAt);
+  });
+}
+
 interface TaskState {
   /** Keyed by id so an optimistic update touches one entry, not an array. */
   tasks: Record<string, Task>;
@@ -204,13 +221,7 @@ export const useTaskStore = create<TaskState>((set, get) => {
     },
 
     orderedTasks() {
-      return Object.values(get().tasks).sort((a, b) => {
-        // Unprioritised work sinks to the bottom rather than interleaving.
-        const left = a.priority ?? -1;
-        const right = b.priority ?? -1;
-        if (left !== right) return right - left;
-        return a.createdAt.localeCompare(b.createdAt);
-      });
+      return sortTasks(Object.values(get().tasks));
     },
   };
 });
