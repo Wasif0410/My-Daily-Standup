@@ -1,0 +1,98 @@
+/*
+ * Design tokens.
+ *
+ * Every value the boards use lives here. Components reference tokens, never
+ * literals, so PR 16 can drive accent, opacity, and font size from settings
+ * without touching a single component.
+ *
+ * The runtime-adjustable ones (--board-opacity, --board-font-size,
+ * --board-accent) are set per window by BoardShell. The rest are fixed.
+ */
+
+:root {
+  /* ---- Surfaces ------------------------------------------------------- */
+  --surface-base: #1a1b1e;
+  --surface-raised: #212327;
+  --surface-sunken: #151619;
+
+  /* Hairlines and dividers, expressed as a tint of the foreground so they
+     stay correct if the surface changes. */
+  --border-subtle: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --border-strong: color-mix(in srgb, var(--text-primary) 18%, transparent);
+
+  /* ---- Text ----------------------------------------------------------- */
+  --text-primary: #e8e6e3;
+  --text-secondary: #9a9691;
+  --text-dim: #6b6862;
+
+  /* ---- Accents --------------------------------------------------------
+     One per board. Four scattered windows are far easier to tell apart by
+     colour than by reading their titles, so each board owns a hue. */
+  --accent-priority: #f7768e;
+  --accent-weekly-tasks: #7aa2f7;
+  --accent-weekly-progress: #9ece6a;
+  --accent-monthly-progress: #e0af68;
+
+  /* Set per window by BoardShell; this is the fallback. */
+  --board-accent: var(--accent-weekly-tasks);
+
+  /* ---- Status --------------------------------------------------------- */
+  --status-blocked: #f7768e;
+  --status-done: var(--text-dim);
+
+  /* Priority is graded by hue but the number is always rendered too —
+     colour alone fails for colour-blind users and at low opacity. */
+  --priority-high: #f7768e;
+  --priority-medium: #e0af68;
+  --priority-low: #6b6862;
+
+  /* ---- Typography ------------------------------------------------------ */
+  --font-ui: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+
+  /* User-adjustable in PR 16. Everything else scales from it. */
+  --board-font-size: 13px;
+  --font-size-label: 0.72rem;
+  --font-size-body: 1rem;
+  --font-size-small: 0.85rem;
+
+  --letter-spacing-label: 0.09em;
+  --line-height-tight: 1.25;
+  --line-height-body: 1.5;
+
+  /* ---- Space ----------------------------------------------------------
+     A 4px scale. Boards are narrow and dense, so the steps are small. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+
+  /* ---- Shape ----------------------------------------------------------- */
+  --radius-board: 10px;
+  --radius-control: 6px;
+  --radius-pill: 999px;
+
+  /* The thin coloured top border from the visual direction. */
+  --board-border-top: 3px;
+
+  /* ---- Motion ----------------------------------------------------------
+     Hover reveals must feel immediate; anything slower reads as lag. */
+  --transition-fast: 120ms ease;
+  --transition-collapse: 160ms ease;
+
+  /* ---- Board window ----------------------------------------------------
+     Set per window by BoardShell from saved state. */
+  --board-opacity: 1;
+}
+
+/*
+ * Respect a system preference for reduced motion. Hover reveals still work;
+ * they simply stop animating.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-collapse: 0ms;
+  }
+}

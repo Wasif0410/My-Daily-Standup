@@ -49,6 +49,7 @@ pub fn run() {
             commands::boards::board_open,
             commands::boards::board_close,
             commands::boards::board_save_geometry,
+            commands::boards::board_set_collapsed,
             commands::boards::board_list,
         ])
         .run(tauri::generate_context!())

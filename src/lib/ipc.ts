@@ -141,6 +141,11 @@ export function saveBoardGeometry(
   return call<void>("board_save_geometry", { kind, x, y, width, height });
 }
 
+/** Records whether a board is collapsed to its title bar. */
+export function setBoardCollapsed(kind: BoardKind, collapsed: boolean): Promise<void> {
+  return call<void>("board_set_collapsed", { kind, collapsed });
+}
+
 export function listBoards(): Promise<BoardWindow[]> {
   return call<BoardWindow[]>("board_list");
 }

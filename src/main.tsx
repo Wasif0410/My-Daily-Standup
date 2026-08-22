@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import { App } from "@/app/App";
 import { BoardRoot } from "@/features/boards/BoardRoot";
 import { parseBoardKind } from "@/types/board";
+import "@/styles/tokens.css";
+import "@/styles/theme.css";
 import "@/styles/global.css";
 
 const rootElement = document.getElementById("root");
