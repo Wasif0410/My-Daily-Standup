@@ -19,7 +19,7 @@ Every PR's requirements implicitly include this section. A PR that violates any 
 - **Windows-first.** The MVP targets Windows 11. macOS/Linux are Wave 8 only. Never add a platform-specific dependency without a `cfg` guard.
 - **Local-first.** All core functionality must work with no internet connection after models are downloaded. No feature may hard-depend on a network call.
 - **No telemetry, no remote logging, no accounts.** Not behind a flag, not opt-out. Absent.
-- **The LLM must not be loaded merely because sticky notes are visible.** Any board interaction (complete, uncomplete, edit, move, add, delete, expand a day, start or stop a timer) that starts an inference process is a bug.
+- **The LLM must not be loaded merely because sticky notes are visible.** Any board interaction (complete, uncomplete, edit, move, add, delete, expand a day, record how long something took) that starts an inference process is a bug.
 - **Idle shutdown default: 5 minutes.** Configurable to: immediate / 5 min / 15 min / manual. The default favors resource conservation.
 - **No Obsidian write without explicit per-change approval.** The user must see the affected file, the proposed diff, and the reason, with approve / edit / reject.
 - **Excluded vault folders are never indexed, searched, or sent to a model.** Enforced in the indexer, not the UI.
@@ -383,69 +383,56 @@ CSS custom properties for accent, opacity, and font size so PR 15 can drive them
 
 ---
 
-### - [ ] PR 11 — Time tracking engine
-**Branch:** `feat/pr-11-time-tracking`
+### - [ ] PR 11 — Recording how long tasks took
+**Branch:** `feat/pr-11-time-logging`
 **Depends on:** PR 10
-**What this gives the app:** Records how long work actually took, so a week can be measured rather than guessed at.
+**What this gives the app:** A place to record how long each task actually took, so the week can be totalled at the end of it.
 
-Estimates are guesses; recorded time is evidence. This is what later makes "was that week realistic?" answerable.
+**Creates:** `src-tauri/migrations/003_time_spent.sql`, `src-tauri/src/domain/time_spent.rs`. **Modifies:** `storage/task.rs`, `storage/task_repo.rs`, `commands/mod.rs`, `src/types/task.ts`, `src/stores/taskStore.ts`.
 
-**Creates:** `src-tauri/migrations/003_time_entries.sql`, `src-tauri/src/storage/time_entry.rs`, `src-tauri/src/domain/timer.rs`, `src-tauri/src/commands/timer.rs`, `src/stores/timerStore.ts`.
+**A logged duration, not a stopwatch.** The user types or picks how long something took, usually when marking it done. Nothing runs in the background.
 
-**Entries, not a running total.** A single `seconds` column on the task cannot answer "how many hours went into this week", because a task worked on across a week boundary has no way to split its total. Rows with their own timestamps can be summed over any period, and they also record *when* work happened — which is itself a signal during reflection.
+That is a deliberate choice rather than a simplification. A stopwatch requires remembering to start it, remembering to stop it, and working in uninterrupted blocks. What it actually produces is forgotten starts and timers left running overnight, and every total built on that becomes untrustworthy. A duration entered from memory is approximate, but the user knows it is approximate.
+
+**One column, not a table.** A task belongs to a single day, so summing a period means summing the tasks scheduled inside it. There is no work spanning a week boundary that needs splitting, and therefore no reason for per-session rows.
 
 ```sql
-CREATE TABLE task_time_entries (
-    id         TEXT PRIMARY KEY NOT NULL,
-    -- Cascade, unlike tasks' parent link: a time entry has no meaning
-    -- without the work it measured.
-    task_id    TEXT NOT NULL REFERENCES tasks (id) ON DELETE CASCADE,
-    started_at TEXT NOT NULL,
-    ended_at   TEXT,               -- NULL while running
-    seconds    INTEGER,            -- recorded on stop
-    manual     INTEGER NOT NULL DEFAULT 0 CHECK (manual IN (0, 1)),
-    created_at TEXT NOT NULL,
-    CHECK (ended_at IS NULL OR ended_at >= started_at),
-    CHECK (seconds IS NULL OR seconds >= 0)
-);
-CREATE INDEX idx_time_entries_task ON task_time_entries (task_id);
-CREATE INDEX idx_time_entries_started ON task_time_entries (started_at);
+ALTER TABLE tasks ADD COLUMN time_spent_minutes INTEGER
+    CHECK (time_spent_minutes IS NULL OR time_spent_minutes >= 0);
 ```
 
 **Rules to implement exactly:**
 
-- **At most one timer runs app-wide.** Starting one stops whatever was running. People work on one thing at a time, and several running timers produce numbers nobody trusts. Enforced in Rust, not in the UI.
-- **Elapsed time for a running entry is derived, never stored**, so a crash cannot leave a stale figure behind.
-- A task's total is finished entries plus any running one.
-- Time in a period sums *entries overlapping the period*, not tasks scheduled in it.
-- Deleting a task deletes its entries, via the schema.
-- An entry longer than a configurable threshold (default 8h) is **flagged, not silently counted** — a timer left running overnight would otherwise record fourteen hours of "work" and corrupt every summary built on it.
-- Durations can be corrected by hand, and corrected entries are marked `manual` so measured and estimated time stay distinguishable.
+- **Duration is optional and never blocks completion.** A task with no recorded time contributes nothing to the total; it does not count as zero and it does not nag.
+- **Recording is one gesture.** Presets — 15m, 30m, 1h, 2h — plus a free-text field. If logging takes more than a few seconds it stops happening, and the recap becomes worthless.
+- **Editable at any time**, not only at completion.
+- **Period totals sum `time_spent_minutes` across tasks scheduled in the period**, grouped by area and project for the weekly recap.
+- **Implausible values are questioned, not rejected.** Eighteen hours on one task is more likely a typo than a marathon, but the user may be right — surface it in the evening check-in rather than refusing the input.
 
 **Interfaces produced:**
 ```rust
-fn start_timer(repo, conn, task_id: &str) -> Result<TimeEntry>   // stops any running one
-fn stop_timer(repo, conn) -> Result<Option<TimeEntry>>
-fn running_entry(repo, conn) -> Result<Option<TimeEntry>>
-fn total_seconds(repo, conn, task_id: &str) -> Result<i64>
-fn seconds_in_period(repo, conn, start: &str, end: &str) -> Result<Vec<(String, i64)>>
-fn set_duration(repo, conn, entry_id: &str, seconds: i64) -> Result<TimeEntry> // manual = true
-fn suspicious_entries(repo, conn, threshold_secs: i64) -> Result<Vec<TimeEntry>>
+fn set_time_spent(repo, conn, id: &str, minutes: Option<i64>) -> Result<Task>
+fn minutes_in_period(tasks: &[Task]) -> i64
+fn minutes_by_area(tasks: &[Task]) -> Vec<(String, i64)>
+fn minutes_by_project(tasks: &[Task]) -> Vec<(String, i64)>
+fn implausible_durations(tasks: &[Task], threshold_minutes: i64) -> Vec<&Task>
 ```
 
-**DoD:** Start a timer, quit the app mid-run, relaunch — the entry is still open and its elapsed time is correct rather than frozen at the moment of the crash. Starting a second timer closes the first. **No inference process starts at any point.**
-**Test:** Rust tests — one-running-timer invariant, elapsed derived across a simulated restart, period sums that split a task spanning a week boundary, cascade delete, an entry over the threshold flagged, manual correction marked. Mutation-test the single-timer rule.
+Extends PR 7's `PeriodStats` with `minutes_tracked`, so the weekly review draws every number from one place.
+
+**DoD:** A duration can be set, changed, and cleared, and survives a restart. Completing a task without recording one works and leaves the total unaffected. A negative value is rejected by the schema.
+**Test:** Rust — set, change, and clear round-trip; negative rejected; period totals ignore tasks with no duration rather than treating them as zero; by-area grouping handles tasks with no area; an implausible value is flagged but still stored. Frontend — presets dispatch the right value, free-text parses "1h 30m" and "90".
 
 ---
 
 ### - [ ] PR 12 — Priority Tasks board & the shared task row
 **Branch:** `feat/pr-12-priority-board`
 **Depends on:** PR 11
-**What this gives the app:** Your first working board, and the task row every other board reuses — priority, a checkbox, time spent, and a timer.
+**What this gives the app:** Your first working board, and the task row every other board reuses — priority, a checkbox, and how long the task took.
 
 First real board. Long-lived important items grouped by area.
 
-**Creates:** `src/features/boards/PriorityBoard.tsx`, `src/features/boards/components/TaskRow.tsx`, `components/PriorityBadge.tsx`, `components/TimerControl.tsx`, `components/AreaGroup.tsx`.
+**Creates:** `src/features/boards/PriorityBoard.tsx`, `src/features/boards/components/TaskRow.tsx`, `components/PriorityBadge.tsx`, `components/DurationField.tsx`, `components/AreaGroup.tsx`.
 
 Renders tasks where `horizon != 'daily'` and `priority >= threshold`, grouped by `area`.
 
@@ -453,24 +440,23 @@ Renders tasks where `horizon != 'daily'` and `priority >= threshold`, grouped by
 
 ```text
 P8  ☑  Complete onboarding task           35m
-P5  ☐  Schedule dental appointment          —  ▶
+P5  ☐  Schedule dental appointment           —
 ```
 
 | Element | Behaviour |
 |---|---|
 | **Priority badge** | The 0–10 value, so importance is visible without reading titles. Colour-graded, but never colour *alone* — the number is always present, since colour-blind users and low-opacity boards both defeat hue. |
 | **Checkbox** | Complete / uncomplete. Optimistic, per PR 8. |
-| **Tracked time** | Accumulated actual time, or `—` when none. Ticks live while that task's timer runs. |
-| **Timer control** | Start or stop. Starting stops any other running timer, and the row that lost its timer must visibly update. |
+| **Time spent** | How long it took, or `—` when nothing was recorded. Click to set or change it: presets plus free text. |
 | **Title** | Inline edit on double-click. |
 | **Hover actions** | Move, delete. Hidden until hover, per §6.1. |
 
-A board is 340px wide by default, so the row has to stay legible when narrow — the timer control and tracked time collapse before the title truncates.
+A board is 340px wide by default, so the row has to stay legible when narrow — the duration collapses before the title truncates.
 
-**Interfaces produced:** `<TaskRow task trackedSeconds isTiming onComplete onEdit onMove onDelete onStartTimer onStopTimer />`.
+**Interfaces produced:** `<TaskRow task onComplete onEdit onMove onDelete onSetTimeSpent />`.
 
-**DoD:** Board shows real tasks from SQLite. Completing one persists and survives restart. Starting a timer on one row stops it on another, visibly. **Confirm no inference process exists** — Task Manager shows no sidecar, including while a timer runs.
-**Test:** Vitest — grouping, empty state, inline edit commit/cancel, checkbox dispatch, priority rendered as a number not only a colour, elapsed time formatted for zero / minutes / hours, starting a timer clears the previously running row.
+**DoD:** Board shows real tasks from SQLite. Completing one persists and survives restart. A duration can be set from the row and is visible afterwards. **Confirm no inference process exists** — Task Manager shows no sidecar.
+**Test:** Vitest — grouping, empty state, inline edit commit/cancel, checkbox dispatch, priority rendered as a number not only a colour, duration formatted for none / minutes / hours, presets and free text both dispatch.
 
 ---
 
@@ -510,13 +496,13 @@ WEEKLY PROGRESS                    2026-W34
 ▸ Thursday    0/0         —
 ```
 
-Expanding a day reveals its rows, each carrying priority, completion, tracked time, and a timer control:
+Expanding a day reveals its rows, each carrying priority, completion, and how long the task took:
 
 ```text
 ▾ Tuesday     1/2      35m
 
   P8  ☑  Complete onboarding task           35m
-  P5  ☐  Schedule dental appointment          —  ▶
+  P5  ☐  Schedule dental appointment           —
 ```
 
 **Today is expanded by default** and visually distinguished. Expand and collapse choices persist per board, so a user who works one day at a time is not re-collapsing six days every launch.
@@ -943,7 +929,7 @@ The hardware step surfaces PR 23's benchmark result plainly — measured tokens/
 
 Shorter session per §5.3.
 
-**Surfaces forgotten timers.** An entry over the threshold (default 8h) is raised here for correction rather than silently counted — a timer left running overnight would otherwise record fourteen hours of "work" and corrupt every summary built on it.
+**Queries implausible durations.** A task logged at eighteen hours is more likely a typo than a marathon, so it is raised here for confirmation. The user may be right, so this asks rather than refusing — but an unchallenged typo distorts every total built on it.
 
 Distinguishes the five outcomes the spec names: still important / blocked externally / too large / no longer wanted / recurring avoidance. Reschedule, backlog, delegate, or drop each unfinished task. Language stays non-judgmental (§10.3).
 
@@ -1055,7 +1041,7 @@ Write this wave's PR sequence after the RC, not before.
 | Context expansion spirals into latency | PR 27 | Hard cap of 2 rounds and 3 notes per round, enforced in Rust, not requested of the model. |
 | Vault map grows past its budget on a large vault | PR 24 | Capped by token count *and* node count; overflow drops lowest-ranked goals first, with a test. |
 | Window management fights the OS | PR 9, 15 | Keep behaviors in `behaviors.rs` behind a trait so platform quirks stay isolated in Wave 8. |
-| A forgotten timer corrupts every hour total | PR 11, 33 | Entries over a configurable threshold (default 8h) are flagged, never silently counted, and surfaced during the evening check-in. Durations are hand-correctable and marked `manual` so measured and estimated time stay distinguishable. |
+| Nobody logs durations, so the recap is empty | PR 11, 12, 33 | Logging must be one gesture with presets, offered at the natural moment (completion), and never mandatory. A recap built on a third of the week is still useful; a prompt users learn to dismiss is not. Implausible values are queried rather than rejected. |
 | Scope creep inside a PR | Everywhere | The DoD line "touches only its stated scope." Spin extras into new issues. |
 | CI build times balloon | PR 3 onward | Rust cache from day one; gate model-dependent tests behind an env var. |
 

@@ -462,15 +462,14 @@ Expanded, a day reveals its tasks with priority, completion, and time:
 ▾ Tuesday     1/2      35m
 
   P8  ☑  Complete onboarding task           35m
-  P5  ☐  Schedule dental appointment          —  ▶
+  P5  ☐  Schedule dental appointment           —
 ```
 
 Each row shows four things:
 
 - **Priority** — the task's importance, so the most significant work is identifiable at a glance rather than by reading every title.
 - **A checkbox** — done or not.
-- **Time spent** — accumulated actual time, not an estimate.
-- **A timer control** — start or stop tracking on that task.
+- **Time spent** — how long it actually took, or a dash when nothing was recorded. Click to set or change it.
 
 Today's day should be expanded by default and visually distinguished. The user's expand and collapse choices persist.
 
@@ -506,8 +505,7 @@ Users should be able to:
 - Uncomplete a task.
 - Edit task text.
 - Set or change a task's priority.
-- Start and stop a timer on a task.
-- Correct recorded time when a timer was left running or forgotten.
+- Record or change how long a task took.
 - Expand and collapse a day or section.
 - Move a task to another day.
 - Promote a daily task to weekly.
@@ -519,7 +517,7 @@ Users should be able to:
 - Delete or archive a task.
 - Ask the AI for help when explicitly requested.
 
-Normal task operations, including timing work, must not start the LLM.
+Normal task operations, including recording how long something took, must not start the LLM.
 
 ## 6.7 Window Behaviors
 
@@ -932,25 +930,12 @@ interface Task {
   blocker?: string;
   notes?: string;
 
+  /** How long the task actually took, in minutes. Null until recorded. */
+  timeSpentMinutes?: number;
+
   rolloverCount: number;
   createdAt: string;
   updatedAt: string;
-}
-
-interface TimeEntry {
-  id: string;
-  taskId: string;
-
-  startedAt: string;
-  /** Null while the timer is still running. */
-  endedAt?: string;
-  /** Recorded on stop. Null while running; derive from startedAt instead. */
-  seconds?: number;
-
-  /** True when the duration was typed in or corrected by the user. */
-  manual: boolean;
-
-  createdAt: string;
 }
 ```
 
@@ -997,37 +982,31 @@ The assistant can use this information during reflection:
 
 The application should avoid using judgmental language.
 
-## 10.4 Time Tracking
+## 10.4 Recording How Long Work Took
 
-Tasks record how long work actually took, not how long it was estimated to take. Estimates are guesses; recorded time is evidence, and it is the only honest basis for the question "was that week realistic?"
+Tasks record how long they actually took, so a week can be totalled at the end of it. Estimates are guesses; a recorded duration is evidence, and it is the only honest basis for the question "was that week realistic?"
 
-### Why entries rather than a total
+### A logged duration, not a stopwatch
 
-Time is stored as a list of `TimeEntry` rows rather than a single total on the task. A running total cannot answer "how many hours went into this week", because a task worked on across a week boundary has no way to split its total between the two weeks. Entries carry their own timestamps, so any period can be summed correctly.
+The user types or picks how long something took — usually when marking it done. The application does not run a live timer.
 
-Entries also record *when* work happened, which makes patterns visible during reflection — that a task is only ever touched late at night, for instance.
+This is deliberate. A stopwatch demands that the user remember to start it, remember to stop it, and work in uninterrupted blocks. In practice it produces a mixture of forgotten starts and timers left running overnight, and every total built on it becomes untrustworthy. A duration entered from memory is approximate, but it is approximate in a way the user knows about.
+
+One number per task is enough because a task belongs to a single day. Summing a period means summing the tasks scheduled inside it — there is no work spanning a week boundary that needs splitting.
 
 ### Rules
 
-- **At most one timer runs at a time.** Starting a timer stops whatever was running. People work on one thing at once, and multiple running timers produce numbers nobody trusts.
-- **Elapsed time for a running entry is derived**, never stored, so a crash cannot leave a stale figure behind.
-- **A task's total** is the sum of its finished entries plus any currently running one.
-- **Time in a period** is the sum of entries overlapping that period, not of tasks scheduled in it.
-- **Deleting a task deletes its entries.** A time entry has no meaning without the work it measured.
-
-### Forgotten timers
-
-A timer left running overnight would otherwise record fourteen hours of "work" and quietly corrupt every summary built on it.
-
-When an entry exceeds a configurable threshold — eight hours by default — the application should flag it for review rather than silently counting it. The evening check-in is the natural place to surface this: *"Tuesday shows 14 hours on the résumé task. Should that be corrected?"*
-
-The user must always be able to edit a recorded duration by hand. Corrected entries are marked `manual` so the distinction between measured and estimated time is never lost.
+- **Duration is optional.** Completing a task must never be blocked by a request for a number. A task with no recorded time simply contributes nothing to the total.
+- **Recording is one gesture.** Common values are offered as presets — 15m, 30m, 1h, 2h — with a free-text field for anything else. If logging takes longer than a few seconds, it stops happening.
+- **A duration can be edited at any time**, not only at completion.
+- **Time for a period** is the sum of `timeSpentMinutes` across tasks scheduled in that period.
+- **Implausible values are questioned, not rejected.** A task logged at eighteen hours is more likely a typo than a marathon, and is worth surfacing during the evening check-in — but the user may be right, so the application asks rather than refusing.
 
 ### What this enables
 
 - A weekly recap of hours spent, broken down by area and project (§13.2).
 - Comparing planned capacity against time actually spent (§11.3).
-- Noticing that a task deferred five times has zero recorded minutes, which says something different from one deferred five times with six hours on it.
+- Noticing that a task deferred five times has no recorded time at all, which says something different from one deferred five times with six hours behind it.
 
 ---
 
@@ -1069,7 +1048,7 @@ Example:
 
 This helps prevent generating an unrealistic plan.
 
-Once time tracking has history, the assistant can compare the answer against what the past few weeks actually took, rather than accepting an estimate at face value.
+Once a few weeks of recorded durations exist, the assistant can compare the answer against what similar work actually took, rather than accepting an estimate at face value.
 
 ## 11.4 Task Proposal
 
@@ -1339,8 +1318,7 @@ Lightweight mode should support:
 - Viewing boards.
 - Completing tasks.
 - Editing task text.
-- Starting and stopping timers.
-- Correcting recorded time.
+- Recording how long a task took.
 - Expanding and collapsing days.
 - Moving tasks between dates.
 - Adding tasks.
@@ -1559,13 +1537,12 @@ Suggested settings categories:
 - Monitor assignment.
 - Completed-task appearance.
 
-## Time Tracking
+## Time Logging
 
-- Forgotten-timer threshold (default 8 hours).
-- Whether to stop the running timer when the machine locks or sleeps.
-- Whether to prompt to start a timer when a task is marked in-progress.
-- Rounding for displayed durations.
-- Whether to show tracked time on the boards.
+- Whether to prompt for a duration when a task is completed.
+- Duration presets offered (default 15m, 30m, 1h, 2h).
+- Threshold above which a logged duration is queried as a likely typo (default 8 hours).
+- Whether to show recorded time on the boards.
 
 ## Planning
 
@@ -1696,7 +1673,7 @@ The first release should be deliberately focused.
 - Weekly Tasks board.
 - Weekly Progress board.
 - Monthly Progress board.
-- Per-task time tracking with start/stop timers.
+- Recording how long each task took.
 - Expandable Monday-to-Sunday weekly view.
 - Priority shown on every task row.
 - Movable and resizable sticky windows.
@@ -1827,11 +1804,11 @@ The MVP is successful when all of the following are true:
 - Boards remain visible after the main window closes.
 - Boards restore their positions after restarting.
 - Completing a task updates progress immediately.
-- Each task row shows its priority, completion state, and tracked time.
+- Each task row shows its priority, completion state, and recorded time.
 - The weekly board lists Monday to Sunday, and days expand and collapse.
-- Starting a timer stops any timer already running.
-- Tracked time survives a restart.
-- Board interactions, including timing, do not load the LLM.
+- A task can be completed without recording a duration.
+- Recorded time survives a restart.
+- Board interactions, including recording time, do not load the LLM.
 
 ## Obsidian
 
