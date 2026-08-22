@@ -134,3 +134,26 @@ body {
   font-family: "Cascadia Code", Consolas, monospace;
   font-size: 0.85rem;
 }
+
+.task-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.task-list .delete {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+/* Controls stay hidden until hover, per the board direction in spec §6.1. */
+.task-list li:hover .delete {
+  opacity: 1;
+}

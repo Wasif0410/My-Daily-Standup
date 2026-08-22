@@ -104,6 +104,17 @@ export function listTasksForPeriod(start: string, end: string): Promise<Task[]> 
   return call<Task[]>("task_list_for_period", { start, end });
 }
 
+/**
+ * Moves a task to a new date.
+ *
+ * Routed through the rollover engine, so a deferral is counted. Never set
+ * `scheduledDate` via {@link updateTask} — that bypasses the counter and
+ * silently breaks the reflection prompt.
+ */
+export function rescheduleTask(id: string, to: string): Promise<Task> {
+  return call<Task>("task_reschedule", { id, to });
+}
+
 export function childrenOfTask(parentId: string): Promise<Task[]> {
   return call<Task[]>("task_children_of", { parentId });
 }

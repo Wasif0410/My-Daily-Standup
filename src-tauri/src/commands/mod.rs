@@ -130,6 +130,15 @@ impl AppState {
         self.with_conn(|repo, conn| repo.list_for_period(conn, start, end))
     }
 
+    /// Moves a task to a new date through the rollover engine.
+    ///
+    /// Deliberately not a plain `update_task` carrying a new `scheduled_date`:
+    /// that would bypass rollover counting entirely and silently break the
+    /// reflection prompt in spec §10.3. Every date move must come through here.
+    pub fn reschedule_task(&self, id: &str, to: &str) -> Result<Task, CommandError> {
+        self.with_conn(|repo, conn| crate::domain::reschedule(repo, conn, id, to))
+    }
+
     pub fn children_of(&self, parent_id: &str) -> Result<Vec<Task>, CommandError> {
         self.with_conn(|repo, conn| repo.children_of(conn, parent_id))
     }

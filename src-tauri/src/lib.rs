@@ -37,6 +37,7 @@ pub fn run() {
             commands::tasks::task_list_by_horizon,
             commands::tasks::task_list_for_date,
             commands::tasks::task_list_for_period,
+            commands::tasks::task_reschedule,
             commands::tasks::task_children_of,
         ])
         .run(tauri::generate_context!())

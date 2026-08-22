@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "@/app/App";
+import { useTaskStore } from "@/stores/taskStore";
 import type { Task } from "@/types/task";
 
 const mockInvoke = vi.mocked(invoke);
@@ -47,6 +48,7 @@ function respond(handlers: Record<string, unknown>) {
 
 beforeEach(() => {
   mockInvoke.mockReset();
+  useTaskStore.setState({ tasks: {}, filter: null, loading: false, error: null });
 });
 
 describe("App", () => {

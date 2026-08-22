@@ -57,6 +57,17 @@ pub fn task_list_for_period(
     state.list_for_period(&start, &end)
 }
 
+/// Moves a task to a new date, counting the move as a deferral when it pushes
+/// the date later. The only route that may change `scheduled_date`.
+#[tauri::command]
+pub fn task_reschedule(
+    state: State<'_, AppState>,
+    id: String,
+    to: String,
+) -> Result<Task, CommandError> {
+    state.reschedule_task(&id, &to)
+}
+
 #[tauri::command]
 pub fn task_children_of(
     state: State<'_, AppState>,
