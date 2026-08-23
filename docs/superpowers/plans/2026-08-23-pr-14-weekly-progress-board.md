@@ -81,7 +81,7 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
 - `pub struct WeekDay { pub date: String, pub name: String }` — `"2026-08-17"`, `"Monday"`.
 - `Week` gains `pub label: String` (ISO, e.g. `"2026-W34"`) and `pub days: Vec<WeekDay>`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a_week_lists_seven_days_monday_first`
   - `a_week_lists_seven_days_sunday_first_when_it_starts_on_sunday` — the day *names*
     reorder too, not just the dates
@@ -91,11 +91,11 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
   - `the_iso_label_uses_the_iso_week_not_the_configured_start` — a Sunday-start week is
     still labelled by the ISO week its Thursday falls in, because "2026-W34" means one
     fixed thing and inventing a private numbering would make it a lie
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement**, using `iso_week()` for the label and `succ_opt()` for the days.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Full Rust gate.**
-- [ ] **Step 6: Commit** — `feat: expand a week into its seven days`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement**, using `iso_week()` for the label and `succ_opt()` for the days.
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Full Rust gate.**
+- [x] **Step 6: Commit** — `feat: expand a week into its seven days`
 
 ---
 
@@ -113,7 +113,7 @@ WHERE scheduled_date IS NOT NULL AND scheduled_date BETWEEN ?1 AND ?2
 ORDER BY scheduled_date, priority DESC NULLS LAST, created_at
 ```
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `list_scheduled_between_returns_tasks_inside_the_range`
   - `list_scheduled_between_includes_both_boundary_days` — inclusive; excluding Sunday
     would silently drop a seventh of every week
@@ -121,11 +121,11 @@ ORDER BY scheduled_date, priority DESC NULLS LAST, created_at
   - `list_scheduled_between_ignores_the_period_columns` — a task whose *period* overlaps
     but whose `scheduled_date` falls outside must not appear
   - `list_scheduled_between_orders_by_date_then_priority`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** the query, the `AppState` method, the command, the handler.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Full Rust gate.**
-- [ ] **Step 6: Commit** — `feat: query tasks scheduled in a date range`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement** the query, the `AppState` method, the command, the handler.
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Full Rust gate.**
+- [x] **Step 6: Commit** — `feat: query tasks scheduled in a date range`
 
 ---
 
@@ -146,7 +146,7 @@ CREATE TABLE ui_state (
 - `UiStateRepo::set(conn, key, value) -> Result<(), StorageError>`
 - Commands `ui_state_get { key } -> Option<String>`, `ui_state_set { key, value }`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a_missing_key_reads_as_none` — absence is not an error; a board opening for the
     first time is the normal case
   - `a_value_round_trips`
@@ -154,11 +154,11 @@ CREATE TABLE ui_state (
   - `an_empty_value_is_stored_rather_than_treated_as_absent` — "nothing expanded" is a
     real choice and must survive a restart, distinct from "never chosen"
   - `migration_004_brings_the_schema_to_version_four`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** the migration, the repo, `LATEST_VERSION = 4`, the commands.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Full Rust gate.**
-- [ ] **Step 6: Commit** — `feat: persist presentation state`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement** the migration, the repo, `LATEST_VERSION = 4`, the commands.
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Full Rust gate.**
+- [x] **Step 6: Commit** — `feat: persist presentation state`
 
 ---
 
@@ -192,18 +192,18 @@ Every store mutation that succeeds calls `emitTaskChanged()`. Failures do not: a
 back optimistic update has changed nothing, and telling other windows otherwise would make
 them reload for no reason.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `taskEvents`: `emitting is fire-and-forget so a listener failure cannot break a
     mutation`; `subscribing returns an unsubscribe`
   - store: `loads through the scheduled command`;
     `announces a change after a successful mutation`;
     `stays silent when a mutation fails` — nothing changed, so nothing to announce;
     `announces once per mutation, not once per optimistic step`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement**, and add `core:event:allow-emit` and `core:event:allow-listen`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement**, and add `core:event:allow-emit` and `core:event:allow-listen`
       to `capabilities/default.json`.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Commit** — `feat: keep board windows in step`
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Commit** — `feat: keep board windows in step`
 
 ---
 
@@ -220,7 +220,7 @@ export function bucketByDay(days: WeekDay[], tasks: Task[]): Day[];
 export function summarise(tasks: Task[]): DayTotals;
 ```
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `every_day_is_returned_even_when_empty` — seven days from an empty task list. A week
     with three empty days *is* the information.
   - `buckets a task onto its scheduled day`
@@ -233,10 +233,10 @@ export function summarise(tasks: Task[]): DayTotals;
   - `reports null minutes when nothing was recorded` — never `0m`
   - `sums only the recorded durations when some are missing` — a half-logged day reads as
     partial, not as fast
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Commit** — `feat: bucket a week's tasks into days`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Commit** — `feat: bucket a week's tasks into days`
 
 ---
 
@@ -249,14 +249,14 @@ export function summarise(tasks: Task[]): DayTotals;
 - `<DaySummary totals={DayTotals} />` — renders `2/3` and `1h 45m`, or `—`.
 - `<DaySection day={Day} expanded today onToggle renderTask />`
 
-- [ ] **Step 1: Write the failing `DaySummary` tests:**
+- [x] **Step 1: Write the failing `DaySummary` tests:**
   - `shows completed against total`
   - `shows the recorded time`
   - `shows a dash when nothing was recorded`
   - `shows 0/0 for an empty day rather than nothing` — a blank row would read as broken
   - `describes itself for screen readers` — "2 of 3 done, 1h 45m"
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Write the failing `DaySection` tests:**
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Write the failing `DaySection` tests:**
   - `names the day`
   - `summarises without being opened` — the collapsed board still answers "how did the
     week go"
@@ -266,9 +266,9 @@ export function summarise(tasks: Task[]): DayTotals;
   - `marks today so it can be distinguished`
   - `is a real disclosure` — `aria-expanded` on a button, not a clickable div
   - `renders an empty day at full height with no tasks`
-- [ ] **Step 6: Run to verify they fail. Step 7: Implement. Step 8: Verify.**
-- [ ] **Step 9: Style both.**
-- [ ] **Step 10: Commit** — `feat: add the day section and its summary`
+- [x] **Step 6: Run to verify they fail. Step 7: Implement. Step 8: Verify.**
+- [x] **Step 9: Style both.**
+- [x] **Step 10: Commit** — `feat: add the day section and its summary`
 
 ---
 
@@ -280,7 +280,7 @@ Loads the week, loads `{ kind: "scheduled", start, end }`, buckets into seven da
 restores expansion from `ui_state` (falling back to today), persists every toggle, and
 subscribes to `task-changed`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `renders all seven days on an empty week` — the DoD's first line
   - `loads tasks scheduled inside the week`
   - `summarises each day from its own tasks`
@@ -292,8 +292,8 @@ subscribes to `task-changed`.
   - `keeps completed work visible` — the board is a record of the week
   - `shows the ISO week`
   - `surfaces a failure rather than failing silently`
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Commit** — `feat: add the weekly progress board`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Commit** — `feat: add the weekly progress board`
 
 ---
 
@@ -301,19 +301,37 @@ subscribes to `task-changed`.
 
 **Files:** `BoardRoot.tsx` (+test), `WeeklyBoard.tsx` (subtitle → label).
 
-- [ ] **Step 1: Write the failing tests** — `BoardRoot puts the progress board in the
+- [x] **Step 1: Write the failing tests** — `BoardRoot puts the progress board in the
       weekly-progress window`; `WeeklyBoard shows the ISO week`.
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: The full local gate** — all seven commands.
-- [ ] **Step 6: Launch and read the dev log.** The event permissions are the risk: no test
-      can catch a missing one, which is precisely how PR 10 shipped broken. Verify:
-  - All seven days render, empty ones included.
-  - Today is expanded and visually distinct on first open.
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: The full local gate** — all seven commands.
+- [ ] **Step 6: Launch and read the dev log.** The event permissions are the risk: no
+      test can catch a missing one, which is precisely how PR 10 shipped broken.
+
+      **Done so far:** the app launched and built clean, the dev log carries no error,
+      permission denial, or panic, and no sidecar process appeared. Migration 004 applied
+      — the real database reports `user_version = 4` and now holds a `ui_state` table.
+      Eight `[seed]` daily tasks were written across the week with Wednesday, Friday, and
+      Saturday left deliberately empty, and the board's query reproduces the spec's shape
+      exactly, with the cancelled row excluded from every figure but still in the
+      database.
+
+      **The event permission is confirmed at the ACL level**, not merely assumed:
+      `core:event:allow-emit`, `allow-listen`, and `allow-unlisten` all appear in the
+      generated `src-tauri/gen/schemas/capabilities.json`, so they resolved rather than
+      being silently dropped.
+
+      **Still needs a human at the keyboard:**
+  - All seven days render, empty ones included, and today is expanded and visually
+    distinct on first open.
   - Collapse a day, restart, it is still collapsed.
   - **Complete a task on the Weekly Tasks board and watch this board update without a
-    reload** — and confirm the dev log shows no event-permission error.
-  - No sidecar process.
-- [ ] **Step 7: Commit, push, open the PR, tick PR 14 in the sequence document.**
+    reload.** This is the one thing the ACL check cannot prove — that the emit actually
+    crosses windows at runtime. Watch the dev log while doing it.
+
+      Remove the seeded rows afterwards with
+      `DELETE FROM tasks WHERE title LIKE '[seed]%'`.
+- [x] **Step 7: Commit, push, open the PR, tick PR 14 in the sequence document.**
 
 ---
 

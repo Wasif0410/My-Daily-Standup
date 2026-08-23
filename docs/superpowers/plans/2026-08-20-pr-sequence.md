@@ -476,7 +476,7 @@ Grouped by project, current period only (`period_start`/`period_end` covering to
 
 ---
 
-### - [ ] PR 14 — Weekly Progress board (expandable Monday–Sunday)
+### - [x] PR 14 — Weekly Progress board (expandable Monday–Sunday)
 **Branch:** `feat/pr-14-weekly-progress-board`
 **Depends on:** PR 13
 **What this gives the app:** The whole week at a glance — seven collapsible days, each showing how much got done and how long it took, opening to reveal the tasks inside.
