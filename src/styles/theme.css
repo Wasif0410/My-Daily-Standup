@@ -544,3 +544,12 @@ body.board-window {
   background: var(--surface-sunken);
   outline: none;
 }
+
+/* The week a board is showing. Always visible: a week board without its week
+   is ambiguous the moment you look away from it. */
+.board-week {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  color: var(--text-dim);
+}

@@ -12,6 +12,13 @@ interface TaskRowProps {
   onDelete?: (() => void) | undefined;
   /** Asks the board to open a context menu at the given client coordinates. */
   onOpenMenu?: ((at: { x: number; y: number }) => void) | undefined;
+  /**
+   * Set by the board to open this row's title editor from outside — the
+   * context menu's "Edit title". The menu cannot type into the row, and a
+   * second editor living in the menu would be a second place to get wrong.
+   */
+  editingRequested?: boolean | undefined;
+  onEditingHandled?: (() => void) | undefined;
 }
 
 /**
@@ -33,13 +40,28 @@ export function TaskRow({
   onMove,
   onDelete,
   onOpenMenu,
+  editingRequested = false,
+  onEditingHandled,
 }: TaskRowProps) {
   const [draft, setDraft] = useState<string | null>(null);
   const completed = task.status === "completed";
 
-  function commitEdit() {
-    const next = draft?.trim() ?? "";
+  // Derived, never copied into state by an effect. The board asking for an
+  // edit and the row opening one are the same fact; mirroring it into `draft`
+  // would mean two sources of truth and a cascading render to sync them.
+  const editing = draft !== null || editingRequested;
+  const text = draft ?? task.title;
+
+  function closeEditor() {
     setDraft(null);
+    // Clears the board's request too, or the editor would reopen on the next
+    // render.
+    onEditingHandled?.();
+  }
+
+  function commitEdit() {
+    const next = text.trim();
+    closeEditor();
 
     // An empty title leaves nothing to double-click, so the row could never be
     // renamed again. Reject rather than accept and strand it.
@@ -116,20 +138,12 @@ export function TaskRow({
         onChange={(event) => onComplete(event.target.checked)}
       />
 
-      {draft === null ? (
-        <span
-          className="task-title"
-          title={task.title}
-          onDoubleClick={() => setDraft(task.title)}
-        >
-          {task.title}
-        </span>
-      ) : (
+      {editing ? (
         <input
           className="task-title-input"
           aria-label="Edit title"
           autoFocus
-          value={draft}
+          value={text}
           onChange={(event) => setDraft(event.target.value)}
           // Blur commits rather than cancels: clicking away from a rename you
           // just typed and watching it vanish is the more damaging default.
@@ -140,10 +154,18 @@ export function TaskRow({
               commitEdit();
             } else if (event.key === "Escape") {
               event.preventDefault();
-              setDraft(null);
+              closeEditor();
             }
           }}
         />
+      ) : (
+        <span
+          className="task-title"
+          title={task.title}
+          onDoubleClick={() => setDraft(task.title)}
+        >
+          {task.title}
+        </span>
       )}
 
       <DurationField minutes={task.timeSpentMinutes} onChange={onSetTimeSpent} />

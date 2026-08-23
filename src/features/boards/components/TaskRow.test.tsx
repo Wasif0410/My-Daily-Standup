@@ -354,9 +354,9 @@ describe("TaskRow keyboard and menu", () => {
       target: screen.getByText("submit applications"),
     });
 
-    expect(onOpenMenu).toHaveBeenCalledWith(
-      expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
-    );
+    const at = onOpenMenu.mock.calls[0]?.[0] as { x: number; y: number };
+    expect(typeof at.x).toBe("number");
+    expect(typeof at.y).toBe("number");
   });
 
   it("asks for a menu on Shift+F10", async () => {
@@ -376,5 +376,33 @@ describe("TaskRow keyboard and menu", () => {
     const { container } = render(<TaskRow {...props()} />);
 
     expect(container.querySelector(".task-row")).toHaveAttribute("tabindex", "0");
+  });
+});
+
+describe("TaskRow editing on request", () => {
+  it("opens its editor when the board asks", async () => {
+    // The context menu cannot type into the row, so it asks the row to open
+    // its own editor rather than duplicating one.
+    render(
+      <TaskRow {...props({ editingRequested: true, onEditingHandled: vi.fn() })} />,
+    );
+
+    expect(await screen.findByLabelText("Edit title")).toBeInTheDocument();
+  });
+
+  it("tells the board when the edit ends, so the editor does not reopen", async () => {
+    const onEditingHandled = vi.fn();
+    const user = userEvent.setup();
+    render(<TaskRow {...props({ editingRequested: true, onEditingHandled })} />);
+
+    await user.type(screen.getByLabelText("Edit title"), "{Escape}");
+
+    expect(onEditingHandled).toHaveBeenCalled();
+  });
+
+  it("stays closed when nothing has been requested", () => {
+    render(<TaskRow {...props()} />);
+
+    expect(screen.queryByLabelText("Edit title")).toBeNull();
   });
 });

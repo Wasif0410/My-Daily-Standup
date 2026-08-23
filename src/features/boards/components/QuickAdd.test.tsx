@@ -67,7 +67,7 @@ describe("QuickAdd", () => {
     expect(screen.getByLabelText("Add a task")).toHaveValue("");
   });
 
-  it("takes a board-specific placeholder", async () => {
+  it("takes a board-specific placeholder", () => {
     render(<QuickAdd onAdd={vi.fn()} placeholder="Add to this week" />);
 
     expect(screen.getByPlaceholderText("Add to this week")).toBeInTheDocument();
