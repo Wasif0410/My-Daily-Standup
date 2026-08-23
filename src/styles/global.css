@@ -184,3 +184,39 @@ body {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
+
+/* The unlock escape hatch (spec §6.7). Deliberately plain and always present:
+   it is the recovery path for a desktop where nothing else can be clicked. */
+.escape-hatch {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+  max-width: 30rem;
+}
+
+.escape-hatch button {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 6px;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.escape-hatch button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.escape-hatch p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.escape-hatch kbd {
+  font-family: "Cascadia Code", Consolas, monospace;
+}

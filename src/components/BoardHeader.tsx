@@ -4,6 +4,8 @@ interface BoardHeaderProps {
   title: string;
   subtitle?: string | undefined;
   collapsed: boolean;
+  /** A locked board must not move, so the drag region comes off entirely. */
+  locked?: boolean;
   onToggleCollapsed: () => void;
   onClose?: (() => void) | undefined;
   /** Board-specific controls, placed before the shared ones. */
@@ -20,15 +22,22 @@ export function BoardHeader({
   title,
   subtitle,
   collapsed,
+  locked = false,
   onToggleCollapsed,
   onClose,
   actions,
 }: BoardHeaderProps) {
+  // Dropped entirely when locked rather than merely ignored.
+  // `set_ignore_cursor_events` stops clicks reaching the webview, but a board
+  // locked while the pointer is already over its header would otherwise still
+  // be draggable — and "locked" would be a half-truth.
+  const drag = locked ? {} : { "data-tauri-drag-region": true };
+
   return (
-    <header className="board-header" data-tauri-drag-region>
+    <header className="board-header" {...drag}>
       {/* The heading carries the drag region too: without it, the largest
           grabbable area of the header would be dead space. */}
-      <h1 className="board-title" data-tauri-drag-region>
+      <h1 className="board-title" {...drag}>
         {title}
       </h1>
 

@@ -7,7 +7,7 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import type { BoardKind, BoardWindow } from "@/types/board";
+import type { BoardBehavior, BoardKind, BoardWindow } from "@/types/board";
 import type {
   CommandError,
   ErrorKind,
@@ -259,6 +259,30 @@ export function setBoardCollapsed(kind: BoardKind, collapsed: boolean): Promise<
 
 export function listBoards(): Promise<BoardWindow[]> {
   return call<BoardWindow[]>("board_list");
+}
+
+/**
+ * Applies one behaviour change and persists it, returning the new saved state.
+ *
+ * One call rather than a write followed by an apply: two would be two chances
+ * for the window and the database to disagree.
+ */
+export function setBoardBehavior(
+  kind: BoardKind,
+  behavior: BoardBehavior,
+): Promise<BoardWindow> {
+  return call<BoardWindow>("board_set_behavior", { kind, behavior });
+}
+
+/**
+ * Unlocks every board.
+ *
+ * The escape hatch from a fully locked, click-through desktop (spec §6.7).
+ * Also bound to Ctrl+Alt+Shift+U at the OS level, for when no window can be
+ * clicked at all.
+ */
+export function unlockAllBoards(): Promise<void> {
+  return call<void>("board_unlock_all");
 }
 
 // --- presentation state ------------------------------------------------------

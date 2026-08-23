@@ -96,3 +96,52 @@
     --transition-collapse: 0ms;
   }
 }
+
+/*
+ * Light theme (spec §6.7).
+ *
+ * Scoped to the board rather than :root, because theme is per board — one can
+ * be light while another stays dark. Only the surface and text tokens change;
+ * accents and status colours are chosen to work on both, so nothing below the
+ * token layer has to know which theme it is in.
+ */
+.board[data-theme="light"] {
+  --surface-base: #f7f6f4;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ecebe8;
+
+  --text-primary: #1f1e1c;
+  --text-secondary: #55524d;
+  --text-dim: #83807a;
+
+  /* Darkened from the dark-theme values: the originals are tuned for contrast
+     against charcoal and wash out on a light surface. */
+  --accent-priority: #c2405a;
+  --accent-weekly-tasks: #3a63c4;
+  --accent-weekly-progress: #4b8b28;
+  --accent-monthly-progress: #a8721c;
+
+  --status-blocked: #c2405a;
+  --priority-high: #c2405a;
+  --priority-medium: #a8721c;
+  --priority-low: #83807a;
+
+  color-scheme: light;
+}
+
+/*
+ * Compact density.
+ *
+ * Only the spacing scale changes. Every component sizes itself from these
+ * steps, so density needs no component to know it exists.
+ */
+.board[data-compact="true"] {
+  --space-1: 0.15rem;
+  --space-2: 0.3rem;
+  --space-3: 0.45rem;
+  --space-4: 0.6rem;
+  --space-6: 0.9rem;
+
+  --line-height-tight: 1.15;
+  --line-height-body: 1.35;
+}

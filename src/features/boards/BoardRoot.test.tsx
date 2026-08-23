@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BoardRoot } from "@/features/boards/BoardRoot";
@@ -95,5 +96,73 @@ describe("BoardRoot progress window", () => {
     render(<BoardRoot kind="weekly-progress" />);
 
     expect(await screen.findByRole("button", { name: /Monday/ })).toBeInTheDocument();
+  });
+});
+
+describe("BoardRoot window behaviours", () => {
+  function withBoard(overrides: Record<string, unknown> = {}) {
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "board_list")
+        return Promise.resolve([
+          {
+            kind: "priority",
+            x: 0,
+            y: 0,
+            width: 340,
+            height: 460,
+            monitor: null,
+            visible: true,
+            collapsed: false,
+            opacity: 1,
+            alwaysOnTop: false,
+            locked: false,
+            fontSize: 13,
+            theme: "dark",
+            compact: false,
+            desktopLevel: false,
+            ...overrides,
+          },
+        ]);
+      if (command === "board_set_behavior") return Promise.resolve({});
+      return Promise.resolve([]);
+    });
+  }
+
+  it("opens the board menu from the header", async () => {
+    const user = userEvent.setup();
+    withBoard();
+    render(<BoardRoot kind="priority" />);
+
+    await user.click(await screen.findByRole("button", { name: /board settings/i }));
+
+    expect(screen.getByRole("menu", { name: /board settings/i })).toBeInTheDocument();
+  });
+
+  it("sends a behaviour change to Rust", async () => {
+    const user = userEvent.setup();
+    withBoard();
+    render(<BoardRoot kind="priority" />);
+
+    await user.click(await screen.findByRole("button", { name: /board settings/i }));
+    await user.click(screen.getByRole("menuitem", { name: /always on top/i }));
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("board_set_behavior", {
+        kind: "priority",
+        behavior: { kind: "alwaysOnTop", value: true },
+      });
+    });
+  });
+
+  it("applies a saved appearance to the shell", async () => {
+    withBoard({ theme: "light", fontSize: 17, compact: true });
+    const { container } = render(<BoardRoot kind="priority" />);
+
+    await waitFor(() => {
+      const shell = container.querySelector(".board");
+      expect(shell).toHaveAttribute("data-theme", "light");
+      expect(shell).toHaveAttribute("data-compact", "true");
+      expect(shell?.getAttribute("style")).toContain("--board-font-size: 17px");
+    });
   });
 });

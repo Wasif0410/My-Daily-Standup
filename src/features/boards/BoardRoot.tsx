@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { BoardShell } from "@/components/BoardShell";
+import { BoardMenu } from "@/features/boards/components/BoardMenu";
 import { PriorityBoard } from "@/features/boards/PriorityBoard";
 import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
 import { MonthlyBoard } from "@/features/boards/MonthlyBoard";
@@ -8,10 +9,11 @@ import { WeeklyProgressBoard } from "@/features/boards/WeeklyProgressBoard";
 import {
   listBoards,
   saveBoardGeometry,
+  setBoardBehavior,
   setBoardCollapsed,
   toCommandError,
 } from "@/lib/ipc";
-import type { BoardKind, BoardWindow } from "@/types/board";
+import type { BoardBehavior, BoardKind, BoardWindow } from "@/types/board";
 import type { CommandError } from "@/types/task";
 
 /** How long the window must sit still before its position is written. */
@@ -58,6 +60,7 @@ function boardContent(kind: BoardKind) {
 export function BoardRoot({ kind }: { kind: BoardKind }) {
   const [board, setBoard] = useState<BoardWindow | null>(null);
   const [failure, setFailure] = useState<CommandError | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Height to restore when expanding. Kept in a ref so collapsing twice in a
    *  row cannot overwrite it with the collapsed height. */
@@ -159,6 +162,23 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
     [kind, board],
   );
 
+  /**
+   * Sends a behaviour change and takes back whatever Rust actually stored.
+   *
+   * Not optimistic, unlike the task board interactions: a clamp or the
+   * always-on-top/desktop-level exclusion can change the value on the way
+   * through, and guessing would flash the wrong state before correcting it.
+   */
+  function changeBehavior(behavior: BoardBehavior) {
+    void (async () => {
+      try {
+        setBoard(await setBoardBehavior(kind, behavior));
+      } catch (error) {
+        setFailure(toCommandError(error));
+      }
+    })();
+  }
+
   return (
     <BoardShell
       kind={kind}
@@ -166,8 +186,22 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
       collapsed={board?.collapsed ?? false}
       locked={board?.locked ?? false}
       opacity={board?.opacity ?? 1}
+      fontSize={board?.fontSize ?? 13}
+      theme={board?.theme ?? "dark"}
+      compact={board?.compact ?? false}
       onToggleCollapsed={toggleCollapsed}
       onClose={() => void getCurrentWindow().close()}
+      headerActions={
+        <button
+          type="button"
+          className="board-action"
+          aria-label="Board settings"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          ⚙
+        </button>
+      }
     >
       {failure && (
         <p className="board-error" role="alert">
@@ -175,6 +209,14 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
         </p>
       )}
       {boardContent(kind)}
+
+      {menuOpen && board && (
+        <BoardMenu
+          board={board}
+          onChange={changeBehavior}
+          onClose={() => setMenuOpen(false)}
+        />
+      )}
     </BoardShell>
   );
 }
