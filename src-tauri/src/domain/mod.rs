@@ -29,4 +29,4 @@ pub use time_spent::{
     average_minutes, format_minutes, implausible_durations, minutes_by_area, minutes_by_project,
     minutes_in_period, UNASSIGNED,
 };
-pub use week::{current_week, parse_weekday, week_containing, Week};
+pub use week::{current_week, parse_weekday, week_containing, Week, WeekDay};
