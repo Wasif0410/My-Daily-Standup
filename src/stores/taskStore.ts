@@ -13,6 +13,7 @@ import {
   deleteTask,
   listTasksByHorizon,
   listTasksForDate,
+  listPriorityTasks,
   listTasksForPeriod,
   rescheduleTask,
   setTimeSpent,
@@ -25,7 +26,8 @@ import type { CommandError, NewTask, Task, TaskHorizon, TaskPatch } from "@/type
 export type TaskFilter =
   | { kind: "horizon"; horizon: TaskHorizon }
   | { kind: "date"; date: string }
-  | { kind: "period"; start: string; end: string };
+  | { kind: "period"; start: string; end: string }
+  | { kind: "priority"; threshold: number };
 
 /**
  * Sorts tasks for display: highest priority first, then oldest first.
@@ -74,6 +76,8 @@ function fetchFor(filter: TaskFilter): Promise<Task[]> {
       return listTasksForDate(filter.date);
     case "period":
       return listTasksForPeriod(filter.start, filter.end);
+    case "priority":
+      return listPriorityTasks(filter.threshold);
   }
 }
 

@@ -269,3 +269,24 @@ describe("selectors", () => {
     expect(ordered.map((t) => t.id)).toEqual(["b", "a", "c"]);
   });
 });
+
+describe("the priority filter", () => {
+  it("loads through the priority command", async () => {
+    // Not three list_by_horizon calls stitched together: load() replaces the
+    // whole task map, so a merged fetch would keep only the last horizon.
+    mockInvoke.mockResolvedValue([task({ id: "a", priority: 8 })]);
+
+    await useTaskStore.getState().load({ kind: "priority", threshold: 5 });
+
+    expect(mockInvoke).toHaveBeenCalledWith("task_list_priority", { threshold: 5 });
+    expect(useTaskStore.getState().tasks["a"]?.priority).toBe(8);
+  });
+
+  it("passes the threshold through rather than hard-coding one", async () => {
+    mockInvoke.mockResolvedValue([]);
+
+    await useTaskStore.getState().load({ kind: "priority", threshold: 8 });
+
+    expect(mockInvoke).toHaveBeenCalledWith("task_list_priority", { threshold: 8 });
+  });
+});

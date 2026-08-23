@@ -106,6 +106,16 @@ export function listTasksForPeriod(start: string, end: string): Promise<Task[]> 
 }
 
 /**
+ * Tasks for the Priority board: non-daily work at or above `threshold`.
+ *
+ * Filtered in SQL rather than here. The alternative is fetching three horizons
+ * and merging them, which is three round-trips for one list.
+ */
+export function listPriorityTasks(threshold: number): Promise<Task[]> {
+  return call<Task[]>("task_list_priority", { threshold });
+}
+
+/**
  * Records how long a task took, in minutes.
  *
  * `null` clears it back to unrecorded, which is distinct from zero: an
