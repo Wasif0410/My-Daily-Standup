@@ -57,6 +57,15 @@ pub fn task_list_for_period(
     state.list_for_period(&start, &end)
 }
 
+/// Tasks for the Priority board. `threshold` is the lowest priority shown.
+#[tauri::command]
+pub fn task_list_priority(
+    state: State<'_, AppState>,
+    threshold: i64,
+) -> Result<Vec<Task>, CommandError> {
+    state.list_by_priority(threshold)
+}
+
 /// Records how long a task took. `minutes: null` clears it.
 #[tauri::command]
 pub fn task_set_time_spent(
