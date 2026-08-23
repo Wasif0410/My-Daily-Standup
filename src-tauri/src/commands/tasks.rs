@@ -154,3 +154,9 @@ pub fn task_add_comment(
 pub fn week_current(starts_on: Option<String>) -> crate::domain::Week {
     crate::domain::current_week(crate::domain::parse_weekday(starts_on.as_deref()))
 }
+
+/// The month today falls in, for the Monthly Progress board.
+#[tauri::command]
+pub fn month_current() -> crate::domain::Month {
+    crate::domain::current_month()
+}

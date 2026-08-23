@@ -54,6 +54,7 @@ pub fn run() {
             commands::tasks::task_set_blocker,
             commands::tasks::task_add_comment,
             commands::tasks::week_current,
+            commands::tasks::month_current,
             commands::boards::board_open,
             commands::boards::ui_state_get,
             commands::boards::ui_state_set,

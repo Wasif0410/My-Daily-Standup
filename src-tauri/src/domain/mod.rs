@@ -6,6 +6,7 @@
 //! numbers (spec §3.6).
 
 mod blocker;
+mod month;
 mod progress;
 mod rollover;
 mod time_spent;
@@ -13,6 +14,8 @@ mod week;
 
 #[cfg(test)]
 mod blocker_tests;
+#[cfg(test)]
+mod month_tests;
 #[cfg(test)]
 mod progress_tests;
 #[cfg(test)]
@@ -23,6 +26,7 @@ mod time_spent_tests;
 mod week_tests;
 
 pub use blocker::{add_comment, set_blocker, today};
+pub use month::{current_month, month_containing, Month};
 pub use progress::{compute_progress, is_complete_by_rule, Progress};
 pub use rollover::{move_to_period, period_stats, reschedule, PeriodStats};
 pub use time_spent::{
