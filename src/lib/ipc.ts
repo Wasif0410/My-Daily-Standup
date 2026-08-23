@@ -107,6 +107,17 @@ export function listTasksForPeriod(start: string, end: string): Promise<Task[]> 
 }
 
 /**
+ * Tasks scheduled on any day in `[start, end]`, inclusive.
+ *
+ * Keyed on the scheduled day, not the period: the Weekly Progress board asks
+ * "how did the week go, day by day", and a commitment that merely overlaps the
+ * week has no day to sit on.
+ */
+export function listTasksScheduledBetween(start: string, end: string): Promise<Task[]> {
+  return call<Task[]>("task_list_scheduled_between", { start, end });
+}
+
+/**
  * Tasks for the Priority board: non-daily work at or above `threshold`.
  *
  * Filtered in SQL rather than here. The alternative is fetching three horizons
@@ -224,4 +235,21 @@ export function setBoardCollapsed(kind: BoardKind, collapsed: boolean): Promise<
 
 export function listBoards(): Promise<BoardWindow[]> {
   return call<BoardWindow[]>("board_list");
+}
+
+// --- presentation state ------------------------------------------------------
+
+/**
+ * Reads one piece of presentation state — which days a board has expanded, and
+ * the like.
+ *
+ * `null` means never set, which is how a board tells "the user chose nothing"
+ * apart from "the user chose to expand nothing".
+ */
+export function getUiState(key: string): Promise<string | null> {
+  return call<string | null>("ui_state_get", { key });
+}
+
+export function setUiState(key: string, value: string): Promise<void> {
+  return call<void>("ui_state_set", { key, value });
 }

@@ -152,4 +152,17 @@ export interface CommandError {
 export interface Week {
   start: string;
   end: string;
+  /** The ISO week, e.g. "2026-W34". Always ISO, even when weeks are configured
+   *  to start on Sunday — the label means one fixed thing. */
+  label: string;
+  /** The seven days, in display order. */
+  days: WeekDay[];
+}
+
+/** One day of a week: the date to match tasks against, and the name to show. */
+export interface WeekDay {
+  /** ISO-8601, e.g. "2026-08-17". */
+  date: string;
+  /** English day name, e.g. "Monday". */
+  name: string;
 }
