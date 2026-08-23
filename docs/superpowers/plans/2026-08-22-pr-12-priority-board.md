@@ -106,7 +106,7 @@ WHERE horizon != 'daily'
 ORDER BY priority DESC, created_at
 ```
 
-- [ ] **Step 1: Write the failing tests** in `task_repo_tests.rs`, with a
+- [x] **Step 1: Write the failing tests** in `task_repo_tests.rs`, with a
       `priority_task(title, area, priority)` helper building a `Weekly`/`Manual` task:
   - `list_by_priority_returns_tasks_at_or_above_the_threshold`
   - `list_by_priority_includes_a_task_exactly_at_the_threshold` — `>=`, not `>`. Off by
@@ -116,13 +116,13 @@ ORDER BY priority DESC, created_at
     `COALESCE` cannot break it silently.
   - `list_by_priority_orders_by_priority_then_age`
   - `list_by_priority_keeps_weekly_monthly_and_long_term`
-- [ ] **Step 2: Run to verify they fail** — `cargo test --manifest-path src-tauri/Cargo.toml list_by_priority`.
+- [x] **Step 2: Run to verify they fail** — `cargo test --manifest-path src-tauri/Cargo.toml list_by_priority`.
       Expected: `no method named list_by_priority`.
-- [ ] **Step 3: Implement** the query, the `AppState` method, the command, and the
+- [x] **Step 3: Implement** the query, the `AppState` method, the command, and the
       `generate_handler!` entry.
-- [ ] **Step 4: Run to verify they pass** — 6 passed.
-- [ ] **Step 5: Full Rust gate** — `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.
-- [ ] **Step 6: Commit** — `feat: query tasks above a priority threshold`
+- [x] **Step 4: Run to verify they pass** — 6 passed.
+- [x] **Step 5: Full Rust gate** — `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.
+- [x] **Step 6: Commit** — `feat: query tasks above a priority threshold`
 
 ---
 
@@ -137,13 +137,13 @@ ORDER BY priority DESC, created_at
 `fetchFor`'s switch has no `default`, so TypeScript's exhaustiveness check is what forces
 the new branch to exist — omitting it is a compile error, not a silent `undefined`.
 
-- [ ] **Step 1: Write the failing tests** in `taskStore.test.ts`:
+- [x] **Step 1: Write the failing tests** in `taskStore.test.ts`:
   - `loads through the priority command` — asserts `invoke("task_list_priority", { threshold: 5 })`
   - `passes the threshold through rather than hard-coding one`
-- [ ] **Step 2: Run to verify they fail** — TS rejects `kind: "priority"`.
-- [ ] **Step 3: Implement** the wrapper and the filter branch.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Commit** — `feat: load tasks by priority threshold`
+- [x] **Step 2: Run to verify they fail** — TS rejects `kind: "priority"`.
+- [x] **Step 3: Implement** the wrapper and the filter branch.
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Commit** — `feat: load tasks by priority threshold`
 
 ---
 
@@ -156,19 +156,19 @@ append to `src/styles/theme.css`.
 null. Sets `data-tier` to `high` (≥8), `medium` (≥4), `low` (<4), `none` (null), which
 is what the CSS grades colour from.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `renders the priority as a number, not only a colour`
   - `renders a dash when nothing is prioritised`
   - `names the priority for screen readers` — `aria-label="Priority 8"`
   - `names an absent priority as unset rather than as zero` — `aria-label="No priority"`
   - `grades the tier so colour can reinforce the number` — all four tiers
-- [ ] **Step 2: Run to verify they fail** — module not found.
-- [ ] **Step 3: Implement** the component.
-- [ ] **Step 4: Run to verify they pass** — 5 passed.
-- [ ] **Step 5: Style** `.priority-badge` and its `[data-tier]` variants from
+- [x] **Step 2: Run to verify they fail** — module not found.
+- [x] **Step 3: Implement** the component.
+- [x] **Step 4: Run to verify they pass** — 5 passed.
+- [x] **Step 5: Style** `.priority-badge` and its `[data-tier]` variants from
       `--priority-high` / `--priority-medium` / `--priority-low` / `--text-dim`,
       monospaced and `font-variant-numeric: tabular-nums` so the column does not jitter.
-- [ ] **Step 6: Commit** — `feat: add the priority badge`
+- [x] **Step 6: Commit** — `feat: add the priority badge`
 
 ---
 
@@ -187,7 +187,7 @@ input is rejected with a `role="alert"` and the popover stays open with the text
 the user is one character from a valid entry. Recording a number they never typed is
 worse than recording nothing, because nothing is a state the app represents honestly.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `shows a recorded duration` (95 → `1h 35m`)
   - `shows a dash when nothing was recorded` — never `0m`
   - `stays closed until asked`
@@ -201,13 +201,13 @@ worse than recording nothing, because nothing is a state the app represents hone
   - `clears a recorded duration back to unrecorded` — `onChange(null)`, not 0
   - `offers no clear button when there is nothing to clear`
   - `abandons the edit on Escape`
-- [ ] **Step 2: Run to verify they fail** — module not found.
-- [ ] **Step 3: Implement** the component.
-- [ ] **Step 4: Run to verify they pass** — 11 passed.
-- [ ] **Step 5: Style** the popover. Anchored above the row in the stack and offset from
+- [x] **Step 2: Run to verify they fail** — module not found.
+- [x] **Step 3: Implement** the component.
+- [x] **Step 4: Run to verify they pass** — 11 passed.
+- [x] **Step 5: Style** the popover. Anchored above the row in the stack and offset from
       the button; a board is short, and a popover opening into `.board-body`'s overflow
       would be clipped.
-- [ ] **Step 6: Commit** — `feat: set a task's duration from the board`
+- [x] **Step 6: Commit** — `feat: set a task's duration from the board`
 
 ---
 
@@ -237,7 +237,7 @@ labelled `Edit title`) · `DurationField` · hover actions.
 The only state it owns is the uncommitted title draft, which belongs here: it is scratch
 text with no meaning outside this row.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `shows priority, title, and duration together`
   - `shows a dash for an unmeasured task`
   - completion: `reports a completion to its owner`, `reports an uncompletion`,
@@ -251,10 +251,10 @@ text with no meaning outside this row.
   - hover actions: `reports a delete to its owner`, `reports a move to its owner`,
     `omits an action with no handler rather than rendering a dead button`,
     `keeps hover-revealed actions reachable by keyboard`
-- [ ] **Step 2: Run to verify they fail** — module not found.
-- [ ] **Step 3: Implement** the component.
-- [ ] **Step 4: Run to verify they pass** — 18 passed.
-- [ ] **Step 5: Style** the row. Two things are load-bearing:
+- [x] **Step 2: Run to verify they fail** — module not found.
+- [x] **Step 3: Implement** the component.
+- [x] **Step 4: Run to verify they pass** — 18 passed.
+- [x] **Step 5: Style** the row. Two things are load-bearing:
   - `.task-title { flex: 1; min-width: 0; }` — without `min-width: 0` a flex item refuses
     to shrink below its content and the ellipsis never appears.
   - A board is 340px by default, so degradation order is fixed: at container width
@@ -262,7 +262,7 @@ text with no meaning outside this row.
     it take" is the question you ask of a board you have widened; the title is the one you
     cannot lose. Requires `container-type: inline-size; container-name: board;` on
     `.board-body`.
-- [ ] **Step 6: Commit** — `feat: add the shared task row`
+- [x] **Step 6: Commit** — `feat: add the shared task row`
 
 ---
 
@@ -282,7 +282,7 @@ text with no meaning outside this row.
   takes a render callback rather than wiring `TaskRow` itself, because PR 13 groups by
   project and PR 14 by day, each needing different handlers on the row.
 
-- [ ] **Step 1: Write the failing `groupByArea` tests:**
+- [x] **Step 1: Write the failing `groupByArea` tests:**
   - `returns nothing for no tasks`
   - `collects tasks under their area`
   - `orders groups by their most important task`
@@ -290,20 +290,20 @@ text with no meaning outside this row.
   - `sorts within a group by priority, then oldest first`
   - `gathers tasks with no area under one heading`
   - `treats a blank area as no area rather than as its own group`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** `grouping.ts`.
-- [ ] **Step 4: Run to verify they pass** — 7 passed.
-- [ ] **Step 5: Write the failing `AreaGroup` tests:**
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement** `grouping.ts`.
+- [x] **Step 4: Run to verify they pass** — 7 passed.
+- [x] **Step 5: Write the failing `AreaGroup` tests:**
   - `heads the group with its area`
   - `renders each task through the callback it is given`
   - `labels the list with its area for screen readers` — four unlabelled lists on one
     board are indistinguishable to anyone navigating by landmark
-- [ ] **Step 6: Run to verify they fail.**
-- [ ] **Step 7: Implement** `AreaGroup` (reuses the existing `.board-section` and
+- [x] **Step 6: Run to verify they fail.**
+- [x] **Step 7: Implement** `AreaGroup` (reuses the existing `.board-section` and
       `.board-section-title` chrome; adds `.task-list-plain`, distinct from the dev
       shell's `.task-list` that `global.css` still owns).
-- [ ] **Step 8: Run to verify they pass** — 3 passed.
-- [ ] **Step 9: Commit** — `feat: group board tasks by area`
+- [x] **Step 8: Run to verify they pass** — 3 passed.
+- [x] **Step 9: Commit** — `feat: group board tasks by area`
 
 ---
 
@@ -316,7 +316,7 @@ text with no meaning outside this row.
 Loads `{ kind: "priority", threshold }` on mount, memoises `groupByArea(sortTasks(...))`,
 and hands each row the store actions. `onMove` is deliberately not passed.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `loads through the priority filter at the default threshold`
   - `honours a threshold it is given`
   - `groups tasks under their areas`
@@ -327,10 +327,10 @@ and hands each row the store actions. `onMove` is deliberately not passed.
   - `commits an inline edit through the store`
   - `deletes a task through the store`
   - `surfaces a failure rather than failing silently`
-- [ ] **Step 2: Run to verify they fail** — module not found.
-- [ ] **Step 3: Implement** the component.
-- [ ] **Step 4: Run to verify they pass** — 9 passed.
-- [ ] **Step 5: Commit** — `feat: add the priority tasks board`
+- [x] **Step 2: Run to verify they fail** — module not found.
+- [x] **Step 3: Implement** the component.
+- [x] **Step 4: Run to verify they pass** — 9 passed.
+- [x] **Step 5: Commit** — `feat: add the priority tasks board`
 
 ---
 
@@ -342,28 +342,40 @@ and hands each row the store actions. `onMove` is deliberately not passed.
 TypeScript flags a board that PRs 13–15 forget to fill in. The remaining three keep the
 `No tasks yet.` placeholder; a blank window reads as broken.
 
-- [ ] **Step 1: Write the failing tests** (mocking `@tauri-apps/api/window`):
+- [x] **Step 1: Write the failing tests** (mocking `@tauri-apps/api/window`):
   - `puts the priority board inside the priority window`
   - `still shows a placeholder for boards that have no content yet`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** the switch.
-- [ ] **Step 4: Run to verify they pass** — 2 passed.
-- [ ] **Step 5: Full gate.** `npm run lint && npm run test -- --run`, then
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement** the switch.
+- [x] **Step 4: Run to verify they pass** — 2 passed.
+- [x] **Step 5: Full gate.** `npm run lint && npm run test -- --run`, then
       `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test`.
       Do not proceed on a failure.
 - [ ] **Step 6: Launch the real app and read the dev log.** Non-negotiable, and the
       reason is in the checkpoint: PR 10 shipped with collapse silently broken because
       `src/test/setup.ts` mocks Tauri, so no test can catch a missing capability. All 55
-      tests passed and CI was green. Verify by hand:
-  - The Priority window shows real tasks from SQLite, grouped by area.
+      tests passed and CI was green.
+
+      **Done so far:** the app was launched twice, built clean, and the dev log carries no
+      permission error. No `llama`, `whisper`, or other sidecar process appeared. Seven
+      `[seed]`-prefixed tasks were written to
+      `%APPDATA%\com.wasif.dailystandup\standup.db`, and the command's exact SQL was run
+      against that real database — it returns the five expected rows and correctly
+      excludes both negative controls (a P2 task and a P10 *daily* task).
+
+      **Still needs a human at the keyboard:**
+  - The Priority window shows those tasks, grouped by area, ordered Job search → Unsorted
+    → Health.
   - Ticking a checkbox persists across a restart.
   - A duration set from a preset and from free text both persist across a restart.
   - Double-click edits a title; Enter commits, Escape reverts.
   - Hover reveals the delete button; it is hidden otherwise.
   - Narrowing the window collapses the duration before the title truncates.
-  - **Task Manager shows no `llama`, `whisper`, or other sidecar process.**
-- [ ] **Step 7: Commit** — `feat: show the priority board in its window`
-- [ ] **Step 8: Push, open the PR, tick PR 12 in the sequence document, wait for green CI.**
+
+      Remove the seeded rows afterwards with
+      `DELETE FROM tasks WHERE title LIKE '[seed]%'`.
+- [x] **Step 7: Commit** — `feat: show the priority board in its window`
+- [x] **Step 8: Push, open the PR, tick PR 12 in the sequence document, wait for green CI.**
 
 ---
 

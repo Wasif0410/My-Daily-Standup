@@ -425,7 +425,7 @@ Extends PR 7's `PeriodStats` with `minutes_tracked`, so the weekly review draws 
 
 ---
 
-### - [ ] PR 12 — Priority Tasks board & the shared task row
+### - [x] PR 12 — Priority Tasks board & the shared task row
 **Branch:** `feat/pr-12-priority-board`
 **Depends on:** PR 11
 **What this gives the app:** Your first working board, and the task row every other board reuses — priority, a checkbox, and how long the task took.
