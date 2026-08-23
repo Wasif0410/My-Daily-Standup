@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { BoardShell } from "@/components/BoardShell";
+import { PriorityBoard } from "@/features/boards/PriorityBoard";
 import {
   listBoards,
   saveBoardGeometry,
@@ -25,11 +26,29 @@ const TITLES: Record<BoardKind, string> = {
 };
 
 /**
+ * What goes inside a board window.
+ *
+ * A switch rather than a lookup table, so TypeScript flags a board that PRs
+ * 13-15 forget to fill in. The remaining placeholders are deliberate: a blank
+ * window reads as broken.
+ */
+function boardContent(kind: BoardKind) {
+  switch (kind) {
+    case "priority":
+      return <PriorityBoard />;
+    case "weekly-tasks":
+    case "weekly-progress":
+    case "monthly-progress":
+      return <p className="board-empty">No tasks yet.</p>;
+  }
+}
+
+/**
  * The root of a sticky-note window.
  *
  * Owns the state the shell deliberately does not: saved geometry, collapse, and
- * the persistence of both. Board content arrives in PRs 12-15; this is the
- * frame those slot into.
+ * the persistence of both. Board content is routed by {@link boardContent};
+ * this is the frame each one slots into.
  */
 export function BoardRoot({ kind }: { kind: BoardKind }) {
   const [board, setBoard] = useState<BoardWindow | null>(null);
@@ -150,7 +169,7 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
           {failure.message}
         </p>
       )}
-      <p className="board-empty">No tasks yet.</p>
+      {boardContent(kind)}
     </BoardShell>
   );
 }
