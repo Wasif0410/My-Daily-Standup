@@ -7,6 +7,7 @@
 
 pub mod boards;
 pub mod tasks;
+pub mod tray;
 
 use std::path::Path;
 use std::sync::Mutex;

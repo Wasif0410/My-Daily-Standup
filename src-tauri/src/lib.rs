@@ -38,6 +38,12 @@ fn unlock_shortcut() -> Shortcut {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Launch at login. The tray's "Start with Windows" toggles it; PR 18's
+        // settings window will reuse the same commands.
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
@@ -68,6 +74,12 @@ pub fn run() {
                 eprintln!("could not register the unlock shortcut: {error}");
             }
 
+            // The tray is the app's real home (§6.8, §26): it outlives the
+            // main window and is the only way to quit once closing that window
+            // merely hides it. A failure here would leave the user with no way
+            // out, so it is fatal rather than logged.
+            tray::create(app.handle()).map_err(|error| error.message)?;
+
             // Reopen whatever was on the desktop when the app last closed
             // (spec §23). A board that fails to open must not stop the others.
             for (kind, error) in windows::restore_boards(app.handle()) {
@@ -75,6 +87,17 @@ pub fn run() {
             }
 
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Closing the main window hides it rather than exiting. The
+            // lightweight tier — tray and boards — outlives the planning view
+            // (§26), and Quit in the tray is what actually ends the app.
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::tasks::task_create,
@@ -99,6 +122,9 @@ pub fn run() {
             commands::boards::board_open,
             commands::boards::board_set_behavior,
             commands::boards::board_unlock_all,
+            commands::tray::autostart_enabled,
+            commands::tray::autostart_set,
+            commands::tray::quick_add_close,
             commands::boards::ui_state_get,
             commands::boards::ui_state_set,
             commands::boards::board_close,
