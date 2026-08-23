@@ -366,3 +366,120 @@ fn timestamps_are_iso_8601() {
     );
     assert!(task.created_at.ends_with('Z'), "timestamps must be UTC");
 }
+
+/// A non-daily task with an area and a priority — what the Priority board shows.
+fn priority_task(title: &str, area: &str, priority: i64) -> NewTask {
+    NewTask {
+        area: Some(area.to_string()),
+        priority: Some(priority),
+        ..NewTask::new(title, TaskHorizon::Weekly, TaskSource::Manual)
+    }
+}
+
+#[test]
+fn list_by_priority_returns_tasks_at_or_above_the_threshold() {
+    let (db, repo) = repo();
+    repo.create(
+        db.conn(),
+        priority_task("submit applications", "Job search", 8),
+    )
+    .unwrap();
+    repo.create(db.conn(), priority_task("tidy desk", "Home", 2))
+        .unwrap();
+
+    let found = repo.list_by_priority(db.conn(), 5).unwrap();
+
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].title, "submit applications");
+}
+
+#[test]
+fn list_by_priority_includes_a_task_exactly_at_the_threshold() {
+    // ">= threshold", not "> threshold". Off by one here silently hides a whole
+    // band of tasks from the only board that surfaces them.
+    let (db, repo) = repo();
+    repo.create(db.conn(), priority_task("book eye exam", "Health", 5))
+        .unwrap();
+
+    let found = repo.list_by_priority(db.conn(), 5).unwrap();
+
+    assert_eq!(found.len(), 1);
+}
+
+#[test]
+fn list_by_priority_excludes_daily_tasks() {
+    // Daily work belongs to the Weekly Progress board. The Priority board is
+    // for items that outlive a single day.
+    let (db, repo) = repo();
+    repo.create(
+        db.conn(),
+        NewTask {
+            priority: Some(9),
+            ..NewTask::new("take out bins", TaskHorizon::Daily, TaskSource::Manual)
+        },
+    )
+    .unwrap();
+
+    let found = repo.list_by_priority(db.conn(), 5).unwrap();
+
+    assert!(
+        found.is_empty(),
+        "daily tasks must not reach the priority board"
+    );
+}
+
+#[test]
+fn list_by_priority_excludes_unprioritised_tasks() {
+    // NULL is "nobody ranked this", not zero. SQL comparisons against NULL are
+    // already false, so this pins the behaviour rather than introducing it —
+    // which is the point: a later COALESCE would break it silently.
+    let (db, repo) = repo();
+    repo.create(
+        db.conn(),
+        NewTask::new("someday", TaskHorizon::LongTerm, TaskSource::Manual),
+    )
+    .unwrap();
+
+    let found = repo.list_by_priority(db.conn(), 0).unwrap();
+
+    assert!(found.is_empty(), "an unranked task is not priority zero");
+}
+
+#[test]
+fn list_by_priority_orders_by_priority_then_age() {
+    let (db, repo) = repo();
+    repo.create(db.conn(), priority_task("middle", "Health", 7))
+        .unwrap();
+    repo.create(db.conn(), priority_task("highest", "Job search", 9))
+        .unwrap();
+    repo.create(db.conn(), priority_task("lowest", "Home", 6))
+        .unwrap();
+
+    let found = repo.list_by_priority(db.conn(), 5).unwrap();
+
+    let titles: Vec<&str> = found.iter().map(|t| t.title.as_str()).collect();
+    assert_eq!(titles, vec!["highest", "middle", "lowest"]);
+}
+
+#[test]
+fn list_by_priority_keeps_weekly_monthly_and_long_term() {
+    let (db, repo) = repo();
+    for horizon in [
+        TaskHorizon::Weekly,
+        TaskHorizon::Monthly,
+        TaskHorizon::LongTerm,
+    ] {
+        repo.create(
+            db.conn(),
+            NewTask {
+                priority: Some(8),
+                ..NewTask::new("important", horizon, TaskSource::Manual)
+            },
+        )
+        .unwrap();
+    }
+
+    let found = repo.list_by_priority(db.conn(), 5).unwrap();
+
+    assert_eq!(found.len(), 3);
+}

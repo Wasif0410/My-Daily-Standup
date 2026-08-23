@@ -135,6 +135,11 @@ impl AppState {
         self.with_conn(|repo, conn| repo.list_for_period(conn, start, end))
     }
 
+    /// Tasks for the Priority board — non-daily work at or above `threshold`.
+    pub fn list_by_priority(&self, threshold: i64) -> Result<Vec<Task>, CommandError> {
+        self.with_conn(|repo, conn| repo.list_by_priority(conn, threshold))
+    }
+
     /// Records how long a task took, in minutes.
     ///
     /// `None` clears the value back to unrecorded, which is distinct from

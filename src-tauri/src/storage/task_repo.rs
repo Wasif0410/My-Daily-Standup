@@ -216,6 +216,29 @@ impl TaskRepo {
         )
     }
 
+    /// Tasks the Priority board shows: important work that outlives a day.
+    ///
+    /// `priority IS NULL` is excluded rather than coalesced to zero. An
+    /// unranked task has not been judged unimportant — it has not been judged
+    /// at all — and collapsing the two would hide it from the only board that
+    /// surfaces it.
+    pub fn list_by_priority(
+        &self,
+        conn: &Connection,
+        threshold: i64,
+    ) -> Result<Vec<Task>, StorageError> {
+        self.query(
+            conn,
+            &format!(
+                "SELECT {COLUMNS} FROM tasks \
+                 WHERE horizon != 'daily' \
+                   AND priority IS NOT NULL AND priority >= ?1 \
+                 ORDER BY priority DESC, created_at"
+            ),
+            rusqlite::params![threshold],
+        )
+    }
+
     /// Direct children of a task. Does not recurse.
     pub fn children_of(
         &self,
