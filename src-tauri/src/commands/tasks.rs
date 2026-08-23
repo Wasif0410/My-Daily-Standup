@@ -94,3 +94,53 @@ pub fn task_children_of(
 ) -> Result<Vec<Task>, CommandError> {
     state.children_of(&parent_id)
 }
+
+/// Moves a task to another week, counting a later move as a deferral. The only
+/// route that may change `period_start` / `period_end`.
+#[tauri::command]
+pub fn task_move_to_period(
+    state: State<'_, AppState>,
+    id: String,
+    start: String,
+    end: String,
+) -> Result<Task, CommandError> {
+    state.move_task_to_period(&id, &start, &end)
+}
+
+/// Archives a task: cancelled, not deleted. The row survives.
+#[tauri::command]
+pub fn task_archive(state: State<'_, AppState>, id: String) -> Result<Task, CommandError> {
+    state.archive_task(&id)
+}
+
+/// Sets or clears a blocker. `blocker: null` clears it.
+///
+/// The only route that may change `blocker`, since it is also what keeps the
+/// `blocked` status honest.
+#[tauri::command]
+pub fn task_set_blocker(
+    state: State<'_, AppState>,
+    id: String,
+    blocker: Option<String>,
+) -> Result<Task, CommandError> {
+    state.set_blocker(&id, blocker.as_deref())
+}
+
+/// Appends a dated comment to a task's notes.
+#[tauri::command]
+pub fn task_add_comment(
+    state: State<'_, AppState>,
+    id: String,
+    comment: String,
+) -> Result<Task, CommandError> {
+    state.add_comment(&id, &comment)
+}
+
+/// The week today falls in, so the frontend never derives a date itself.
+///
+/// `starts_on` accepts "monday", "sunday", or "saturday" and defaults to Monday
+/// (spec §6.4). PR 16 supplies it from settings.
+#[tauri::command]
+pub fn week_current(starts_on: Option<String>) -> crate::domain::Week {
+    crate::domain::current_week(crate::domain::parse_weekday(starts_on.as_deref()))
+}

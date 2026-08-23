@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { AreaGroup } from "@/features/boards/components/AreaGroup";
+import { TaskGroup } from "@/features/boards/components/TaskGroup";
 import type { Task } from "@/types/task";
 
 function task(overrides: Partial<Task> = {}): Task {
@@ -35,11 +35,11 @@ function task(overrides: Partial<Task> = {}): Task {
   };
 }
 
-describe("AreaGroup", () => {
+describe("TaskGroup", () => {
   it("heads the group with its area", () => {
     render(
-      <AreaGroup
-        area="Job search"
+      <TaskGroup
+        label="Job search"
         tasks={[task()]}
         renderTask={(t) => <li key={t.id}>{t.title}</li>}
       />,
@@ -50,8 +50,8 @@ describe("AreaGroup", () => {
 
   it("renders each task through the callback it is given", () => {
     render(
-      <AreaGroup
-        area="Health"
+      <TaskGroup
+        label="Health"
         tasks={[
           task({ id: "a", title: "eye exam" }),
           task({ id: "b", title: "dentist" }),
@@ -69,8 +69,8 @@ describe("AreaGroup", () => {
     // Four unlabelled lists on one board are indistinguishable to anyone
     // navigating by landmark.
     render(
-      <AreaGroup
-        area="Health"
+      <TaskGroup
+        label="Health"
         tasks={[task()]}
         renderTask={(t) => <li key={t.id}>{t.title}</li>}
       />,

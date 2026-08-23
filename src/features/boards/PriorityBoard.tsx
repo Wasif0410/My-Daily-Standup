@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { AreaGroup } from "@/features/boards/components/AreaGroup";
+import { TaskGroup } from "@/features/boards/components/TaskGroup";
 import { TaskRow } from "@/features/boards/components/TaskRow";
 import { groupByArea } from "@/features/boards/grouping";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
@@ -54,9 +54,9 @@ export function PriorityBoard({
         <p className="board-empty">Nothing at priority {threshold} or above.</p>
       ) : (
         groups.map((group) => (
-          <AreaGroup
-            key={group.area}
-            area={group.area}
+          <TaskGroup
+            key={group.label}
+            label={group.label}
             tasks={group.tasks}
             renderTask={(task) => (
               <TaskRow

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { BoardShell } from "@/components/BoardShell";
 import { PriorityBoard } from "@/features/boards/PriorityBoard";
+import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
 import {
   listBoards,
   saveBoardGeometry,
@@ -37,6 +38,7 @@ function boardContent(kind: BoardKind) {
     case "priority":
       return <PriorityBoard />;
     case "weekly-tasks":
+      return <WeeklyBoard />;
     case "weekly-progress":
     case "monthly-progress":
       return <p className="board-empty">No tasks yet.</p>;

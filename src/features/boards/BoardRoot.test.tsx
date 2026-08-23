@@ -43,3 +43,17 @@ describe("BoardRoot", () => {
     expect(await screen.findByText("No tasks yet.")).toBeInTheDocument();
   });
 });
+
+describe("BoardRoot board content", () => {
+  it("puts the weekly board in the weekly-tasks window", async () => {
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "week_current")
+        return Promise.resolve({ start: "2026-08-17", end: "2026-08-23" });
+      return Promise.resolve([]);
+    });
+
+    render(<BoardRoot kind="weekly-tasks" />);
+
+    expect(await screen.findByText(/nothing planned this week/i)).toBeInTheDocument();
+  });
+});

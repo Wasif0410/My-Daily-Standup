@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { groupByArea, UNSORTED_AREA } from "@/features/boards/grouping";
+import {
+  groupByArea,
+  groupByProject,
+  UNSORTED_AREA,
+  UNSORTED_PROJECT,
+} from "@/features/boards/grouping";
 import type { Task } from "@/types/task";
 
 function task(overrides: Partial<Task> = {}): Task {
@@ -46,7 +51,7 @@ describe("groupByArea", () => {
       task({ id: "c", area: "Job search", priority: 9 }),
     ]);
 
-    expect(groups.map((g) => g.area)).toEqual(["Job search", "Health"]);
+    expect(groups.map((g) => g.label)).toEqual(["Job search", "Health"]);
     expect(groups[1]?.tasks.map((t) => t.id)).toEqual(["a", "b"]);
   });
 
@@ -58,7 +63,7 @@ describe("groupByArea", () => {
       task({ id: "b", area: "Zebra", priority: 10 }),
     ]);
 
-    expect(groups.map((g) => g.area)).toEqual(["Zebra", "Admin"]);
+    expect(groups.map((g) => g.label)).toEqual(["Zebra", "Admin"]);
   });
 
   it("breaks a tie between areas alphabetically", () => {
@@ -67,7 +72,7 @@ describe("groupByArea", () => {
       task({ id: "b", area: "Admin", priority: 7 }),
     ]);
 
-    expect(groups.map((g) => g.area)).toEqual(["Admin", "Health"]);
+    expect(groups.map((g) => g.label)).toEqual(["Admin", "Health"]);
   });
 
   it("sorts within a group by priority, then oldest first", () => {
@@ -93,7 +98,7 @@ describe("groupByArea", () => {
   it("gathers tasks with no area under one heading", () => {
     const groups = groupByArea([task({ id: "a", area: null, priority: 8 })]);
 
-    expect(groups[0]?.area).toBe(UNSORTED_AREA);
+    expect(groups[0]?.label).toBe(UNSORTED_AREA);
   });
 
   it("treats a blank area as no area rather than as its own group", () => {
@@ -105,6 +110,59 @@ describe("groupByArea", () => {
     ]);
 
     expect(groups).toHaveLength(1);
-    expect(groups[0]?.area).toBe(UNSORTED_AREA);
+    expect(groups[0]?.label).toBe(UNSORTED_AREA);
+  });
+});
+
+describe("groupByProject", () => {
+  it("returns nothing for no tasks", () => {
+    expect(groupByProject([])).toEqual([]);
+  });
+
+  it("collects tasks under their project", () => {
+    const groups = groupByProject([
+      task({ id: "a", project: "Daily Standup", priority: 6 }),
+      task({ id: "b", project: "Daily Standup", priority: 5 }),
+      task({ id: "c", project: "Job Search", priority: 9 }),
+    ]);
+
+    expect(groups.map((g) => g.label)).toEqual(["Job Search", "Daily Standup"]);
+    expect(groups[1]?.tasks.map((t) => t.id)).toEqual(["a", "b"]);
+  });
+
+  it("groups by project independently of area", () => {
+    // A task can sit in the Health area and the Daily Standup project. The
+    // two boards must not be able to disagree about where it belongs.
+    const groups = groupByProject([
+      task({ id: "a", area: "Health", project: "Travel", priority: 7 }),
+      task({ id: "b", area: "Health", project: "Job Search", priority: 8 }),
+    ]);
+
+    expect(groups.map((g) => g.label)).toEqual(["Job Search", "Travel"]);
+  });
+
+  it("gives unassigned work its own heading", () => {
+    const groups = groupByProject([task({ id: "a", project: null, priority: 8 })]);
+
+    expect(groups[0]?.label).toBe(UNSORTED_PROJECT);
+  });
+
+  it("treats a blank project as no project", () => {
+    const groups = groupByProject([
+      task({ id: "a", project: "  ", priority: 8 }),
+      task({ id: "b", project: null, priority: 7 }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.label).toBe(UNSORTED_PROJECT);
+  });
+
+  it("orders projects by their most important task", () => {
+    const groups = groupByProject([
+      task({ id: "a", project: "Admin", priority: 5 }),
+      task({ id: "b", project: "Zebra", priority: 10 }),
+    ]);
+
+    expect(groups.map((g) => g.label)).toEqual(["Zebra", "Admin"]);
   });
 });

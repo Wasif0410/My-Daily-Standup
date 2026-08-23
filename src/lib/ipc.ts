@@ -15,6 +15,7 @@ import type {
   Task,
   TaskHorizon,
   TaskPatch,
+  Week,
 } from "@/types/task";
 
 /**
@@ -123,6 +124,61 @@ export function listPriorityTasks(threshold: number): Promise<Task[]> {
  */
 export function setTimeSpent(id: string, minutes: number | null): Promise<Task> {
   return call<Task>("task_set_time_spent", { id, minutes });
+}
+
+/**
+ * Sets or clears a task's blocker. `null` clears it.
+ *
+ * Never {@link updateTask} with a `blocker`: only this path keeps the text and
+ * the `blocked` status in step, and once they can disagree every view has to
+ * pick one to believe.
+ */
+export function setBlocker(id: string, blocker: string | null): Promise<Task> {
+  return call<Task>("task_set_blocker", { id, blocker });
+}
+
+/**
+ * Appends a dated comment to a task's notes.
+ *
+ * Rust owns the date stamp and the joining, so the caller sends only the text.
+ */
+export function addComment(id: string, comment: string): Promise<Task> {
+  return call<Task>("task_add_comment", { id, comment });
+}
+
+/**
+ * Moves a task to another week.
+ *
+ * Routed through the rollover engine like {@link rescheduleTask}, so pushing a
+ * commitment into a later week is counted as the deferral it is.
+ */
+export function moveTaskToPeriod(
+  id: string,
+  start: string,
+  end: string,
+): Promise<Task> {
+  return call<Task>("task_move_to_period", { id, start, end });
+}
+
+/**
+ * Archives a task: cancelled, not deleted.
+ *
+ * The row survives; only the board loses it. Use {@link deleteTask} when the
+ * task should genuinely cease to exist.
+ */
+export function archiveTask(id: string): Promise<Task> {
+  return call<Task>("task_archive", { id });
+}
+
+/**
+ * The week today falls in.
+ *
+ * Asked of Rust rather than derived here: the frontend computing its own
+ * "today" from the browser clock is how a board and its database end up
+ * disagreeing about which week it is.
+ */
+export function currentWeek(startsOn?: string): Promise<Week> {
+  return call<Week>("week_current", { startsOn: startsOn ?? null });
 }
 
 /**

@@ -41,23 +41,72 @@ pub fn reschedule(
         .get(conn, id)?
         .ok_or_else(|| StorageError::TaskNotFound { id: id.to_string() })?;
 
-    let is_deferral = match task.scheduled_date.as_deref() {
-        Some(existing) => match parse_date(existing) {
-            Ok(current) => new_date > current,
-            // A malformed date already in the database should not block the
-            // user from fixing it; treat the repair as a plain reschedule.
-            Err(_) => false,
-        },
-        None => false,
-    };
-
     let patch = TaskPatch {
         scheduled_date: Some(Some(to.to_string())),
-        rollover_count: is_deferral.then(|| task.rollover_count + 1),
+        rollover_count: moves_later(task.scheduled_date.as_deref(), new_date)
+            .then(|| task.rollover_count + 1),
         ..Default::default()
     };
 
     repo.update(conn, id, patch)
+}
+
+/// Moves a task to another week, counting the move as a deferral only when the
+/// week starts later.
+///
+/// The same rule as [`reschedule`], for the same reason: pushing a commitment
+/// into next week is the deferral §10.3's prompt exists to notice. Sharing
+/// [`moves_later`] rather than restating the comparison keeps the two paths
+/// from drifting into disagreeing about what a deferral is.
+pub fn move_to_period(
+    repo: &TaskRepo,
+    conn: &Connection,
+    id: &str,
+    start: &str,
+    end: &str,
+) -> Result<Task, StorageError> {
+    // Validated before the database is touched, so a bad value cannot leave a
+    // task half-updated.
+    let new_start = parse_date(start)?;
+    let new_end = parse_date(end)?;
+
+    if new_end < new_start {
+        return Err(StorageError::InvalidDate {
+            value: format!("{start}..{end}"),
+        });
+    }
+
+    let task = repo
+        .get(conn, id)?
+        .ok_or_else(|| StorageError::TaskNotFound { id: id.to_string() })?;
+
+    let patch = TaskPatch {
+        period_start: Some(Some(start.to_string())),
+        period_end: Some(Some(end.to_string())),
+        rollover_count: moves_later(task.period_start.as_deref(), new_start)
+            .then(|| task.rollover_count + 1),
+        ..Default::default()
+    };
+
+    repo.update(conn, id, patch)
+}
+
+/// Whether replacing `existing` with `moving_to` pushes a task later.
+///
+/// Three cases deliberately answer `false`, and each is a decision rather than
+/// an omission:
+///
+/// - **Pulling work earlier.** Planning, not avoidance.
+/// - **The same date.** Nothing changed.
+/// - **No previous date.** Giving a backlog item its first slot is scheduling.
+///
+/// A malformed date already in the database also answers `false`: the user must
+/// be able to repair it without the repair counting against them.
+fn moves_later(existing: Option<&str>, moving_to: NaiveDate) -> bool {
+    match existing {
+        Some(text) => parse_date(text).is_ok_and(|current| moving_to > current),
+        None => false,
+    }
 }
 
 fn parse_date(value: &str) -> Result<NaiveDate, StorageError> {
