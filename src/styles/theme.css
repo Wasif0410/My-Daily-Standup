@@ -647,3 +647,47 @@ body.board-window {
   color: var(--text-dim);
   opacity: 0.75;
 }
+
+/* ---- Progress bar ------------------------------------------------------
+   A styled div, not block characters: those are pinned to the font's metrics
+   and go ragged at the small sizes and low opacities §6.1 calls for, and no
+   run of █ can carry role="progressbar". */
+
+.progress-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progress-track {
+  flex: 1;
+  min-width: 0;
+  height: 0.5rem;
+  border-radius: var(--radius-pill);
+  /* A visible empty track, so 0% still reads as a bar rather than as nothing
+     having rendered. */
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--board-accent);
+  transition: width var(--transition-collapse);
+}
+
+/* A finished commitment is worth seeing at a glance across four boards. */
+.progress-bar[data-complete="true"] .progress-fill {
+  background: var(--accent-weekly-progress);
+}
+
+.progress-percent {
+  flex: none;
+  min-width: 4ch;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-dim);
+}
