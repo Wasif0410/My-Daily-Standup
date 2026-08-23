@@ -3,6 +3,8 @@
 //! Pure functions over immutable data. Rust owns every calculation the app
 //! displays; the language model never computes a number (spec §3.6, §24).
 
+use serde::Serialize;
+
 use crate::storage::{Task, TaskStatus};
 
 /// How far along a task is.
@@ -10,7 +12,11 @@ use crate::storage::{Task, TaskStatus};
 /// The shape depends on what the task actually tracks — "12 of 20
 /// applications" and "2 of 3 subtasks" are different statements and the UI
 /// renders them differently.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// Serialised for the wire as `{ "kind": "numeric", "current": 12, "target": 20 }`.
+/// Internally tagged rather than a bare union so the frontend can switch on
+/// `kind` instead of guessing from which fields happen to be present.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Progress {
     /// Done or not. No finer measure available.
     Binary { completed: bool },

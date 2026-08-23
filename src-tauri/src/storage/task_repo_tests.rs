@@ -586,3 +586,70 @@ fn list_scheduled_between_orders_by_date_then_priority() {
     let titles: Vec<&str> = found.iter().map(|t| t.title.as_str()).collect();
     assert_eq!(titles, vec!["mon", "tue high", "tue low"]);
 }
+
+// ---- one horizon within a period ---------------------------------------------
+
+#[test]
+fn list_by_horizon_in_period_returns_only_that_horizon() {
+    let (db, repo) = repo();
+    for horizon in [TaskHorizon::Monthly, TaskHorizon::Weekly] {
+        repo.create(
+            db.conn(),
+            NewTask {
+                period_start: Some("2026-08-01".to_string()),
+                period_end: Some("2026-08-31".to_string()),
+                ..NewTask::new("a commitment", horizon, TaskSource::Manual)
+            },
+        )
+        .unwrap();
+    }
+
+    let found = repo
+        .list_by_horizon_in_period(db.conn(), TaskHorizon::Monthly, "2026-08-01", "2026-08-31")
+        .unwrap();
+
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].horizon, TaskHorizon::Monthly);
+}
+
+#[test]
+fn list_by_horizon_in_period_matches_on_overlap_not_containment() {
+    // A commitment running across a month boundary still belongs to both
+    // months it touches, exactly as `list_for_period` treats weeks.
+    let (db, repo) = repo();
+    repo.create(
+        db.conn(),
+        NewTask {
+            period_start: Some("2026-07-15".to_string()),
+            period_end: Some("2026-08-15".to_string()),
+            ..NewTask::new(
+                "spans the boundary",
+                TaskHorizon::Monthly,
+                TaskSource::Manual,
+            )
+        },
+    )
+    .unwrap();
+
+    let found = repo
+        .list_by_horizon_in_period(db.conn(), TaskHorizon::Monthly, "2026-08-01", "2026-08-31")
+        .unwrap();
+
+    assert_eq!(found.len(), 1);
+}
+
+#[test]
+fn list_by_horizon_in_period_excludes_a_commitment_with_no_period() {
+    let (db, repo) = repo();
+    repo.create(
+        db.conn(),
+        NewTask::new("undated", TaskHorizon::Monthly, TaskSource::Manual),
+    )
+    .unwrap();
+
+    let found = repo
+        .list_by_horizon_in_period(db.conn(), TaskHorizon::Monthly, "2026-08-01", "2026-08-31")
+        .unwrap();
+
+    assert!(found.is_empty());
+}

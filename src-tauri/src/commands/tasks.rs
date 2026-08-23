@@ -160,3 +160,13 @@ pub fn week_current(starts_on: Option<String>) -> crate::domain::Week {
 pub fn month_current() -> crate::domain::Month {
     crate::domain::current_month()
 }
+
+/// Monthly commitments overlapping `[start, end]`, with progress rolled up.
+#[tauri::command]
+pub fn task_monthly_progress(
+    state: State<'_, AppState>,
+    start: String,
+    end: String,
+) -> Result<Vec<crate::domain::Commitment>, CommandError> {
+    state.monthly_progress(&start, &end)
+}
