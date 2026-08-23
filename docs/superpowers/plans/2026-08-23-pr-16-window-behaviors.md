@@ -93,7 +93,7 @@ ALTER TABLE board_windows ADD COLUMN desktop_level INTEGER NOT NULL DEFAULT 0
 `desktop_level: bool`. `BoardTheme` is a two-variant enum with the same
 `as_str`/`parse`/`ToSql`/`FromSql` treatment `BoardKind` already has.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `migration_005_brings_the_schema_to_version_five`
   - `a_new_board_defaults_to_dark_at_thirteen_pixels`
   - `appearance_round_trips`
@@ -103,8 +103,8 @@ ALTER TABLE board_windows ADD COLUMN desktop_level INTEGER NOT NULL DEFAULT 0
     character with no way back to the menu
   - `a_font_size_above_the_ceiling_is_rejected` — 40px
   - `an_unknown_theme_is_rejected`
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Full Rust gate. Step 6: Commit** — `feat: store how a board looks`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Full Rust gate. Step 6: Commit** — `feat: store how a board looks`
 
 ---
 
@@ -142,7 +142,7 @@ pub fn unlock_all(app: &AppHandle) -> Result<(), CommandError>;
 `apply_to_state` is pure over `BoardWindow`, so every rule below is unit-testable without
 a window. `apply_to_window` is the thin Tauri call that no test can reach.
 
-- [ ] **Step 1: Write the failing tests** (all against `apply_to_state`):
+- [x] **Step 1: Write the failing tests** (all against `apply_to_state`):
   - `always_on_top_clears_desktop_level` — both at once is meaningless
   - `desktop_level_clears_always_on_top`
   - `turning_always_on_top_off_leaves_desktop_level_alone` — clearing one must not set
@@ -154,8 +154,8 @@ a window. `apply_to_window` is the thin Tauri call that no test can reach.
   - `locking_does_not_touch_anything_else`
   - `unlocking_is_the_only_way_click_through_turns_off` — there is no separate flag to
     get out of step with
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement both functions. Step 4: Verify.**
-- [ ] **Step 5: Full Rust gate. Step 6: Commit** — `feat: apply window behaviours`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement both functions. Step 4: Verify.**
+- [x] **Step 5: Full Rust gate. Step 6: Commit** — `feat: apply window behaviours`
 
 ---
 
@@ -172,11 +172,11 @@ Registers `tauri-plugin-global-shortcut` and binds **`Ctrl+Alt+Shift+U`** to `un
 at startup. A failure to register must not stop the app launching — a missing shortcut is
 a degraded escape hatch, not a broken app — so it is logged and swallowed.
 
-- [ ] **Step 1: Add the dependency and the plugin**, register the shortcut, add
+- [x] **Step 1: Add the dependency and the plugin**, register the shortcut, add
       `global-shortcut:default` to the capability file.
-- [ ] **Step 2: Add both commands** and register the handlers.
-- [ ] **Step 3: Full Rust gate** — `cargo build` proves the permission identifier resolves.
-- [ ] **Step 4: Commit** — `feat: add the unlock escape hatch`
+- [x] **Step 2: Add both commands** and register the handlers.
+- [x] **Step 3: Full Rust gate** — `cargo build` proves the permission identifier resolves.
+- [x] **Step 4: Commit** — `feat: add the unlock escape hatch`
 
 ---
 
@@ -202,7 +202,7 @@ export function unlockAllBoards(): Promise<void>;
 
 `BoardWindow` gains `fontSize`, `theme`, `compact`, `desktopLevel`.
 
-- [ ] **Step 1: Add them. Step 2: Typecheck. Step 3: Commit** — `feat: type window behaviours`
+- [x] **Step 1: Add them. Step 2: Typecheck. Step 3: Commit** — `feat: type window behaviours`
 
 ---
 
@@ -215,7 +215,7 @@ export function unlockAllBoards(): Promise<void>;
 
 A `role="menu"` opened from a header button, carrying every §6.7 toggle.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `offers every behaviour the spec lists`
   - `reflects the current state` — a board already on top shows the toggle *on*, not a
     dead switch
@@ -227,8 +227,8 @@ A `role="menu"` opened from a header button, carrying every §6.7 toggle.
   - `warns that locking makes the board click-through, and names the way out` — the user
     must not discover this by losing a board
   - `closes on Escape` and `closes on an outside click`
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify. Step 5: Style.**
-- [ ] **Step 6: Commit** — `feat: add the board menu`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify. Step 5: Style.**
+- [x] **Step 6: Commit** — `feat: add the board menu`
 
 ---
 
@@ -243,15 +243,15 @@ A `role="menu"` opened from a header button, carrying every §6.7 toggle.
 `tokens.css` gains a light palette under `[data-theme="light"]` and a tighter spacing
 scale under `[data-compact="true"]`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - shell: `applies a saved font size as a custom property`;
     `marks its theme so tokens can switch`; `marks compact density`;
     `defaults to dark and comfortable`
   - header: `is draggable when unlocked`; `is not draggable when locked` — the second
     half of "locked", without which the board still moves
   - root: `opens the board menu from the header`; `sends a behaviour change to Rust`
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Commit** — `feat: drive board appearance from saved state`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Commit** — `feat: drive board appearance from saved state`
 
 ---
 
@@ -262,19 +262,31 @@ scale under `[data-compact="true"]`.
 A plainly labelled "Unlock all boards" control in the main window, explaining what it is
 for. Nobody finds a keyboard shortcut they were never told about.
 
-- [ ] **Step 1: Write the failing tests** — `offers a way to unlock every board`;
+- [x] **Step 1: Write the failing tests** — `offers a way to unlock every board`;
       `explains the shortcut, so it can be used when no window is open`;
       `calls the unlock command`.
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Commit** — `feat: surface the unlock escape hatch`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Commit** — `feat: surface the unlock escape hatch`
 
 ---
 
 ### Task 8: Verify against the real app
 
-- [ ] **Step 1: The full local gate** — all seven commands.
+- [x] **Step 1: The full local gate** — all seven commands.
 - [ ] **Step 2: Launch and read the dev log.** Most of §6.7 is OS behaviour no test can
-      reach, so this is the matrix the DoD actually rests on. For one board:
+      reach, so this is the matrix the DoD actually rests on.
+
+      **Done so far:** the app launched and built clean; the dev log carries no error,
+      permission denial, or panic, and **no "could not register the unlock shortcut"
+      line** — the registration succeeded, which is the one part of the escape hatch that
+      could have silently failed. `global-shortcut:default` resolved into the generated
+      `capabilities.json`. No sidecar process. Migration 005 applied to a database that
+      already held four board rows: every one gained the defaults rather than failing to
+      load. The schema rejects all four unrecoverable states — 4px and 99px font, zero
+      opacity, an unknown theme — verified against the real file.
+
+      **Still needs a human at the keyboard.** None of the following can be reached
+      without a real compositor. For one board:
   - Always-on-top: on, covers another window; off, stops covering.
   - Desktop level: sinks below other windows; turning always-on-top on clears it.
   - Opacity: steps down to 0.2 and no further; the board stays visible.
@@ -288,7 +300,7 @@ for. Nobody finds a keyboard shortcut they were never told about.
   - Close the app with a board locked, on top, light, and compact; reopen; every one
     survives.
   - No sidecar process.
-- [ ] **Step 3: Commit, push, open the PR, tick PR 16 in the sequence document.**
+- [x] **Step 3: Commit, push, open the PR, tick PR 16 in the sequence document.**
 
 ---
 
