@@ -141,3 +141,15 @@ export interface CommandError {
   kind: ErrorKind;
   message: string;
 }
+
+/**
+ * A week, as a pair of inclusive ISO-8601 dates.
+ *
+ * Mirrors `src-tauri/src/domain/week.rs`. Computed in Rust, never here — the
+ * frontend deriving its own week from the browser clock is how a board and its
+ * database end up disagreeing about which week it is.
+ */
+export interface Week {
+  start: string;
+  end: string;
+}

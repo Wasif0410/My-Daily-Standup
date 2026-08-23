@@ -290,3 +290,163 @@ describe("the priority filter", () => {
     expect(mockInvoke).toHaveBeenCalledWith("task_list_priority", { threshold: 8 });
   });
 });
+
+describe("the remaining §6.6 interactions", () => {
+  /** Seeds one task into the store, as a board would after loading. */
+  function seed(overrides: Partial<Task> = {}) {
+    const seeded = task({ id: "task-1", ...overrides });
+    useTaskStore.setState({ tasks: { [seeded.id]: seeded } });
+    return seeded;
+  }
+
+  describe("blockers", () => {
+    it("dispatches through the blocker command, not a plain update", async () => {
+      // A plain update would set the text and leave the status disagreeing
+      // with it. Only the blocker command keeps the two in step.
+      seed();
+      mockInvoke.mockResolvedValue(task({ blocker: "waiting", status: "blocked" }));
+
+      await useTaskStore.getState().setBlocker("task-1", "waiting");
+
+      expect(mockInvoke).toHaveBeenCalledWith("task_set_blocker", {
+        id: "task-1",
+        blocker: "waiting",
+      });
+    });
+
+    it("marks the task blocked optimistically", async () => {
+      seed();
+      const pending = deferred<Task>();
+      mockInvoke.mockReturnValue(pending.promise);
+
+      const settled = useTaskStore.getState().setBlocker("task-1", "waiting");
+
+      expect(useTaskStore.getState().tasks["task-1"]?.status).toBe("blocked");
+      pending.resolve(task({ blocker: "waiting", status: "blocked" }));
+      await settled;
+    });
+
+    it("restores the planned status when a blocker is cleared", async () => {
+      seed({ blocker: "waiting", status: "blocked" });
+      const pending = deferred<Task>();
+      mockInvoke.mockReturnValue(pending.promise);
+
+      const settled = useTaskStore.getState().setBlocker("task-1", null);
+
+      expect(useTaskStore.getState().tasks["task-1"]?.status).toBe("planned");
+      expect(useTaskStore.getState().tasks["task-1"]?.blocker).toBeNull();
+      pending.resolve(task());
+      await settled;
+    });
+
+    it("leaves a completed task completed when its blocker is cleared", async () => {
+      // Resolving a blocker must not un-finish work.
+      seed({ status: "completed", blocker: "waiting" });
+      const pending = deferred<Task>();
+      mockInvoke.mockReturnValue(pending.promise);
+
+      const settled = useTaskStore.getState().setBlocker("task-1", null);
+
+      expect(useTaskStore.getState().tasks["task-1"]?.status).toBe("completed");
+      pending.resolve(task({ status: "completed" }));
+      await settled;
+    });
+
+    it("rolls back to the exact prior value when the write fails", async () => {
+      seed({ blocker: null, status: "planned" });
+      mockInvoke.mockRejectedValue({ kind: "storage", message: "disk full" });
+
+      await useTaskStore.getState().setBlocker("task-1", "waiting");
+
+      const restored = useTaskStore.getState().tasks["task-1"];
+      expect(restored?.blocker).toBeNull();
+      expect(restored?.status).toBe("planned");
+      expect(useTaskStore.getState().error?.message).toBe("disk full");
+    });
+  });
+
+  describe("comments", () => {
+    it("dispatches through the comment command", async () => {
+      seed();
+      mockInvoke.mockResolvedValue(task({ notes: "2026-08-23: portal was down" }));
+
+      await useTaskStore.getState().addComment("task-1", "portal was down");
+
+      expect(mockInvoke).toHaveBeenCalledWith("task_add_comment", {
+        id: "task-1",
+        comment: "portal was down",
+      });
+    });
+
+    it("takes the stored notes rather than guessing the format", async () => {
+      // Rust owns the date stamp and the joining, so there is nothing sensible
+      // to guess optimistically here.
+      seed();
+      mockInvoke.mockResolvedValue(task({ notes: "2026-08-23: portal was down" }));
+
+      await useTaskStore.getState().addComment("task-1", "portal was down");
+
+      expect(useTaskStore.getState().tasks["task-1"]?.notes).toBe(
+        "2026-08-23: portal was down",
+      );
+    });
+  });
+
+  describe("priority", () => {
+    it("patches the priority", async () => {
+      seed();
+      mockInvoke.mockResolvedValue(task({ priority: 8 }));
+
+      await useTaskStore.getState().setPriority("task-1", 8);
+
+      expect(mockInvoke).toHaveBeenCalledWith("task_update", {
+        id: "task-1",
+        patch: { priority: 8 },
+      });
+    });
+
+    it("clears a priority with an explicit null", async () => {
+      // Omitting the key would mean "leave alone", so there would be no way
+      // back to unprioritised.
+      seed({ priority: 8 });
+      mockInvoke.mockResolvedValue(task({ priority: null }));
+
+      await useTaskStore.getState().setPriority("task-1", null);
+
+      expect(mockInvoke).toHaveBeenCalledWith("task_update", {
+        id: "task-1",
+        patch: { priority: null },
+      });
+    });
+  });
+
+  describe("moving to another week", () => {
+    it("goes through the period command, never a plain update", async () => {
+      // Only that path counts the move as a deferral (spec §10.3).
+      seed();
+      mockInvoke.mockResolvedValue(
+        task({ periodStart: "2026-08-24", periodEnd: "2026-08-30" }),
+      );
+
+      await useTaskStore.getState().moveToWeek("task-1", "2026-08-24", "2026-08-30");
+
+      expect(mockInvoke).toHaveBeenCalledWith("task_move_to_period", {
+        id: "task-1",
+        start: "2026-08-24",
+        end: "2026-08-30",
+      });
+    });
+  });
+
+  describe("archiving", () => {
+    it("cancels the task rather than deleting the row", async () => {
+      seed();
+      mockInvoke.mockResolvedValue(task({ status: "cancelled" }));
+
+      await useTaskStore.getState().archive("task-1");
+
+      expect(mockInvoke).toHaveBeenCalledWith("task_archive", { id: "task-1" });
+      expect(useTaskStore.getState().tasks["task-1"]?.status).toBe("cancelled");
+    });
+  });
+});

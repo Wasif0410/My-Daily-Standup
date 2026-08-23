@@ -9,8 +9,12 @@
 
 import { create } from "zustand";
 import {
+  addComment,
+  archiveTask,
   createTask,
   deleteTask,
+  moveTaskToPeriod,
+  setBlocker,
   listTasksByHorizon,
   listTasksForDate,
   listPriorityTasks,
@@ -63,6 +67,11 @@ interface TaskState {
   moveToDate: (id: string, date: string) => Promise<void>;
   promote: (id: string, horizon: TaskHorizon) => Promise<void>;
   recordTimeSpent: (id: string, minutes: number | null) => Promise<void>;
+  setBlocker: (id: string, blocker: string | null) => Promise<void>;
+  addComment: (id: string, comment: string) => Promise<void>;
+  setPriority: (id: string, priority: number | null) => Promise<void>;
+  moveToWeek: (id: string, start: string, end: string) => Promise<void>;
+  archive: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
 
   orderedTasks: () => Task[];
@@ -209,6 +218,58 @@ export const useTaskStore = create<TaskState>((set, get) => {
         id,
         (t) => ({ ...t, timeSpentMinutes: minutes }),
         () => setTimeSpent(id, minutes),
+      );
+    },
+
+    async setBlocker(id, blocker) {
+      // Through the blocker command, never a plain update: only that path also
+      // moves the status, and the two must not be able to disagree.
+      await optimistic(
+        id,
+        (t) => ({
+          ...t,
+          blocker,
+          // Mirrors the Rust rule exactly. Clearing a blocker only lifts a
+          // block — it must never un-complete finished work.
+          status: blocker ? "blocked" : t.status === "blocked" ? "planned" : t.status,
+        }),
+        () => setBlocker(id, blocker),
+      );
+    },
+
+    async addComment(id, comment) {
+      // No optimistic guess: Rust owns the date stamp and how lines are joined,
+      // so anything invented here would flicker to a different string.
+      await optimistic(
+        id,
+        (t) => t,
+        () => addComment(id, comment),
+      );
+    },
+
+    async setPriority(id, priority) {
+      // An explicit null rather than an omitted key, or there would be no way
+      // back to unprioritised.
+      await patch(id, (t) => ({ ...t, priority }), { priority });
+    },
+
+    async moveToWeek(id, start, end) {
+      // Through the period command, never a plain update: only that path counts
+      // the move as a deferral (spec §10.3).
+      await optimistic(
+        id,
+        (t) => ({ ...t, periodStart: start, periodEnd: end }),
+        () => moveTaskToPeriod(id, start, end),
+      );
+    },
+
+    async archive(id) {
+      // Cancelled, not deleted. The entry stays in the map — the board filters
+      // it out, but a restored task must not have to be recreated.
+      await optimistic(
+        id,
+        (t) => ({ ...t, status: "cancelled" }),
+        () => archiveTask(id),
       );
     },
 
