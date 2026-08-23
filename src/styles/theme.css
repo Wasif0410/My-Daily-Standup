@@ -1,0 +1,182 @@
+/*
+ * Board chrome.
+ *
+ * The shared chassis every board renders inside. Values come from tokens.css;
+ * nothing here hard-codes a colour or a size.
+ */
+
+/* Board windows are transparent so the desktop shows through the rounded
+   corners. Only applied to board windows, never the main one. */
+body.board-window {
+  background: transparent;
+  overflow: hidden;
+  /* A sticky note is not a document; dragging should move the window, not
+     select its text. */
+  user-select: none;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-size: var(--board-font-size);
+  color: var(--text-primary);
+  background: color-mix(
+    in srgb,
+    var(--surface-base) calc(var(--board-opacity) * 100%),
+    transparent
+  );
+  border: 1px solid var(--border-subtle);
+  border-top: var(--board-border-top) solid var(--board-accent);
+  border-radius: var(--radius-board);
+  overflow: hidden;
+}
+
+/* A locked board is scenery: clicks pass through it (PR 16 wires the
+   behaviour; this is the visual cue that it is inert). */
+.board[data-locked="true"] {
+  border-color: transparent;
+  border-top-color: color-mix(in srgb, var(--board-accent) 45%, transparent);
+}
+
+/* ---- Header ------------------------------------------------------------ */
+
+.board-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  /* The whole header is the drag handle: a frameless window has no OS title
+     bar to grab. */
+  cursor: grab;
+}
+
+.board-header:active {
+  cursor: grabbing;
+}
+
+.board-title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A subtitle carries the period, e.g. "2026-W34". Secondary to the title but
+   always visible, since a week board without its week is ambiguous. */
+.board-subtitle {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* ---- Controls ----------------------------------------------------------
+   Hidden until the pointer is over the board (spec §6.1). They stay in the
+   layout so revealing them never shifts the title. */
+
+.board-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.board:hover .board-actions,
+.board:focus-within .board-actions {
+  opacity: 1;
+}
+
+.board-action {
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-body);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.board-action:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+/* Keyboard users get the same affordance as the mouse, which the opacity
+   rule above would otherwise deny them. */
+.board-action:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+}
+
+/* ---- Body -------------------------------------------------------------- */
+
+.board-body {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.board[data-collapsed="true"] .board-body {
+  display: none;
+}
+
+.board-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.board-body::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+
+.board-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---- Sections ---------------------------------------------------------- */
+
+.board-section + .board-section {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.board-section-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.board-empty {
+  color: var(--text-dim);
+  font-size: var(--font-size-small);
+}
+
+/* A board-local failure. Small and inline: a sticky note has no room for a
+   dialog, but a silent failure is worse than a cramped message. */
+.board-error {
+  margin: 0 0 var(--space-2);
+  color: var(--status-blocked);
+  font-size: var(--font-size-small);
+}

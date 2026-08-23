@@ -32,6 +32,18 @@ pub fn board_save_geometry(
     windows::save_geometry(&app, kind, x, y, width, height)
 }
 
+/// Records whether a board is collapsed to its title bar.
+#[tauri::command]
+pub fn board_set_collapsed(
+    state: tauri::State<'_, super::AppState>,
+    kind: BoardKind,
+    collapsed: bool,
+) -> Result<(), CommandError> {
+    let mut board = state.board(kind)?;
+    board.collapsed = collapsed;
+    state.save_board(&board)
+}
+
 #[tauri::command]
 pub fn board_list(
     state: tauri::State<'_, super::AppState>,
