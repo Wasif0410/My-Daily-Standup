@@ -301,3 +301,14 @@ export function getUiState(key: string): Promise<string | null> {
 export function setUiState(key: string, value: string): Promise<void> {
   return call<void>("ui_state_set", { key, value });
 }
+
+/**
+ * Closes the Quick Add window.
+ *
+ * A command rather than `getCurrentWindow().close()` so the capability file
+ * does not have to grant a close permission to a window whose only job is one
+ * input.
+ */
+export function closeQuickAdd(): Promise<void> {
+  return call<void>("quick_add_close");
+}
