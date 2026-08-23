@@ -186,3 +186,19 @@ fn an_iso_week_is_zero_padded() {
 
     assert_eq!(week.label, "2026-W06");
 }
+
+#[test]
+fn a_week_remembers_the_date_it_was_derived_from() {
+    // How a board marks today without the frontend consulting a clock of its
+    // own, which would disagree with the database across a timezone.
+    let week = week_containing(date("2026-08-19"), Weekday::Mon);
+
+    assert_eq!(week.today, "2026-08-19");
+}
+
+#[test]
+fn the_derived_date_falls_inside_the_week_it_produced() {
+    let week = week_containing(date("2026-08-23"), Weekday::Mon);
+
+    assert!(week.days.iter().any(|d| d.date == week.today));
+}

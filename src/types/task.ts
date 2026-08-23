@@ -157,6 +157,11 @@ export interface Week {
   label: string;
   /** The seven days, in display order. */
   days: WeekDay[];
+  /** The date this week was derived from — today, since the frontend only ever
+   *  asks for the current week. Lets a board mark today without consulting a
+   *  clock of its own, which would disagree with the database across a
+   *  timezone. */
+  today: string;
 }
 
 /** One day of a week: the date to match tasks against, and the name to show. */

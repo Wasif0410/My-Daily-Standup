@@ -640,3 +640,10 @@ body.board-window {
 .day-section .task-list-plain {
   margin-left: var(--space-4);
 }
+
+/* The exact dates, secondary to the ISO label. Present because "2026-W34" is
+   precise but not readable at a glance. */
+.board-week-dates {
+  color: var(--text-dim);
+  opacity: 0.75;
+}

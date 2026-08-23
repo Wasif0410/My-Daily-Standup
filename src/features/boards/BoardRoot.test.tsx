@@ -57,3 +57,32 @@ describe("BoardRoot board content", () => {
     expect(await screen.findByText(/nothing planned this week/i)).toBeInTheDocument();
   });
 });
+
+describe("BoardRoot progress window", () => {
+  it("puts the progress board in the weekly-progress window", async () => {
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "week_current")
+        return Promise.resolve({
+          start: "2026-08-17",
+          end: "2026-08-23",
+          label: "2026-W34",
+          today: "2026-08-18",
+          days: [
+            { date: "2026-08-17", name: "Monday" },
+            { date: "2026-08-18", name: "Tuesday" },
+            { date: "2026-08-19", name: "Wednesday" },
+            { date: "2026-08-20", name: "Thursday" },
+            { date: "2026-08-21", name: "Friday" },
+            { date: "2026-08-22", name: "Saturday" },
+            { date: "2026-08-23", name: "Sunday" },
+          ],
+        });
+      if (command === "ui_state_get") return Promise.resolve(null);
+      return Promise.resolve([]);
+    });
+
+    render(<BoardRoot kind="weekly-progress" />);
+
+    expect(await screen.findByRole("button", { name: /Monday/ })).toBeInTheDocument();
+  });
+});

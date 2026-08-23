@@ -123,7 +123,14 @@ export function WeeklyBoard() {
         </p>
       )}
 
-      {week && <p className="board-week">{`${week.start} → ${week.end}`}</p>}
+      {week && (
+        <p className="board-week">
+          {week.label}{" "}
+          <span className="board-week-dates">
+            {week.start} → {week.end}
+          </span>
+        </p>
+      )}
 
       <QuickAdd
         placeholder="Add to this week…"

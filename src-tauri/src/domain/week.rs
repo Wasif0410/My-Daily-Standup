@@ -29,7 +29,12 @@ pub struct Week {
     pub end: String,
     /// The ISO week, e.g. "2026-W34".
     pub label: String,
+    /// The seven days, in display order.
     pub days: Vec<WeekDay>,
+    /// The date this week was derived from. Via [`current_week`] — the only
+    /// path the frontend uses — that is today, which is what lets a board mark
+    /// today without consulting a clock of its own.
+    pub today: String,
 }
 
 /// The week `date` falls in, given the day weeks start on.
@@ -71,6 +76,7 @@ pub fn week_containing(date: NaiveDate, starts_on: Weekday) -> Week {
         // would sort before "2026-W34" as text.
         label: format!("{}-W{:02}", iso.year(), iso.week()),
         days,
+        today: date.format("%Y-%m-%d").to_string(),
     }
 }
 

@@ -6,9 +6,29 @@ import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
 import { useTaskStore } from "@/stores/taskStore";
 import type { Task } from "@/types/task";
 
+vi.mock("@/lib/taskEvents", () => ({
+  emitTaskChanged: vi.fn(),
+  onTaskChanged: vi.fn().mockResolvedValue(() => {}),
+  TASK_CHANGED: "task-changed",
+}));
+
 const mockInvoke = vi.mocked(invoke);
 
-const WEEK = { start: "2026-08-17", end: "2026-08-23" };
+const WEEK = {
+  start: "2026-08-17",
+  end: "2026-08-23",
+  label: "2026-W34",
+  today: "2026-08-18",
+  days: [
+    { date: "2026-08-17", name: "Monday" },
+    { date: "2026-08-18", name: "Tuesday" },
+    { date: "2026-08-19", name: "Wednesday" },
+    { date: "2026-08-20", name: "Thursday" },
+    { date: "2026-08-21", name: "Friday" },
+    { date: "2026-08-22", name: "Saturday" },
+    { date: "2026-08-23", name: "Sunday" },
+  ],
+};
 
 function task(overrides: Partial<Task> = {}): Task {
   return {
@@ -283,11 +303,13 @@ describe("WeeklyBoard", () => {
 
   it("shows the week it is displaying", async () => {
     // A week board without its week is ambiguous the moment you look away.
+    // The ISO label leads, matching the spec's mockups for both week boards.
     respond();
 
     render(<WeeklyBoard />);
 
-    expect(await screen.findByText(/2026-08-17/)).toBeInTheDocument();
+    expect(await screen.findByText("2026-W34")).toBeInTheDocument();
+    expect(screen.getByText(/2026-08-17/)).toBeInTheDocument();
   });
 
   it("surfaces a failure rather than failing silently", async () => {
