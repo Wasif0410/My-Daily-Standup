@@ -16,7 +16,7 @@ const COLUMNS: &str = "id, title, description, horizon, status, parent_task_id, 
      source_type, source_file, source_line, area, project, priority, \
      scheduled_date, period_start, period_end, due_date, completed_at, \
      progress_current, progress_target, progress_unit, blocker, notes, \
-     rollover_count, created_at, updated_at";
+     time_spent_minutes, rollover_count, created_at, updated_at";
 
 /// Reads and writes tasks.
 #[derive(Debug, Default, Clone, Copy)]
@@ -134,6 +134,7 @@ impl TaskRepo {
         set!(patch.progress_unit, "progress_unit");
         set!(patch.blocker, "blocker");
         set!(patch.notes, "notes");
+        set!(patch.time_spent_minutes, "time_spent_minutes");
         set!(patch.rollover_count, "rollover_count");
 
         // Always last, and always set by the repository rather than the caller.
@@ -274,9 +275,10 @@ fn from_row(row: &Row<'_>) -> Result<Task, rusqlite::Error> {
         progress_unit: row.get(19)?,
         blocker: row.get(20)?,
         notes: row.get(21)?,
-        rollover_count: row.get(22)?,
-        created_at: row.get(23)?,
-        updated_at: row.get(24)?,
+        time_spent_minutes: row.get(22)?,
+        rollover_count: row.get(23)?,
+        created_at: row.get(24)?,
+        updated_at: row.get(25)?,
     })
 }
 

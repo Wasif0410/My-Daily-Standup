@@ -15,6 +15,7 @@ import {
   listTasksForDate,
   listTasksForPeriod,
   rescheduleTask,
+  setTimeSpent,
   toCommandError,
   updateTask,
 } from "@/lib/ipc";
@@ -59,6 +60,7 @@ interface TaskState {
   editTitle: (id: string, title: string) => Promise<void>;
   moveToDate: (id: string, date: string) => Promise<void>;
   promote: (id: string, horizon: TaskHorizon) => Promise<void>;
+  recordTimeSpent: (id: string, minutes: number | null) => Promise<void>;
   remove: (id: string) => Promise<void>;
 
   orderedTasks: () => Task[];
@@ -196,6 +198,14 @@ export const useTaskStore = create<TaskState>((set, get) => {
 
     async promote(id, horizon) {
       await patch(id, (t) => ({ ...t, horizon }), { horizon });
+    },
+
+    async recordTimeSpent(id, minutes) {
+      await optimistic(
+        id,
+        (t) => ({ ...t, timeSpentMinutes: minutes }),
+        () => setTimeSpent(id, minutes),
+      );
     },
 
     async remove(id) {

@@ -207,6 +207,7 @@ fn stat_task(status: TaskStatus, rollover: i64) -> crate::storage::Task {
         progress_unit: None,
         blocker: None,
         notes: None,
+        time_spent_minutes: None,
         rollover_count: rollover,
         created_at: "2026-08-20T00:00:00.000000Z".into(),
         updated_at: "2026-08-20T00:00:00.000000Z".into(),
