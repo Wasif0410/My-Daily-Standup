@@ -167,6 +167,36 @@ impl AppState {
         self.with_conn(|repo, conn| crate::domain::reschedule(repo, conn, id, to))
     }
 
+    /// Moves a task to another week through the rollover engine.
+    ///
+    /// Like [`Self::reschedule_task`], never a plain update: only this path
+    /// counts the move as a deferral.
+    pub fn move_task_to_period(
+        &self,
+        id: &str,
+        start: &str,
+        end: &str,
+    ) -> Result<Task, CommandError> {
+        self.with_conn(|repo, conn| crate::domain::move_to_period(repo, conn, id, start, end))
+    }
+
+    /// Archives a task by cancelling it.
+    ///
+    /// The row survives; only the board loses it. That is the whole difference
+    /// between archiving and deleting, and it is why this is not `delete_task`
+    /// with a friendlier name.
+    pub fn archive_task(&self, id: &str) -> Result<Task, CommandError> {
+        self.with_conn(|repo, conn| {
+            repo.update(
+                conn,
+                id,
+                TaskPatch {
+                    status: Some(crate::storage::TaskStatus::Cancelled),
+                    ..Default::default()
+                },
+            )
+        })
+    }
     /// Sets or clears a blocker, keeping the task's status in step.
     ///
     /// Deliberately not a plain `update_task` carrying a `blocker`: that would

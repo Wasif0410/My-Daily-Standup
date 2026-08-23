@@ -24,7 +24,7 @@ mod week_tests;
 
 pub use blocker::{add_comment, set_blocker, today};
 pub use progress::{compute_progress, is_complete_by_rule, Progress};
-pub use rollover::{period_stats, reschedule, PeriodStats};
+pub use rollover::{move_to_period, period_stats, reschedule, PeriodStats};
 pub use time_spent::{
     average_minutes, format_minutes, implausible_durations, minutes_by_area, minutes_by_project,
     minutes_in_period, UNASSIGNED,

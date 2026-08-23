@@ -6,7 +6,9 @@
 //! than the mechanism.
 
 use super::*;
-use crate::storage::{Db, NewTask, TaskHorizon, TaskPatch, TaskRepo, TaskSource, TaskStatus};
+use crate::storage::{
+    Db, NewTask, StorageError, TaskHorizon, TaskPatch, TaskRepo, TaskSource, TaskStatus,
+};
 
 fn setup() -> (Db, TaskRepo) {
     (
@@ -278,4 +280,93 @@ fn carried_counts_unfinished_tasks_that_were_deferred() {
         stats.carried, 1,
         "only work still outstanding counts as carried forward"
     );
+}
+
+// ---- moving to another week -------------------------------------------------
+
+fn weekly(db: &Db, repo: &TaskRepo, start: Option<&str>, end: Option<&str>) -> String {
+    repo.create(
+        db.conn(),
+        NewTask {
+            period_start: start.map(str::to_string),
+            period_end: end.map(str::to_string),
+            ..NewTask::new(
+                "ship the prototype",
+                TaskHorizon::Weekly,
+                TaskSource::Manual,
+            )
+        },
+    )
+    .unwrap()
+    .id
+}
+
+#[test]
+fn moving_to_a_later_week_counts_as_a_deferral() {
+    // Pushing a commitment into next week is the canonical deferral, and the
+    // reflection prompt in §10.3 exists to notice it happening repeatedly.
+    let (db, repo) = setup();
+    let id = weekly(&db, &repo, Some("2026-08-17"), Some("2026-08-23"));
+
+    let task = move_to_period(&repo, db.conn(), &id, "2026-08-24", "2026-08-30").unwrap();
+
+    assert_eq!(task.period_start.as_deref(), Some("2026-08-24"));
+    assert_eq!(task.period_end.as_deref(), Some("2026-08-30"));
+    assert_eq!(task.rollover_count, 1);
+}
+
+#[test]
+fn pulling_a_task_into_an_earlier_week_does_not_count() {
+    // Bringing work forward is planning, not avoidance.
+    let (db, repo) = setup();
+    let id = weekly(&db, &repo, Some("2026-08-24"), Some("2026-08-30"));
+
+    let task = move_to_period(&repo, db.conn(), &id, "2026-08-17", "2026-08-23").unwrap();
+
+    assert_eq!(task.rollover_count, 0);
+}
+
+#[test]
+fn moving_within_the_same_week_does_not_count() {
+    let (db, repo) = setup();
+    let id = weekly(&db, &repo, Some("2026-08-17"), Some("2026-08-23"));
+
+    let task = move_to_period(&repo, db.conn(), &id, "2026-08-17", "2026-08-23").unwrap();
+
+    assert_eq!(task.rollover_count, 0);
+}
+
+#[test]
+fn giving_an_unscheduled_task_its_first_period_does_not_count() {
+    // Placing a backlog item into a week is scheduling, not deferral.
+    let (db, repo) = setup();
+    let id = weekly(&db, &repo, None, None);
+
+    let task = move_to_period(&repo, db.conn(), &id, "2026-08-17", "2026-08-23").unwrap();
+
+    assert_eq!(task.rollover_count, 0);
+}
+
+#[test]
+fn move_to_period_rejects_a_malformed_date() {
+    // Validated before the database is touched, so a bad value cannot leave a
+    // task half-updated.
+    let (db, repo) = setup();
+    let id = weekly(&db, &repo, Some("2026-08-17"), Some("2026-08-23"));
+
+    let failed = move_to_period(&repo, db.conn(), &id, "next monday", "2026-08-30");
+
+    assert!(matches!(failed, Err(StorageError::InvalidDate { .. })));
+    let unchanged = repo.get(db.conn(), &id).unwrap().unwrap();
+    assert_eq!(unchanged.period_start.as_deref(), Some("2026-08-17"));
+}
+
+#[test]
+fn move_to_period_rejects_a_week_that_ends_before_it_starts() {
+    let (db, repo) = setup();
+    let id = weekly(&db, &repo, None, None);
+
+    let failed = move_to_period(&repo, db.conn(), &id, "2026-08-30", "2026-08-24");
+
+    assert!(matches!(failed, Err(StorageError::InvalidDate { .. })));
 }

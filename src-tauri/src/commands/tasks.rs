@@ -95,6 +95,24 @@ pub fn task_children_of(
     state.children_of(&parent_id)
 }
 
+/// Moves a task to another week, counting a later move as a deferral. The only
+/// route that may change `period_start` / `period_end`.
+#[tauri::command]
+pub fn task_move_to_period(
+    state: State<'_, AppState>,
+    id: String,
+    start: String,
+    end: String,
+) -> Result<Task, CommandError> {
+    state.move_task_to_period(&id, &start, &end)
+}
+
+/// Archives a task: cancelled, not deleted. The row survives.
+#[tauri::command]
+pub fn task_archive(state: State<'_, AppState>, id: String) -> Result<Task, CommandError> {
+    state.archive_task(&id)
+}
+
 /// Sets or clears a blocker. `blocker: null` clears it.
 ///
 /// The only route that may change `blocker`, since it is also what keeps the
