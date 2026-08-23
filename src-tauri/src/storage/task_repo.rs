@@ -216,6 +216,32 @@ impl TaskRepo {
         )
     }
 
+    /// Tasks scheduled on any day in `[start, end]`, inclusive.
+    ///
+    /// Keyed on `scheduled_date`, not the period columns: the Weekly Progress
+    /// board answers "how did the week go, day by day", and a commitment that
+    /// merely overlaps the week has no day to sit on.
+    ///
+    /// Inclusive at both ends. An exclusive upper bound would silently drop a
+    /// seventh of every week from the board that exists to show all of it.
+    pub fn list_scheduled_between(
+        &self,
+        conn: &Connection,
+        start: &str,
+        end: &str,
+    ) -> Result<Vec<Task>, StorageError> {
+        self.query(
+            conn,
+            &format!(
+                "SELECT {COLUMNS} FROM tasks \
+                 WHERE scheduled_date IS NOT NULL \
+                   AND scheduled_date BETWEEN ?1 AND ?2 \
+                 ORDER BY scheduled_date, priority DESC NULLS LAST, created_at"
+            ),
+            rusqlite::params![start, end],
+        )
+    }
+
     /// Tasks the Priority board shows: important work that outlives a day.
     ///
     /// `priority IS NULL` is excluded rather than coalesced to zero. An

@@ -57,6 +57,16 @@ pub fn task_list_for_period(
     state.list_for_period(&start, &end)
 }
 
+/// Tasks scheduled on any day in `[start, end]`, inclusive.
+#[tauri::command]
+pub fn task_list_scheduled_between(
+    state: State<'_, AppState>,
+    start: String,
+    end: String,
+) -> Result<Vec<Task>, CommandError> {
+    state.list_scheduled_between(&start, &end)
+}
+
 /// Tasks for the Priority board. `threshold` is the lowest priority shown.
 #[tauri::command]
 pub fn task_list_priority(
