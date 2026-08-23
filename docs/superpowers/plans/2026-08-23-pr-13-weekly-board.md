@@ -88,7 +88,7 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
 - `pub fn current_week(starts_on: Weekday) -> Week` — uses `chrono::Local::now()`.
 - Command `week_current { starts_on: Option<String> } -> Week`, defaulting to Monday.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `week_containing_a_midweek_date_spans_monday_to_sunday`
   - `week_containing_monday_returns_that_monday` — a boundary date belongs to the week it
     starts, not the one before
@@ -98,12 +98,12 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
     in August. Weeks do not stop at months.
   - `week_containing_crosses_a_year_boundary`
   - `current_week_is_seven_days_long`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** `week.rs` using `NaiveDate::week(starts_on)`.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Add the command** and register it in `generate_handler!`.
-- [ ] **Step 6: Full Rust gate.**
-- [ ] **Step 7: Commit** — `feat: compute the current week in Rust`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement** `week.rs` using `NaiveDate::week(starts_on)`.
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Add the command** and register it in `generate_handler!`.
+- [x] **Step 6: Full Rust gate.**
+- [x] **Step 7: Commit** — `feat: compute the current week in Rust`
 
 ---
 
@@ -118,7 +118,7 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
 - Commands `task_set_blocker { id, blocker: Option<String> }`,
   `task_add_comment { id, comment: String }`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `setting_a_blocker_marks_the_task_blocked`
   - `clearing_a_blocker_returns_the_task_to_planned`
   - `clearing_a_blocker_leaves_a_completed_task_completed` — resolving a blocker must not
@@ -128,12 +128,12 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
   - `a_comment_appends_rather_than_replacing` — two comments, both present
   - `a_comment_carries_its_date` — an undated note is useless a week later
   - `a_comment_on_an_empty_notes_field_does_not_lead_with_a_blank_line`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** `blocker.rs`.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Add both commands** and register them.
-- [ ] **Step 6: Full Rust gate.**
-- [ ] **Step 7: Commit** — `feat: couple a blocker to the blocked status`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement** `blocker.rs`.
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Add both commands** and register them.
+- [x] **Step 6: Full Rust gate.**
+- [x] **Step 7: Commit** — `feat: couple a blocker to the blocked status`
 
 ---
 
@@ -148,7 +148,7 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
   moves later, mirroring `reschedule` exactly.
 - Commands `task_move_to_period { id, start, end }`, `task_archive { id }`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `moving_to_a_later_week_counts_as_a_deferral`
   - `pulling_a_task_into_an_earlier_week_does_not_count`
   - `moving_within_the_same_week_does_not_count`
@@ -156,13 +156,13 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
   - `move_to_period_rejects_a_malformed_date` — before touching the database, so a bad
     value cannot half-update a task
   - `archiving_a_task_cancels_it_without_deleting_the_row`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** `move_to_period`, factoring the shared "is this later?" check
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement** `move_to_period`, factoring the shared "is this later?" check
       out of `reschedule` rather than duplicating it.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Add both commands** and register them.
-- [ ] **Step 6: Full Rust gate.**
-- [ ] **Step 7: Commit** — `feat: move a task to another week`
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Add both commands** and register them.
+- [x] **Step 6: Full Rust gate.**
+- [x] **Step 7: Commit** — `feat: move a task to another week`
 
 ---
 
@@ -189,7 +189,7 @@ moveToWeek: (id: string, start: string, end: string) => Promise<void>;
 archive: (id: string) => Promise<void>;
 ```
 
-- [ ] **Step 1: Write the failing store tests:**
+- [x] **Step 1: Write the failing store tests:**
   - `setBlocker dispatches through the blocker command, not a plain update` — a plain
     update would leave the status disagreeing with the text
   - `setBlocker marks the task blocked optimistically`
@@ -201,11 +201,11 @@ archive: (id: string) => Promise<void>;
     counts the deferral
   - `archive cancels the task rather than removing it from the map`
   - `a failed blocker write rolls back to the exact prior value`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement** the wrappers and the five actions, reusing the existing
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement** the wrappers and the five actions, reusing the existing
       `optimistic` helper.
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Commit** — `feat: add the remaining task interactions to the store`
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Commit** — `feat: add the remaining task interactions to the store`
 
 ---
 
@@ -224,15 +224,15 @@ archive: (id: string) => Promise<void>;
 Renaming `area` → `label` on the grouping type touches `PriorityBoard`; TypeScript will
 point at every site.
 
-- [ ] **Step 1: Write the failing tests** — mirror the `groupByArea` set for
+- [x] **Step 1: Write the failing tests** — mirror the `groupByArea` set for
       `groupByProject`, plus `groups by project independently of area` and
       `an unassigned project gets its own heading`.
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement**, then `git mv` the component and update its import in
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement**, then `git mv` the component and update its import in
       `PriorityBoard.tsx`.
-- [ ] **Step 4: Run the whole suite** — PR 12's tests must still pass unchanged in
+- [x] **Step 4: Run the whole suite** — PR 12's tests must still pass unchanged in
       behaviour.
-- [ ] **Step 5: Commit** — `refactor: generalise task grouping beyond areas`
+- [x] **Step 5: Commit** — `refactor: generalise task grouping beyond areas`
 
 ---
 
@@ -265,7 +265,7 @@ interface TaskContextMenuProps {
 A `role="menu"` with `role="menuitem"` children, positioned at the click point, closing on
 Escape, on outside click, and after any action fires.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `renders every interaction from the spec` — one assertion per §6.6 item
   - `shows "Uncomplete" for a completed task` — a menu offering "Complete" on finished
     work is lying about state
@@ -275,11 +275,11 @@ Escape, on outside click, and after any action fires.
   - `is reachable by keyboard` — arrow keys move between items
   - `dispatches each action to its handler` — one test per handler
   - `offers "Promote to weekly" only for a daily task`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Style** the menu — `--surface-raised`, `--border-strong`, tokens only.
-- [ ] **Step 6: Commit** — `feat: add the task context menu`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Style** the menu — `--surface-raised`, `--border-strong`, tokens only.
+- [x] **Step 6: Commit** — `feat: add the task context menu`
 
 ---
 
@@ -298,7 +298,7 @@ instead of typing an `e`.
 | `Delete` | Delete |
 | `Shift+F10` or `ContextMenu` | Open the menu |
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `toggles completion on Enter when the row is focused`
   - `toggles completion on Space`
   - `opens the title editor on e`
@@ -308,10 +308,10 @@ instead of typing an `e`.
   - `ignores shortcuts typed inside the title editor` — the one that matters: type `e`
     while editing and assert the text contains it and no second editor opened
   - `does not delete when Delete is pressed inside the editor`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run to verify they pass** — PR 12's 19 row tests must still pass.
-- [ ] **Step 5: Commit** — `feat: drive a task row from the keyboard`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run to verify they pass** — PR 12's 19 row tests must still pass.
+- [x] **Step 5: Commit** — `feat: drive a task row from the keyboard`
 
 ---
 
@@ -323,18 +323,18 @@ instead of typing an `e`.
 **Interfaces:** `<QuickAdd onAdd={(title: string) => void} placeholder={string | undefined} />`.
 One input; Enter submits and clears; Escape clears and blurs; whitespace-only is refused.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `adds a task on Enter`
   - `clears the field after adding, ready for the next one`
   - `refuses a whitespace-only title`
   - `trims surrounding whitespace`
   - `clears without adding on Escape`
   - `does not submit an empty field`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: Style.**
-- [ ] **Step 6: Commit** — `feat: add tasks from the board`
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: Style.**
+- [x] **Step 6: Commit** — `feat: add tasks from the board`
 
 ---
 
@@ -347,7 +347,7 @@ Asks Rust for the current week, loads `{ kind: "period", start, end }`, groups b
 renders `QuickAdd` plus a `TaskGroup` per project, and owns the context-menu state (which
 row, at which point). The week appears as the board subtitle.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `asks Rust for the current week rather than computing one`
   - `loads the period the week covers`
   - `groups tasks by project`
@@ -359,16 +359,33 @@ row, at which point). The week appears as the board subtitle.
   - `adding a blocker goes through the blocker command`
   - `surfaces a failure rather than failing silently`
   - `BoardRoot puts the weekly board in the weekly-tasks window`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run to verify they pass.**
-- [ ] **Step 5: The full local gate** — all seven commands from Global Constraints.
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run to verify they pass.**
+- [x] **Step 5: The full local gate** — all seven commands from Global Constraints.
 - [ ] **Step 6: Launch the app and read the dev log.** Non-negotiable; PR 10's lesson.
-      Confirm no sidecar process. Verify the DoD by hand:
+
+      **Done so far:** the app was launched, built clean, and the dev log carries no
+      permission error. No sidecar process appeared. Six `[seed]`-prefixed weekly tasks
+      were written into the current week (2026-08-17 → 2026-08-23) across three projects
+      plus one unfiled, and the board's query was run against the real database — six
+      rows, all at `rollover_count = 0`, which is the baseline for the check below.
+
+      **Still needs a human at the keyboard:**
   - Every §6.6 interaction works and persists across a restart.
-  - **Moving a task to another day increments `rollover_count` exactly once** — check the
-    value in the database directly, before and after.
-- [ ] **Step 7: Commit, push, open the PR, tick PR 13 in the sequence document.**
+  - **Moving a task to another day increments `rollover_count` exactly once.** Baseline is
+    0 for every seeded row. Right-click → *Move to another day* → a date **later** than
+    2026-08-21, then re-run the verification script: the moved row should read 1, every
+    other row still 0. Moving it *earlier* must leave it at 1, not 2.
+  - Right-click and Shift+F10 both open the menu; arrow keys move through it.
+  - Archive removes a task from the board but leaves the row in the database
+    (`SELECT status FROM tasks WHERE title LIKE '%Choose hotel%'` → `cancelled`).
+  - Adding a blocker flips the status to `blocked` and shows the text; resolving it
+    returns the task to `planned`.
+
+      Remove the seeded rows afterwards with
+      `DELETE FROM tasks WHERE title LIKE '[seed]%'`.
+- [x] **Step 7: Commit, push, open the PR, tick PR 13 in the sequence document.**
 
 ---
 

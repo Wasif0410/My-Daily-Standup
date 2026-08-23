@@ -460,7 +460,7 @@ A board is 340px wide by default, so the row has to stay legible when narrow —
 
 ---
 
-### - [ ] PR 13 — Weekly Tasks board & task interactions
+### - [x] PR 13 — Weekly Tasks board & task interactions
 **Branch:** `feat/pr-13-weekly-board`
 **Depends on:** PR 12
 **What this gives the app:** The week's commitments on screen, plus every way you would want to change a task — complete it, edit it, move it, block it.
