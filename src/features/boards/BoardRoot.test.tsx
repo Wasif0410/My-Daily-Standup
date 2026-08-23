@@ -35,12 +35,23 @@ describe("BoardRoot", () => {
     ).toBeInTheDocument();
   });
 
-  it("still shows a placeholder for boards that have no content yet", async () => {
-    // PRs 13-15 fill these in. Until then the window must say something rather
-    // than render blank, which reads as broken.
+  it("puts the monthly board in the monthly-progress window", async () => {
+    // The last placeholder is gone: every board kind now maps to a real
+    // component, and the switch will not compile if a future one does not.
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "month_current")
+        return Promise.resolve({
+          start: "2026-08-01",
+          end: "2026-08-31",
+          label: "August 2026",
+          today: "2026-08-23",
+        });
+      return Promise.resolve([]);
+    });
+
     render(<BoardRoot kind="monthly-progress" />);
 
-    expect(await screen.findByText("No tasks yet.")).toBeInTheDocument();
+    expect(await screen.findByText("August 2026")).toBeInTheDocument();
   });
 });
 

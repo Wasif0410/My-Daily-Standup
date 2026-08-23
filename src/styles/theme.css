@@ -691,3 +691,22 @@ body.board-window {
   text-align: right;
   color: var(--text-dim);
 }
+
+/* ---- Monthly commitments -----------------------------------------------
+   Outcomes rather than tasks (spec §6.5): a name, a figure, and a bar. */
+
+.commitment + .commitment {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* The figure carries the meaning; the bar only shows the shape of it. Larger
+   than a label, and never dimmed. */
+.commitment-figure {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
