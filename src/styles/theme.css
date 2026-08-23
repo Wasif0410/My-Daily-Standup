@@ -207,3 +207,106 @@ body.board-window {
 .priority-badge[data-tier="none"] {
   color: var(--text-dim);
 }
+
+.duration-field {
+  position: relative;
+  flex: none;
+}
+
+.duration-value {
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.duration-value:hover {
+  color: var(--text-secondary);
+}
+
+.duration-value:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+}
+
+/* Anchored to the row and lifted above it in the stack. A board is short, and
+   a popover flowing into .board-body's overflow would be clipped. */
+.duration-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-1));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 11rem;
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
+}
+
+.duration-presets {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.duration-preset {
+  flex: 1;
+  padding: var(--space-1) 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  cursor: pointer;
+}
+
+.duration-preset:hover {
+  color: var(--text-primary);
+  border-color: var(--board-accent);
+}
+
+.duration-input {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+}
+
+.duration-input:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: -1px;
+}
+
+.duration-error {
+  margin: 0;
+  color: var(--status-blocked);
+  font-size: var(--font-size-label);
+}
+
+.duration-clear {
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--font-size-label);
+  text-align: left;
+  cursor: pointer;
+}
+
+.duration-clear:hover {
+  color: var(--status-blocked);
+}
