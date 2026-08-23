@@ -15,6 +15,8 @@ import type {
   Task,
   TaskHorizon,
   TaskPatch,
+  Commitment,
+  Month,
   Week,
 } from "@/types/task";
 
@@ -190,6 +192,28 @@ export function archiveTask(id: string): Promise<Task> {
  */
 export function currentWeek(startsOn?: string): Promise<Week> {
   return call<Week>("week_current", { startsOn: startsOn ?? null });
+}
+
+/**
+ * The month today falls in.
+ *
+ * Asked of Rust for the same reason as {@link currentWeek}: a frontend that
+ * derived its own month from the browser clock would disagree with the
+ * database on the evening of the 31st.
+ */
+export function currentMonth(): Promise<Month> {
+  return call<Month>("month_current");
+}
+
+/**
+ * Monthly commitments overlapping `[start, end]`, with progress rolled up from
+ * the work beneath them.
+ *
+ * Every figure and the bar's fraction are computed in Rust. Nothing on the
+ * Monthly board divides (spec §3.6).
+ */
+export function monthlyProgress(start: string, end: string): Promise<Commitment[]> {
+  return call<Commitment[]>("task_monthly_progress", { start, end });
 }
 
 /**

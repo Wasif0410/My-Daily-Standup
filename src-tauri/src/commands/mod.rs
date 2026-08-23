@@ -151,6 +151,26 @@ impl AppState {
         self.with_conn(|repo, conn| repo.list_by_priority(conn, threshold))
     }
 
+    /// Monthly commitments overlapping `[start, end]`, each with its progress
+    /// rolled up from the work beneath it.
+    ///
+    /// Every number the Monthly board shows is computed here. The component
+    /// receives a pre-clamped fraction so it never divides (spec §3.6).
+    pub fn monthly_progress(
+        &self,
+        start: &str,
+        end: &str,
+    ) -> Result<Vec<crate::domain::Commitment>, CommandError> {
+        self.with_conn(|repo, conn| {
+            let commitments =
+                repo.list_by_horizon_in_period(conn, TaskHorizon::Monthly, start, end)?;
+
+            commitments
+                .iter()
+                .map(|task| crate::domain::commitment_progress(repo, conn, task))
+                .collect()
+        })
+    }
     /// Records how long a task took, in minutes.
     ///
     /// `None` clears the value back to unrecorded, which is distinct from

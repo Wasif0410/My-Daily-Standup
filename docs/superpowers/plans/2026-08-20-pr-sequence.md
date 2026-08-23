@@ -514,7 +514,7 @@ Completed items stay visible but dimmed and struck through — a record of the w
 
 ---
 
-### - [ ] PR 15 — Monthly Progress board
+### - [x] PR 15 — Monthly Progress board
 **Branch:** `feat/pr-15-monthly-board`
 **Depends on:** PR 14
 **What this gives the app:** The monthly view: progress bars showing how far along each commitment is, rather than a list of every task.

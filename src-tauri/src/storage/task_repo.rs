@@ -265,6 +265,31 @@ impl TaskRepo {
         )
     }
 
+    /// Tasks at one horizon whose period overlaps `[start, end]`.
+    ///
+    /// Overlap rather than containment, matching [`Self::list_for_period`]: a
+    /// commitment running across a month boundary belongs to both months it
+    /// touches.
+    pub fn list_by_horizon_in_period(
+        &self,
+        conn: &Connection,
+        horizon: TaskHorizon,
+        start: &str,
+        end: &str,
+    ) -> Result<Vec<Task>, StorageError> {
+        self.query(
+            conn,
+            &format!(
+                "SELECT {COLUMNS} FROM tasks \
+                 WHERE horizon = ?1 \
+                   AND period_start IS NOT NULL AND period_end IS NOT NULL \
+                   AND period_start <= ?3 AND period_end >= ?2 \
+                 ORDER BY priority DESC NULLS LAST, created_at"
+            ),
+            rusqlite::params![horizon, start, end],
+        )
+    }
+
     /// Direct children of a task. Does not recurse.
     pub fn children_of(
         &self,

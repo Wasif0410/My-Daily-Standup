@@ -3,6 +3,7 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { BoardShell } from "@/components/BoardShell";
 import { PriorityBoard } from "@/features/boards/PriorityBoard";
 import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
+import { MonthlyBoard } from "@/features/boards/MonthlyBoard";
 import { WeeklyProgressBoard } from "@/features/boards/WeeklyProgressBoard";
 import {
   listBoards,
@@ -30,9 +31,9 @@ const TITLES: Record<BoardKind, string> = {
 /**
  * What goes inside a board window.
  *
- * A switch rather than a lookup table, so TypeScript flags a board that PRs
- * 13-15 forget to fill in. The remaining placeholders are deliberate: a blank
- * window reads as broken.
+ * A switch rather than a lookup table, so TypeScript flags a board that has
+ * no content. Every kind now maps to a real component; adding a fifth board
+ * will not compile until it is filled in.
  */
 function boardContent(kind: BoardKind) {
   switch (kind) {
@@ -43,7 +44,7 @@ function boardContent(kind: BoardKind) {
     case "weekly-progress":
       return <WeeklyProgressBoard />;
     case "monthly-progress":
-      return <p className="board-empty">No tasks yet.</p>;
+      return <MonthlyBoard />;
   }
 }
 
