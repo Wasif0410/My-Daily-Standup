@@ -1,8 +1,8 @@
 //! Board window commands.
 
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 
-use super::CommandError;
+use super::{AppState, CommandError};
 use crate::storage::{BoardKind, BoardWindow};
 use crate::windows;
 
@@ -49,4 +49,25 @@ pub fn board_list(
     state: tauri::State<'_, super::AppState>,
 ) -> Result<Vec<BoardWindow>, CommandError> {
     state.boards()
+}
+
+// --- presentation state ------------------------------------------------------
+
+/// Reads one piece of presentation state — which days a board has expanded, and
+/// the like. `null` means it was never set, which is not an error.
+#[tauri::command]
+pub fn ui_state_get(
+    state: State<'_, AppState>,
+    key: String,
+) -> Result<Option<String>, CommandError> {
+    state.ui_state(&key)
+}
+
+#[tauri::command]
+pub fn ui_state_set(
+    state: State<'_, AppState>,
+    key: String,
+    value: String,
+) -> Result<(), CommandError> {
+    state.set_ui_state(&key, &value)
 }

@@ -15,8 +15,13 @@ interface OpenMenu {
   y: number;
 }
 
-/** The seven days after a week ends — the "next week" a task moves into. */
-function nextWeek(week: Week): Week {
+/**
+ * The seven days after a week ends — the "next week" a task moves into.
+ *
+ * Only the boundaries, not a whole `Week`: a label and day names would be
+ * invented here rather than computed by Rust, and nothing needs them.
+ */
+function nextWeek(week: Week): { start: string; end: string } {
   return { start: shift(week.start, 7), end: shift(week.end, 7) };
 }
 
@@ -118,7 +123,14 @@ export function WeeklyBoard() {
         </p>
       )}
 
-      {week && <p className="board-week">{`${week.start} → ${week.end}`}</p>}
+      {week && (
+        <p className="board-week">
+          {week.label}{" "}
+          <span className="board-week-dates">
+            {week.start} → {week.end}
+          </span>
+        </p>
+      )}
 
       <QuickAdd
         placeholder="Add to this week…"

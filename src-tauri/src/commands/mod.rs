@@ -15,7 +15,7 @@ use serde::Serialize;
 
 use crate::storage::{
     BoardKind, BoardRepo, BoardWindow, Db, NewTask, StorageError, Task, TaskHorizon, TaskPatch,
-    TaskRepo, DATABASE_FILENAME,
+    TaskRepo, UiStateRepo, DATABASE_FILENAME,
 };
 
 /// How an error is reported across the IPC boundary.
@@ -67,6 +67,7 @@ pub struct AppState {
     db: Mutex<Db>,
     repo: TaskRepo,
     boards: BoardRepo,
+    ui: UiStateRepo,
 }
 
 impl AppState {
@@ -78,6 +79,7 @@ impl AppState {
             db: Mutex::new(db),
             repo: TaskRepo::new(),
             boards: BoardRepo::new(),
+            ui: UiStateRepo::new(),
         })
     }
 
@@ -87,6 +89,7 @@ impl AppState {
             db: Mutex::new(Db::open_in_memory()?),
             repo: TaskRepo::new(),
             boards: BoardRepo::new(),
+            ui: UiStateRepo::new(),
         })
     }
 
@@ -135,6 +138,14 @@ impl AppState {
         self.with_conn(|repo, conn| repo.list_for_period(conn, start, end))
     }
 
+    /// Tasks scheduled on any day in `[start, end]` — the Weekly Progress board.
+    pub fn list_scheduled_between(
+        &self,
+        start: &str,
+        end: &str,
+    ) -> Result<Vec<Task>, CommandError> {
+        self.with_conn(|repo, conn| repo.list_scheduled_between(conn, start, end))
+    }
     /// Tasks for the Priority board — non-daily work at or above `threshold`.
     pub fn list_by_priority(&self, threshold: i64) -> Result<Vec<Task>, CommandError> {
         self.with_conn(|repo, conn| repo.list_by_priority(conn, threshold))
@@ -239,6 +250,21 @@ impl AppState {
         let guard = self.db.lock().map_err(poisoned)?;
         self.boards
             .save(guard.conn(), window)
+            .map_err(CommandError::from)
+    }
+}
+
+impl AppState {
+    /// Reads one piece of presentation state, or `None` if it was never set.
+    pub fn ui_state(&self, key: &str) -> Result<Option<String>, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.ui.get(guard.conn(), key).map_err(CommandError::from)
+    }
+
+    pub fn set_ui_state(&self, key: &str, value: &str) -> Result<(), CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.ui
+            .set(guard.conn(), key, value)
             .map_err(CommandError::from)
     }
 }

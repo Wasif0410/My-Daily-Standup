@@ -483,3 +483,106 @@ fn list_by_priority_keeps_weekly_monthly_and_long_term() {
 
     assert_eq!(found.len(), 3);
 }
+
+// ---- scheduled within a range -----------------------------------------------
+
+fn on_day(title: &str, date: Option<&str>, priority: Option<i64>) -> NewTask {
+    NewTask {
+        scheduled_date: date.map(str::to_string),
+        priority,
+        ..NewTask::new(title, TaskHorizon::Daily, TaskSource::Manual)
+    }
+}
+
+#[test]
+fn list_scheduled_between_returns_tasks_inside_the_range() {
+    let (db, repo) = repo();
+    repo.create(db.conn(), on_day("inside", Some("2026-08-19"), None))
+        .unwrap();
+    repo.create(db.conn(), on_day("before", Some("2026-08-10"), None))
+        .unwrap();
+    repo.create(db.conn(), on_day("after", Some("2026-08-30"), None))
+        .unwrap();
+
+    let found = repo
+        .list_scheduled_between(db.conn(), "2026-08-17", "2026-08-23")
+        .unwrap();
+
+    assert_eq!(found.len(), 1);
+    assert_eq!(found[0].title, "inside");
+}
+
+#[test]
+fn list_scheduled_between_includes_both_boundary_days() {
+    // Inclusive at both ends. Excluding Sunday would silently drop a seventh
+    // of every week from the board that exists to show the whole week.
+    let (db, repo) = repo();
+    repo.create(db.conn(), on_day("monday", Some("2026-08-17"), None))
+        .unwrap();
+    repo.create(db.conn(), on_day("sunday", Some("2026-08-23"), None))
+        .unwrap();
+
+    let found = repo
+        .list_scheduled_between(db.conn(), "2026-08-17", "2026-08-23")
+        .unwrap();
+
+    assert_eq!(found.len(), 2);
+}
+
+#[test]
+fn list_scheduled_between_excludes_unscheduled_tasks() {
+    // No date means no day to sit in.
+    let (db, repo) = repo();
+    repo.create(db.conn(), on_day("someday", None, None))
+        .unwrap();
+
+    let found = repo
+        .list_scheduled_between(db.conn(), "2026-08-17", "2026-08-23")
+        .unwrap();
+
+    assert!(found.is_empty());
+}
+
+#[test]
+fn list_scheduled_between_ignores_the_period_columns() {
+    // A weekly task whose period covers this week but which was never given a
+    // day has no place on a day-by-day board.
+    let (db, repo) = repo();
+    repo.create(
+        db.conn(),
+        NewTask {
+            period_start: Some("2026-08-17".to_string()),
+            period_end: Some("2026-08-23".to_string()),
+            ..NewTask::new(
+                "a weekly commitment",
+                TaskHorizon::Weekly,
+                TaskSource::Manual,
+            )
+        },
+    )
+    .unwrap();
+
+    let found = repo
+        .list_scheduled_between(db.conn(), "2026-08-17", "2026-08-23")
+        .unwrap();
+
+    assert!(found.is_empty(), "period overlap is not a scheduled day");
+}
+
+#[test]
+fn list_scheduled_between_orders_by_date_then_priority() {
+    let (db, repo) = repo();
+    repo.create(db.conn(), on_day("tue low", Some("2026-08-18"), Some(2)))
+        .unwrap();
+    repo.create(db.conn(), on_day("mon", Some("2026-08-17"), Some(1)))
+        .unwrap();
+    repo.create(db.conn(), on_day("tue high", Some("2026-08-18"), Some(9)))
+        .unwrap();
+
+    let found = repo
+        .list_scheduled_between(db.conn(), "2026-08-17", "2026-08-23")
+        .unwrap();
+
+    let titles: Vec<&str> = found.iter().map(|t| t.title.as_str()).collect();
+    assert_eq!(titles, vec!["mon", "tue high", "tue low"]);
+}

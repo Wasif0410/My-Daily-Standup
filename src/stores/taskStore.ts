@@ -19,11 +19,13 @@ import {
   listTasksForDate,
   listPriorityTasks,
   listTasksForPeriod,
+  listTasksScheduledBetween,
   rescheduleTask,
   setTimeSpent,
   toCommandError,
   updateTask,
 } from "@/lib/ipc";
+import { emitTaskChanged } from "@/lib/taskEvents";
 import type { CommandError, NewTask, Task, TaskHorizon, TaskPatch } from "@/types/task";
 
 /** Which slice of tasks a board is showing. */
@@ -31,7 +33,8 @@ export type TaskFilter =
   | { kind: "horizon"; horizon: TaskHorizon }
   | { kind: "date"; date: string }
   | { kind: "period"; start: string; end: string }
-  | { kind: "priority"; threshold: number };
+  | { kind: "priority"; threshold: number }
+  | { kind: "scheduled"; start: string; end: string };
 
 /**
  * Sorts tasks for display: highest priority first, then oldest first.
@@ -87,6 +90,8 @@ function fetchFor(filter: TaskFilter): Promise<Task[]> {
       return listTasksForPeriod(filter.start, filter.end);
     case "priority":
       return listPriorityTasks(filter.threshold);
+    case "scheduled":
+      return listTasksScheduledBetween(filter.start, filter.end);
   }
 }
 
@@ -123,6 +128,10 @@ export const useTaskStore = create<TaskState>((set, get) => {
         }
         return { tasks };
       });
+
+      // Only on success. A rolled-back mutation changed nothing, and telling
+      // the other windows otherwise would make them all reload for no reason.
+      emitTaskChanged();
     } catch (caught) {
       // Restore the exact prior value rather than re-fetching: the user is
       // looking at the row, and a flicker to a stale server state is worse
@@ -173,6 +182,7 @@ export const useTaskStore = create<TaskState>((set, get) => {
           tasks: { ...state.tasks, [created.id]: created },
           error: null,
         }));
+        emitTaskChanged();
       } catch (caught) {
         set({ error: toCommandError(caught) });
       }
@@ -287,6 +297,7 @@ export const useTaskStore = create<TaskState>((set, get) => {
 
       try {
         await deleteTask(id);
+        emitTaskChanged();
       } catch (caught) {
         set((state) => ({
           tasks: { ...state.tasks, [id]: previous },

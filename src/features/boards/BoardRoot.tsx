@@ -3,6 +3,7 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { BoardShell } from "@/components/BoardShell";
 import { PriorityBoard } from "@/features/boards/PriorityBoard";
 import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
+import { WeeklyProgressBoard } from "@/features/boards/WeeklyProgressBoard";
 import {
   listBoards,
   saveBoardGeometry,
@@ -40,6 +41,7 @@ function boardContent(kind: BoardKind) {
     case "weekly-tasks":
       return <WeeklyBoard />;
     case "weekly-progress":
+      return <WeeklyProgressBoard />;
     case "monthly-progress":
       return <p className="board-empty">No tasks yet.</p>;
   }

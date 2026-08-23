@@ -553,3 +553,97 @@ body.board-window {
   font-size: var(--font-size-label);
   color: var(--text-dim);
 }
+
+/* ---- Day sections ------------------------------------------------------
+   Seven of these, always. An empty day renders exactly like a busy one —
+   a week with three empty days *is* the information (spec §6.4). */
+
+.day-section + .day-section {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.day-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.day-header:hover .day-name {
+  color: var(--board-accent);
+}
+
+.day-header:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-control);
+}
+
+.day-chevron {
+  flex: none;
+  width: 1ch;
+  color: var(--text-dim);
+}
+
+.day-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Today is the day the user is actually working in. It carries the accent so
+   the eye finds it without reading seven labels. */
+.day-section[data-today="true"] .day-name {
+  color: var(--board-accent);
+  font-weight: 600;
+}
+
+.day-summary {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* Fixed columns so seven rows of figures line up rather than jitter. */
+.day-count {
+  min-width: 3ch;
+  text-align: right;
+}
+
+.day-time {
+  min-width: 6ch;
+  text-align: right;
+}
+
+.day-empty {
+  margin: 0 0 var(--space-1) var(--space-4);
+  color: var(--text-dim);
+  font-size: var(--font-size-label);
+}
+
+/* Rows sit under their day's chevron rather than at the board's left edge, so
+   the nesting is legible without a rule or a border. */
+.day-section .task-list-plain {
+  margin-left: var(--space-4);
+}
+
+/* The exact dates, secondary to the ISO label. Present because "2026-W34" is
+   precise but not readable at a glance. */
+.board-week-dates {
+  color: var(--text-dim);
+  opacity: 0.75;
+}

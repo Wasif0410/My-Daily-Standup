@@ -1,9 +1,17 @@
 import { invoke } from "@tauri-apps/api/core";
+import { emitTaskChanged } from "@/lib/taskEvents";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTaskStore } from "@/stores/taskStore";
 import type { Task } from "@/types/task";
 
+vi.mock("@/lib/taskEvents", () => ({
+  emitTaskChanged: vi.fn(),
+  onTaskChanged: vi.fn().mockResolvedValue(() => {}),
+  TASK_CHANGED: "task-changed",
+}));
+
 const mockInvoke = vi.mocked(invoke);
+const mockAnnounce = vi.mocked(emitTaskChanged);
 
 function task(overrides: Partial<Task> = {}): Task {
   return {
@@ -448,5 +456,91 @@ describe("the remaining §6.6 interactions", () => {
       expect(mockInvoke).toHaveBeenCalledWith("task_archive", { id: "task-1" });
       expect(useTaskStore.getState().tasks["task-1"]?.status).toBe("cancelled");
     });
+  });
+});
+
+describe("the scheduled filter", () => {
+  it("loads through the scheduled command", async () => {
+    mockInvoke.mockResolvedValue([task({ id: "a", scheduledDate: "2026-08-19" })]);
+
+    await useTaskStore
+      .getState()
+      .load({ kind: "scheduled", start: "2026-08-17", end: "2026-08-23" });
+
+    expect(mockInvoke).toHaveBeenCalledWith("task_list_scheduled_between", {
+      start: "2026-08-17",
+      end: "2026-08-23",
+    });
+  });
+});
+
+describe("announcing changes to other windows", () => {
+  function seed(overrides: Partial<Task> = {}) {
+    const seeded = task({ id: "task-1", ...overrides });
+    useTaskStore.setState({ tasks: { [seeded.id]: seeded } });
+    return seeded;
+  }
+
+  it("announces after a successful mutation", async () => {
+    // Boards are separate windows with separate stores. Without this, the
+    // Weekly Progress board never learns a task was completed elsewhere.
+    seed();
+    mockInvoke.mockResolvedValue(task({ status: "completed" }));
+
+    await useTaskStore.getState().complete("task-1");
+
+    expect(mockAnnounce).toHaveBeenCalled();
+  });
+
+  it("stays silent when a mutation fails", async () => {
+    // The optimistic update rolled back, so nothing changed. Announcing would
+    // make every other window reload for no reason.
+    seed();
+    mockInvoke.mockRejectedValue(new Error("disk full"));
+
+    await useTaskStore.getState().complete("task-1");
+
+    expect(mockAnnounce).not.toHaveBeenCalled();
+  });
+
+  it("announces once per mutation, not once per optimistic step", async () => {
+    seed();
+    mockInvoke.mockResolvedValue(task({ status: "completed" }));
+
+    await useTaskStore.getState().complete("task-1");
+
+    expect(mockAnnounce).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces a creation", async () => {
+    mockInvoke.mockResolvedValue(task({ id: "new" }));
+
+    await useTaskStore.getState().add({
+      title: "a new task",
+      horizon: "weekly",
+      status: "planned",
+      sourceType: "manual",
+    });
+
+    expect(mockAnnounce).toHaveBeenCalled();
+  });
+
+  it("announces a deletion", async () => {
+    seed();
+    mockInvoke.mockResolvedValue(undefined);
+
+    await useTaskStore.getState().remove("task-1");
+
+    expect(mockAnnounce).toHaveBeenCalled();
+  });
+
+  it("says nothing when merely loading", async () => {
+    // A read changed nothing. Announcing would make every board reload every
+    // other board, forever.
+    mockInvoke.mockResolvedValue([]);
+
+    await useTaskStore.getState().load({ kind: "horizon", horizon: "daily" });
+
+    expect(mockAnnounce).not.toHaveBeenCalled();
   });
 });
