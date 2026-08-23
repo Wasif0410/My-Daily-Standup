@@ -426,3 +426,93 @@ body.board-window {
   padding: 0;
   list-style: none;
 }
+
+/* ---- Context menu ------------------------------------------------------
+   The §6.6 interaction set. Positioned at the pointer, above everything, and
+   fixed rather than absolute — a board is short and scrollable, and an
+   absolutely positioned menu would scroll away from the row it belongs to. */
+
+.context-menu {
+  position: fixed;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 50%);
+}
+
+.context-menu-item {
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.context-menu-item:hover,
+.context-menu-item:focus-visible {
+  background: color-mix(in srgb, var(--board-accent) 22%, transparent);
+  outline: none;
+}
+
+.context-menu-item[data-danger="true"] {
+  color: var(--status-blocked);
+}
+
+.context-menu-divider {
+  height: 0;
+  margin: var(--space-1) 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Eleven priorities in a grid rather than a column: as a list they would run
+   off the bottom of a 340px board. */
+.context-menu-priorities {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+}
+
+.context-menu-priorities .context-menu-item {
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.context-menu-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+}
+
+.context-menu-prompt-label {
+  font-size: var(--font-size-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.context-menu-input {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+}
+
+.context-menu-input:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: -1px;
+}
