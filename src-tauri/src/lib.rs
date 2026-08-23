@@ -48,6 +48,7 @@ pub fn run() {
             commands::tasks::task_set_time_spent,
             commands::tasks::task_reschedule,
             commands::tasks::task_children_of,
+            commands::tasks::week_current,
             commands::boards::board_open,
             commands::boards::board_close,
             commands::boards::board_save_geometry,

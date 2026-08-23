@@ -94,3 +94,12 @@ pub fn task_children_of(
 ) -> Result<Vec<Task>, CommandError> {
     state.children_of(&parent_id)
 }
+
+/// The week today falls in, so the frontend never derives a date itself.
+///
+/// `starts_on` accepts "monday", "sunday", or "saturday" and defaults to Monday
+/// (spec §6.4). PR 16 supplies it from settings.
+#[tauri::command]
+pub fn week_current(starts_on: Option<String>) -> crate::domain::Week {
+    crate::domain::current_week(crate::domain::parse_weekday(starts_on.as_deref()))
+}
