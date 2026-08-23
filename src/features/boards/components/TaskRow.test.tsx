@@ -58,7 +58,9 @@ describe("TaskRow", () => {
   it("shows a dash for an unmeasured task", () => {
     render(<TaskRow {...props()} />);
 
-    expect(screen.getByRole("button", { name: /not recorded/i })).toHaveTextContent("—");
+    expect(screen.getByRole("button", { name: /not recorded/i })).toHaveTextContent(
+      "—",
+    );
   });
 
   describe("completion", () => {

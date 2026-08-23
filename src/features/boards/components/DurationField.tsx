@@ -107,7 +107,11 @@ export function DurationField({ minutes, onChange }: DurationFieldProps) {
           )}
 
           {minutes !== null && (
-            <button type="button" className="duration-clear" onClick={() => commit(null)}>
+            <button
+              type="button"
+              className="duration-clear"
+              onClick={() => commit(null)}
+            >
               Clear
             </button>
           )}

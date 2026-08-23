@@ -12,7 +12,8 @@ vi.mock("@tauri-apps/api/window", () => ({
     onMoved: () => Promise.resolve(() => {}),
     onResized: () => Promise.resolve(() => {}),
     outerPosition: () => Promise.resolve({ x: 0, y: 0 }),
-    innerSize: () => Promise.resolve({ toLogical: () => ({ width: 340, height: 460 }) }),
+    innerSize: () =>
+      Promise.resolve({ toLogical: () => ({ width: 340, height: 460 }) }),
     scaleFactor: () => Promise.resolve(1),
     setSize: () => Promise.resolve(),
     close: () => Promise.resolve(),

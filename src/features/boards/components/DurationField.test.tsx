@@ -15,7 +15,9 @@ describe("DurationField", () => {
     // measured it.
     render(<DurationField minutes={null} onChange={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: /not recorded/i })).toHaveTextContent("—");
+    expect(screen.getByRole("button", { name: /not recorded/i })).toHaveTextContent(
+      "—",
+    );
   });
 
   it("stays closed until asked", () => {
