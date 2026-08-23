@@ -89,7 +89,7 @@ pub fn menu_entries(paused: bool, autostart: bool) -> Vec<MenuEntry>;
 pub const COMING_SOON: &str = " (coming soon)";
 ```
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `the_menu_follows_the_order_in_the_spec` — all of §6.8's nine ids, in order
   - `opening_boards_is_available_now` — it needs nothing that does not exist
   - `quick_add_is_available_now` — the DoD requires it to work
@@ -103,8 +103,8 @@ pub const COMING_SOON: &str = " (coming soon)";
   - `pause_reminders_shows_its_current_state`
   - `unlock_all_boards_is_present` — PR 16's escape hatch needs its promised surface
   - `start_with_windows_reflects_the_stored_setting`
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Full Rust gate. Step 6: Commit** — `feat: describe the tray menu as data`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Full Rust gate. Step 6: Commit** — `feat: describe the tray menu as data`
 
 ---
 
@@ -119,9 +119,9 @@ board; `unlock-all` calls the existing `windows::unlock_all`; `pause-reminders` 
 The main window's close request is intercepted: hide instead of exit, so the tray and the
 boards survive it (§26, and the DoD).
 
-- [ ] **Step 1: Implement** the builder, the click routing, and the close handler.
-- [ ] **Step 2: Full Rust gate** — `cargo build` proves the tray APIs and ids line up.
-- [ ] **Step 3: Commit** — `feat: put the app in the system tray`
+- [x] **Step 1: Implement** the builder, the click routing, and the close handler.
+- [x] **Step 2: Full Rust gate** — `cargo build` proves the tray APIs and ids line up.
+- [x] **Step 3: Commit** — `feat: put the app in the system tray`
 
 ---
 
@@ -133,11 +133,11 @@ boards survive it (§26, and the DoD).
 Registers `tauri-plugin-autostart`, and exposes `autostart_enabled` / `autostart_set` so
 PR 18's settings window can reuse them rather than reaching for the plugin directly.
 
-- [ ] **Step 1: Add the dependency and the plugin**, add the capability permission.
-- [ ] **Step 2: Add the commands** and wire the tray's checkable item to them.
-- [ ] **Step 3: Full Rust gate** — the build is what proves the permission identifier
+- [x] **Step 1: Add the dependency and the plugin**, add the capability permission.
+- [x] **Step 2: Add the commands** and wire the tray's checkable item to them.
+- [x] **Step 3: Full Rust gate** — the build is what proves the permission identifier
       resolves; a wrong one fails there rather than at runtime.
-- [ ] **Step 4: Commit** — `feat: offer launch at login`
+- [x] **Step 4: Commit** — `feat: offer launch at login`
 
 ---
 
@@ -149,8 +149,8 @@ add the window label to the capability file.
 A small, always-on-top, undecorated, centred window at `index.html?window=quick-add`.
 Re-focuses rather than duplicating if it already exists, like `open_board`.
 
-- [ ] **Step 1: Implement**, reusing `open_board`'s shape.
-- [ ] **Step 2: Full Rust gate. Step 3: Commit** — `feat: add the quick add window`
+- [x] **Step 1: Implement**, reusing `open_board`'s shape.
+- [x] **Step 2: Full Rust gate. Step 3: Commit** — `feat: add the quick add window`
 
 ---
 
@@ -162,7 +162,7 @@ Re-focuses rather than duplicating if it already exists, like `open_board`.
 Reuses the existing `QuickAdd` field. Creates a daily task scheduled for today, announces
 the change so every open board reloads, then closes the window.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `captures a task on Enter`
   - `creates it as a daily task for today` — asks Rust for the date rather than reading a
     browser clock, as every other date in the app does
@@ -173,8 +173,8 @@ the change so every open board reloads, then closes the window.
     the user typed
   - `closes on Escape without creating anything`
   - `does not capture an empty title`
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify. Step 5: Style.**
-- [ ] **Step 6: Commit** — `feat: capture a task from the tray`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify. Step 5: Style.**
+- [x] **Step 6: Commit** — `feat: capture a task from the tray`
 
 ---
 
@@ -185,14 +185,24 @@ the change so every open board reloads, then closes the window.
 `?window=quick-add` renders `QuickAddWindow`; `?board=` still renders a board; neither
 renders the main app.
 
-- [ ] **Step 1: Implement. Step 2: Full gate. Step 3: Commit** — `feat: route the quick add window`
+- [x] **Step 1: Implement. Step 2: Full gate. Step 3: Commit** — `feat: route the quick add window`
 
 ---
 
 ### Task 7: Verify against the real app
 
-- [ ] **Step 1: The full local gate** — all seven commands.
-- [ ] **Step 2: Launch and read the dev log.** Tray interaction needs a real desktop:
+- [x] **Step 1: The full local gate** — all seven commands.
+- [ ] **Step 2: Launch and read the dev log.** Tray interaction needs a real desktop.
+
+      **Done so far:** the app launched and built clean, with no error, permission denial,
+      or panic in the dev log, and no sidecar process. **The tray itself is confirmed
+      built** — `tray::create` is fatal on failure, so a tray that could not be
+      constructed (a missing icon, a bad menu id) would have stopped the app from
+      starting at all. `autostart:default` resolved into the generated
+      `capabilities.json`, and `quick-add` is listed as an allowed window, so its IPC
+      calls will reach Rust.
+
+      **Still needs a human at the keyboard:**
   - The tray icon appears, and its menu matches §6.8's order.
   - The four AI entries and Settings are greyed out and say "(coming soon)".
   - **Close the main window: the tray icon and the boards are still there.** The DoD.
@@ -204,7 +214,7 @@ renders the main app.
   - Start with Windows toggles, and the registry entry appears.
   - **Quit exits everything** — no `my-daily-standup` process left behind. The DoD.
   - **No sidecar process at any point**, especially after Quick Add.
-- [ ] **Step 3: Commit, push, open the PR, tick PR 17 in the sequence document.**
+- [x] **Step 3: Commit, push, open the PR, tick PR 17 in the sequence document.**
 
 ---
 

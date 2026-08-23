@@ -548,7 +548,7 @@ Always-on-top, desktop-level mode, lock position, click-through when locked (`se
 
 ---
 
-### - [ ] PR 17 — System tray & quick add
+### - [x] PR 17 — System tray & quick add
 **Branch:** `feat/pr-17-system-tray`
 **Depends on:** PR 16
 **What this gives the app:** A tray icon, so the app is one click away without a window taking up space.
