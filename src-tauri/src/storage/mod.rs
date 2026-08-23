@@ -22,7 +22,7 @@ mod tests;
 #[cfg(test)]
 mod ui_state_tests;
 
-pub use board::{BoardKind, BoardRepo, BoardWindow};
+pub use board::{BoardKind, BoardRepo, BoardTheme, BoardWindow};
 pub use db::Db;
 pub use migrations::{run_migrations, schema_version, LATEST_VERSION};
 pub use task::{NewTask, Task, TaskHorizon, TaskPatch, TaskSource, TaskStatus};
