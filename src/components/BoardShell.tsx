@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { BoardHeader } from "@/components/BoardHeader";
-import type { BoardKind } from "@/types/board";
+import type { BoardKind, BoardTheme } from "@/types/board";
 
 /** One accent per board, so four scattered windows are distinguishable at a
  *  glance rather than by reading their titles. */
@@ -21,6 +21,11 @@ interface BoardShellProps {
   /** 0.2–1.0. Floored in the schema, since a fully transparent board would be
    *  invisible and unclickable with no way to recover it. */
   opacity?: number;
+  /** Logical pixels. Everything else in the board scales from it. */
+  fontSize?: number;
+  theme?: BoardTheme;
+  /** Tighter spacing, for a board kept small. */
+  compact?: boolean;
   /** Required: every board collapses, and the owner persists the choice. An
    *  optional control that silently did nothing would be worse than none. */
   onToggleCollapsed: (collapsed: boolean) => void;
@@ -48,6 +53,9 @@ export function BoardShell({
   collapsed = false,
   locked = false,
   opacity = 1,
+  fontSize = 13,
+  theme = "dark",
+  compact = false,
   onToggleCollapsed,
   onClose,
   headerActions,
@@ -56,6 +64,7 @@ export function BoardShell({
   const style = {
     "--board-accent": ACCENTS[kind],
     "--board-opacity": opacity,
+    "--board-font-size": `${fontSize}px`,
   } as CSSProperties;
 
   return (
@@ -64,11 +73,14 @@ export function BoardShell({
       data-board={kind}
       data-collapsed={collapsed}
       data-locked={locked}
+      data-theme={theme}
+      data-compact={compact}
       style={style}
     >
       <BoardHeader
         title={title}
         subtitle={subtitle}
+        locked={locked}
         collapsed={collapsed}
         onToggleCollapsed={() => onToggleCollapsed(!collapsed)}
         onClose={onClose}

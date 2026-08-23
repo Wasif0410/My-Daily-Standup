@@ -532,7 +532,7 @@ Progress values come from PR 7's `compute_progress`, never computed in the compo
 
 # Wave 3 — Desktop shell (PR 16–18)
 
-### - [ ] PR 16 — Window behaviors
+### - [x] PR 16 — Window behaviors
 **Branch:** `feat/pr-16-window-behaviors`
 **Depends on:** PR 15
 **What this gives the app:** Control over how the notes behave — always on top, see-through, locked in place, pinned to one monitor.

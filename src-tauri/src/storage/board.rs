@@ -79,6 +79,47 @@ impl rusqlite::types::FromSql for BoardKind {
     }
 }
 
+/// Which palette a board draws in (spec §6.7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum BoardTheme {
+    Dark,
+    Light,
+}
+
+impl BoardTheme {
+    /// The value stored in SQLite, matching the schema's CHECK constraint.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Dark => "dark",
+            Self::Light => "light",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "dark" => Some(Self::Dark),
+            "light" => Some(Self::Light),
+            _ => None,
+        }
+    }
+}
+
+impl rusqlite::ToSql for BoardTheme {
+    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+        Ok(self.as_str().into())
+    }
+}
+
+impl rusqlite::types::FromSql for BoardTheme {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        let text = value.as_str()?;
+        Self::parse(text).ok_or_else(|| {
+            rusqlite::types::FromSqlError::Other(format!("unknown board theme: {text}").into())
+        })
+    }
+}
+
 /// A board window's saved state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -95,6 +136,14 @@ pub struct BoardWindow {
     pub opacity: f64,
     pub always_on_top: bool,
     pub locked: bool,
+    /// In logical pixels, clamped 10-24 by the schema.
+    pub font_size: f64,
+    pub theme: BoardTheme,
+    /// Tighter spacing for a board kept small.
+    pub compact: bool,
+    /// Sits below ordinary windows. Mutually exclusive with `always_on_top`,
+    /// which the behaviour layer enforces.
+    pub desktop_level: bool,
 }
 
 impl BoardWindow {
@@ -113,6 +162,10 @@ impl BoardWindow {
             opacity: 1.0,
             always_on_top: false,
             locked: false,
+            font_size: 13.0,
+            theme: BoardTheme::Dark,
+            compact: false,
+            desktop_level: false,
         }
     }
 }
@@ -122,7 +175,7 @@ impl BoardWindow {
 pub struct BoardRepo;
 
 const COLUMNS: &str = "kind, x, y, width, height, monitor, visible, collapsed, \
-     opacity, always_on_top, locked";
+     opacity, always_on_top, locked, font_size, theme, compact, desktop_level";
 
 impl BoardRepo {
     pub fn new() -> Self {
@@ -134,8 +187,10 @@ impl BoardRepo {
         conn.execute(
             "INSERT INTO board_windows
                  (kind, x, y, width, height, monitor, visible, collapsed,
-                  opacity, always_on_top, locked, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+                  opacity, always_on_top, locked, font_size, theme, compact,
+                  desktop_level, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
+                     ?15, ?16)
              ON CONFLICT (kind) DO UPDATE SET
                  x = excluded.x, y = excluded.y,
                  width = excluded.width, height = excluded.height,
@@ -144,6 +199,10 @@ impl BoardRepo {
                  opacity = excluded.opacity,
                  always_on_top = excluded.always_on_top,
                  locked = excluded.locked,
+                 font_size = excluded.font_size,
+                 theme = excluded.theme,
+                 compact = excluded.compact,
+                 desktop_level = excluded.desktop_level,
                  updated_at = excluded.updated_at",
             rusqlite::params![
                 window.kind,
@@ -157,6 +216,10 @@ impl BoardRepo {
                 window.opacity,
                 window.always_on_top,
                 window.locked,
+                window.font_size,
+                window.theme,
+                window.compact,
+                window.desktop_level,
                 now_iso8601(),
             ],
         )?;
@@ -199,6 +262,10 @@ fn from_row(row: &rusqlite::Row<'_>) -> Result<BoardWindow, rusqlite::Error> {
         opacity: row.get(8)?,
         always_on_top: row.get(9)?,
         locked: row.get(10)?,
+        font_size: row.get(11)?,
+        theme: row.get(12)?,
+        compact: row.get(13)?,
+        desktop_level: row.get(14)?,
     })
 }
 

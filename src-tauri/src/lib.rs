@@ -10,8 +10,25 @@ pub mod storage;
 pub mod windows;
 
 use tauri::Manager;
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 use commands::AppState;
+
+/// The escape hatch from a fully locked, click-through desktop (spec §6.7).
+///
+/// Deliberately awkward to hit by accident and impossible to hit by accident
+/// while typing. It exists for the one state where no window can be clicked at
+/// all, so it cannot depend on any window being reachable.
+fn unlock_shortcut() -> Shortcut {
+    Shortcut::new(
+        Some(
+            Modifiers::CONTROL
+                .union(Modifiers::ALT)
+                .union(Modifiers::SHIFT),
+        ),
+        Code::KeyU,
+    )
+}
 
 /// Builds and runs the Tauri application.
 ///
@@ -20,6 +37,21 @@ use commands::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    // Fire on press only. Acting on both edges would run the
+                    // unlock twice for one keystroke.
+                    if shortcut != &unlock_shortcut() || event.state() != ShortcutState::Pressed {
+                        return;
+                    }
+
+                    if let Err(error) = windows::unlock_all(app) {
+                        eprintln!("could not unlock the boards: {}", error.message);
+                    }
+                })
+                .build(),
+        )
         .setup(|app| {
             // The database lives in the OS-designated app data directory, not
             // beside the executable, so it survives reinstalls and respects
@@ -27,6 +59,13 @@ pub fn run() {
             let app_data_dir = app.path().app_data_dir()?;
             let state = AppState::new(&app_data_dir)?;
             app.manage(state);
+
+            // A missing shortcut is a degraded escape hatch, not a broken
+            // app — another program may already own this combination — so the
+            // failure is reported and swallowed rather than stopping launch.
+            if let Err(error) = app.global_shortcut().register(unlock_shortcut()) {
+                eprintln!("could not register the unlock shortcut: {error}");
+            }
 
             // Reopen whatever was on the desktop when the app last closed
             // (spec §23). A board that fails to open must not stop the others.
@@ -57,6 +96,8 @@ pub fn run() {
             commands::tasks::month_current,
             commands::tasks::task_monthly_progress,
             commands::boards::board_open,
+            commands::boards::board_set_behavior,
+            commands::boards::board_unlock_all,
             commands::boards::ui_state_get,
             commands::boards::ui_state_set,
             commands::boards::board_close,

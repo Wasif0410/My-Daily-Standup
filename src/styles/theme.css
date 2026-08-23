@@ -710,3 +710,119 @@ body.board-window {
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
 }
+
+/* ---- Board menu --------------------------------------------------------
+   Every §6.7 behaviour, on the board it applies to. */
+
+.board-menu {
+  position: absolute;
+  right: var(--space-2);
+  top: 2rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 13rem;
+  padding: var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+.board-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.board-menu-item:hover,
+.board-menu-item:focus-visible {
+  background: color-mix(in srgb, var(--board-accent) 22%, transparent);
+  outline: none;
+}
+
+/* A fixed column so labels line up whether or not they are ticked. */
+.board-menu-mark {
+  display: inline-block;
+  width: 1ch;
+  color: var(--board-accent);
+}
+
+.board-menu-divider {
+  height: 0;
+  margin: var(--space-1) 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.board-menu-stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-small);
+}
+
+.board-menu-stepper-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.board-menu-stepper-value {
+  min-width: 4ch;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.board-menu-step {
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.board-menu-step:hover:not(:disabled) {
+  border-color: var(--board-accent);
+}
+
+/* Disabled rather than absent: the edge of the range is information, and a
+   button that vanishes at the limit is a button that looks broken. */
+.board-menu-step:disabled {
+  color: var(--text-dim);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Stated before locking, not discovered after losing a board. */
+.board-menu-note {
+  margin: var(--space-1) var(--space-2) 0;
+  color: var(--text-dim);
+  font-size: var(--font-size-label);
+  line-height: var(--line-height-body);
+  white-space: normal;
+}
+
+.board-menu-note kbd {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}

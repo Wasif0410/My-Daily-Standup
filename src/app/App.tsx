@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
-import { openBoard } from "@/lib/ipc";
+import { openBoard, unlockAllBoards } from "@/lib/ipc";
 import { BOARD_KINDS } from "@/types/board";
 
 /**
@@ -56,6 +56,20 @@ export function App() {
             {kind.replace(/-/g, " ")}
           </button>
         ))}
+      </div>
+
+      {/* Spec §6.7's escape hatch. A locked board is click-through, so if
+          every board is locked there is nothing left to click — this window is
+          never locked, and the shortcut works with no window at all. PR 17
+          adds the same action to the tray. */}
+      <div className="escape-hatch">
+        <button type="button" onClick={() => void unlockAllBoards()}>
+          Unlock all boards
+        </button>
+        <p className="muted">
+          Locked boards let clicks pass through. Press <kbd>Ctrl+Alt+Shift+U</kbd>{" "}
+          anywhere to unlock them, even with this window closed.
+        </p>
       </div>
 
       <form className="add-task" onSubmit={(e) => void addTask(e)}>

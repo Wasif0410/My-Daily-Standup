@@ -222,3 +222,112 @@ describe("BoardShell", () => {
     expect(container.querySelector(".board")).toHaveAttribute("data-locked", "true");
   });
 });
+
+describe("BoardShell appearance", () => {
+  it("applies a saved font size as a custom property", () => {
+    // PR 10 put --board-font-size in the token layer precisely so this needed
+    // no component change.
+    const { container } = render(
+      <BoardShell
+        kind="priority"
+        title="Priority Tasks"
+        fontSize={17}
+        onToggleCollapsed={vi.fn()}
+      >
+        <p>body</p>
+      </BoardShell>,
+    );
+
+    expect(container.querySelector(".board")?.getAttribute("style")).toContain(
+      "--board-font-size: 17px",
+    );
+  });
+
+  it("marks its theme so the tokens can switch", () => {
+    const { container } = render(
+      <BoardShell
+        kind="priority"
+        title="Priority Tasks"
+        theme="light"
+        onToggleCollapsed={vi.fn()}
+      >
+        <p>body</p>
+      </BoardShell>,
+    );
+
+    expect(container.querySelector(".board")).toHaveAttribute("data-theme", "light");
+  });
+
+  it("marks compact density", () => {
+    const { container } = render(
+      <BoardShell
+        kind="priority"
+        title="Priority Tasks"
+        compact
+        onToggleCollapsed={vi.fn()}
+      >
+        <p>body</p>
+      </BoardShell>,
+    );
+
+    expect(container.querySelector(".board")).toHaveAttribute("data-compact", "true");
+  });
+
+  it("defaults to dark and comfortable", () => {
+    const { container } = render(
+      <BoardShell kind="priority" title="Priority Tasks" onToggleCollapsed={vi.fn()}>
+        <p>body</p>
+      </BoardShell>,
+    );
+
+    const shell = container.querySelector(".board");
+    expect(shell).toHaveAttribute("data-theme", "dark");
+    expect(shell).toHaveAttribute("data-compact", "false");
+  });
+
+  it("renders board-specific header actions", () => {
+    // Where the board menu's trigger lives.
+    render(
+      <BoardShell
+        kind="priority"
+        title="Priority Tasks"
+        headerActions={<button type="button">Board settings</button>}
+        onToggleCollapsed={vi.fn()}
+      >
+        <p>body</p>
+      </BoardShell>,
+    );
+
+    expect(screen.getByRole("button", { name: "Board settings" })).toBeInTheDocument();
+  });
+
+  describe("locking", () => {
+    it("is draggable when unlocked", () => {
+      const { container } = render(
+        <BoardShell kind="priority" title="Priority Tasks" onToggleCollapsed={vi.fn()}>
+          <p>body</p>
+        </BoardShell>,
+      );
+
+      expect(container.querySelector("[data-tauri-drag-region]")).not.toBeNull();
+    });
+
+    it("is not draggable when locked", () => {
+      // The second half of "locked". set_ignore_cursor_events stops clicks
+      // reaching the webview, but a board locked while the pointer is already
+      // over it would otherwise still be draggable.
+      const { container } = render(
+        <BoardShell
+          kind="priority"
+          title="Priority Tasks"
+          locked
+          onToggleCollapsed={vi.fn()}
+        >
+          <p>body</p>
+        </BoardShell>,
+      );
+
+      expect(container.querySelector("[data-tauri-drag-region]")).toBeNull();
+    });
+  });
+});

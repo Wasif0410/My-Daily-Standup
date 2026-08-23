@@ -44,6 +44,10 @@ fn geometry_round_trips() {
         opacity: 0.85,
         always_on_top: true,
         locked: true,
+        font_size: 15.0,
+        theme: BoardTheme::Light,
+        compact: true,
+        desktop_level: false,
     };
     repo.save(db.conn(), &saved).unwrap();
 
@@ -171,4 +175,107 @@ fn window_labels_are_unique_per_board() {
     labels.dedup();
 
     assert_eq!(labels.len(), total, "board window labels must be unique");
+}
+
+// ---- appearance (spec §6.7) ---------------------------------------------------
+
+#[test]
+fn a_new_board_defaults_to_dark_at_thirteen_pixels() {
+    let (db, repo) = setup();
+
+    let board = repo.get(db.conn(), BoardKind::Priority).unwrap();
+
+    assert_eq!(board.font_size, 13.0);
+    assert_eq!(board.theme, BoardTheme::Dark);
+    assert!(!board.compact);
+    assert!(!board.desktop_level);
+}
+
+#[test]
+fn appearance_round_trips() {
+    let (db, repo) = setup();
+    let mut board = BoardWindow::default_for(BoardKind::WeeklyTasks);
+    board.font_size = 18.0;
+    board.theme = BoardTheme::Light;
+    board.compact = true;
+    board.desktop_level = true;
+
+    repo.save(db.conn(), &board).unwrap();
+    let loaded = repo.get(db.conn(), BoardKind::WeeklyTasks).unwrap();
+
+    assert_eq!(loaded.font_size, 18.0);
+    assert_eq!(loaded.theme, BoardTheme::Light);
+    assert!(loaded.compact);
+    assert!(loaded.desktop_level);
+}
+
+#[test]
+fn a_board_saved_before_this_migration_gains_the_defaults() {
+    // The migration adds columns to a table that may already hold rows. Without
+    // a DEFAULT on each, an existing board would fail to load rather than
+    // simply looking the way it always did.
+    let (db, repo) = setup();
+    db.conn()
+        .execute(
+            "INSERT INTO board_windows
+                 (kind, width, height, visible, collapsed, opacity,
+                  always_on_top, locked, updated_at)
+             VALUES ('priority', 340, 460, 1, 0, 1.0, 0, 0, '2026-08-01T00:00:00Z')",
+            [],
+        )
+        .unwrap();
+
+    let board = repo.get(db.conn(), BoardKind::Priority).unwrap();
+
+    assert_eq!(board.font_size, 13.0);
+    assert_eq!(board.theme, BoardTheme::Dark);
+}
+
+#[test]
+fn a_font_size_below_the_floor_is_rejected() {
+    // At 8px the board is one illegible smudge and the menu that would undo it
+    // is unreadable too.
+    let (db, repo) = setup();
+    let mut board = BoardWindow::default_for(BoardKind::Priority);
+    board.font_size = 8.0;
+
+    assert!(repo.save(db.conn(), &board).is_err());
+}
+
+#[test]
+fn a_font_size_above_the_ceiling_is_rejected() {
+    let (db, repo) = setup();
+    let mut board = BoardWindow::default_for(BoardKind::Priority);
+    board.font_size = 40.0;
+
+    assert!(repo.save(db.conn(), &board).is_err());
+}
+
+#[test]
+fn the_opacity_floor_is_still_enforced() {
+    // Unchanged by this migration, but the reason is the same as the font
+    // clamp: a fully transparent board is invisible and unclickable.
+    let (db, repo) = setup();
+    let mut board = BoardWindow::default_for(BoardKind::Priority);
+    board.opacity = 0.0;
+
+    assert!(repo.save(db.conn(), &board).is_err());
+}
+
+#[test]
+fn an_unknown_theme_is_rejected() {
+    // Written as raw SQL because the repository cannot express an invalid
+    // theme — `BoardTheme` has no third variant. The CHECK is what guards the
+    // file against a hand-edit or a future migration bug.
+    let (db, _repo) = setup();
+
+    let written = db.conn().execute(
+        "INSERT INTO board_windows
+             (kind, width, height, visible, collapsed, opacity, always_on_top,
+              locked, theme, updated_at)
+         VALUES ('priority', 340, 460, 1, 0, 1.0, 0, 0, 'solarized', 'now')",
+        [],
+    );
+
+    assert!(written.is_err());
 }

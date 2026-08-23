@@ -141,3 +141,35 @@ describe("App", () => {
     expect(await screen.findByTestId("error")).toHaveTextContent("storage: disk full");
   });
 });
+
+describe("the unlock escape hatch", () => {
+  it("offers a way to unlock every board", () => {
+    // Spec §6.7's one dangerous state: every board locked and click-through,
+    // with nothing left to click.
+    render(<App />);
+
+    expect(
+      screen.getByRole("button", { name: /unlock all boards/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("explains the shortcut, so it can be used when no window is open", () => {
+    // A button inside the thing that can break is not an escape hatch, and
+    // nobody finds a shortcut they were never told about.
+    render(<App />);
+
+    expect(screen.getByText(/ctrl\+alt\+shift\+u/i)).toBeInTheDocument();
+  });
+
+  it("calls the unlock command", async () => {
+    const user = userEvent.setup();
+    mockInvoke.mockResolvedValue(undefined);
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /unlock all boards/i }));
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("board_unlock_all", undefined);
+    });
+  });
+});
