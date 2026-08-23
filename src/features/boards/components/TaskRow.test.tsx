@@ -263,3 +263,118 @@ describe("TaskRow", () => {
     });
   });
 });
+
+describe("TaskRow keyboard and menu", () => {
+  it("toggles completion on Enter when the row is focused", async () => {
+    const onComplete = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(<TaskRow {...props({ onComplete })} />);
+
+    (container.querySelector(".task-row") as HTMLElement).focus();
+    await user.keyboard("{Enter}");
+
+    expect(onComplete).toHaveBeenCalledWith(true);
+  });
+
+  it("toggles completion on Space", async () => {
+    const onComplete = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(<TaskRow {...props({ onComplete })} />);
+
+    (container.querySelector(".task-row") as HTMLElement).focus();
+    await user.keyboard(" ");
+
+    expect(onComplete).toHaveBeenCalledWith(true);
+  });
+
+  it("opens the title editor on e", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<TaskRow {...props()} />);
+
+    (container.querySelector(".task-row") as HTMLElement).focus();
+    await user.keyboard("e");
+
+    expect(screen.getByLabelText("Edit title")).toBeInTheDocument();
+  });
+
+  it("deletes on Delete", async () => {
+    const onDelete = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(<TaskRow {...props({ onDelete })} />);
+
+    (container.querySelector(".task-row") as HTMLElement).focus();
+    await user.keyboard("{Delete}");
+
+    expect(onDelete).toHaveBeenCalled();
+  });
+
+  it("does nothing on Delete when the board gave it no delete handler", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<TaskRow {...props()} />);
+
+    (container.querySelector(".task-row") as HTMLElement).focus();
+    await user.keyboard("{Delete}");
+
+    // No throw, no editor, nothing.
+    expect(screen.queryByLabelText("Edit title")).toBeNull();
+  });
+
+  it("ignores shortcuts typed inside the title editor", async () => {
+    // The one that matters: `e` must type an `e`, not re-open the editor.
+    const onComplete = vi.fn();
+    const user = userEvent.setup();
+    render(<TaskRow {...props({ onComplete })} />);
+
+    await user.dblClick(screen.getByText("submit applications"));
+    await user.clear(screen.getByLabelText("Edit title"));
+    await user.type(screen.getByLabelText("Edit title"), "eee");
+
+    expect(screen.getByLabelText("Edit title")).toHaveValue("eee");
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("does not delete when Delete is pressed inside the editor", async () => {
+    const onDelete = vi.fn();
+    const user = userEvent.setup();
+    render(<TaskRow {...props({ onDelete })} />);
+
+    await user.dblClick(screen.getByText("submit applications"));
+    await user.keyboard("{Delete}");
+
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it("asks for a menu on right-click, with the pointer position", async () => {
+    const onOpenMenu = vi.fn();
+    const user = userEvent.setup();
+    render(<TaskRow {...props({ onOpenMenu })} />);
+
+    await user.pointer({
+      keys: "[MouseRight]",
+      target: screen.getByText("submit applications"),
+    });
+
+    expect(onOpenMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+    );
+  });
+
+  it("asks for a menu on Shift+F10", async () => {
+    // The standard keyboard route to a context menu. Without it the whole
+    // interaction set is mouse-only.
+    const onOpenMenu = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(<TaskRow {...props({ onOpenMenu })} />);
+
+    (container.querySelector(".task-row") as HTMLElement).focus();
+    await user.keyboard("{Shift>}{F10}{/Shift}");
+
+    expect(onOpenMenu).toHaveBeenCalled();
+  });
+
+  it("is focusable so the shortcuts can be reached at all", () => {
+    const { container } = render(<TaskRow {...props()} />);
+
+    expect(container.querySelector(".task-row")).toHaveAttribute("tabindex", "0");
+  });
+});

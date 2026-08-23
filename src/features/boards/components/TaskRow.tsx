@@ -8,9 +8,10 @@ interface TaskRowProps {
   onComplete: (completed: boolean) => void;
   onEdit: (title: string) => void;
   onSetTimeSpent: (minutes: number | null) => void;
-  /** Omitted until PR 13 builds the move UI. */
   onMove?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
+  /** Asks the board to open a context menu at the given client coordinates. */
+  onOpenMenu?: ((at: { x: number; y: number }) => void) | undefined;
 }
 
 /**
@@ -31,6 +32,7 @@ export function TaskRow({
   onSetTimeSpent,
   onMove,
   onDelete,
+  onOpenMenu,
 }: TaskRowProps) {
   const [draft, setDraft] = useState<string | null>(null);
   const completed = task.status === "completed";
@@ -46,8 +48,64 @@ export function TaskRow({
     onEdit(next);
   }
 
+  /**
+   * Row-level shortcuts.
+   *
+   * Fires only when the row itself is the event target. Without that guard `e`
+   * would re-open the editor instead of typing an `e`, and Delete would delete
+   * the task instead of a character — the row's own children handle their own
+   * keys.
+   */
+  function onKeyDown(event: React.KeyboardEvent<HTMLLIElement>) {
+    if (event.target !== event.currentTarget) return;
+
+    if (event.shiftKey && event.key === "F10") {
+      // The standard keyboard route to a context menu. Without it the whole
+      // interaction set below is mouse-only.
+      event.preventDefault();
+      openMenuAt(event.currentTarget);
+      return;
+    }
+
+    switch (event.key) {
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        onComplete(!completed);
+        break;
+      case "e":
+        event.preventDefault();
+        setDraft(task.title);
+        break;
+      case "Delete":
+        event.preventDefault();
+        onDelete?.();
+        break;
+      case "ContextMenu":
+        event.preventDefault();
+        openMenuAt(event.currentTarget);
+        break;
+    }
+  }
+
+  /** Anchors a keyboard-opened menu to the row, since there is no pointer. */
+  function openMenuAt(element: HTMLElement) {
+    const box = element.getBoundingClientRect();
+    onOpenMenu?.({ x: box.left, y: box.bottom });
+  }
+
   return (
-    <li className="task-row" data-completed={completed}>
+    <li
+      className="task-row"
+      data-completed={completed}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      onContextMenu={(event) => {
+        if (!onOpenMenu) return;
+        event.preventDefault();
+        onOpenMenu({ x: event.clientX, y: event.clientY });
+      }}
+    >
       <PriorityBadge priority={task.priority} />
 
       <input
