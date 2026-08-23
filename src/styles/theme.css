@@ -132,6 +132,11 @@ body.board-window {
   padding: var(--space-2) var(--space-3);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Task rows shed their duration below a certain width. A container query
+     rather than a media query, because what matters is how wide this board
+     was dragged, not how large the monitor is. */
+  container-type: inline-size;
+  container-name: board;
 }
 
 .board[data-collapsed="true"] .board-body {
@@ -309,4 +314,108 @@ body.board-window {
 
 .duration-clear:hover {
   color: var(--status-blocked);
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  line-height: var(--line-height-tight);
+}
+
+/* Completed work stays on the board, dimmed. Removing it would turn a record
+   of the week into a list that empties as things get done (spec §6.4). */
+.task-row[data-completed="true"] .task-title {
+  color: var(--status-done);
+  text-decoration: line-through;
+}
+
+.task-checkbox {
+  flex: none;
+  margin: 0;
+  accent-color: var(--board-accent);
+  cursor: pointer;
+}
+
+.task-checkbox:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+}
+
+/* min-width: 0 is load-bearing — without it a flex item refuses to shrink
+   below its content and the ellipsis never appears. */
+.task-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+
+.task-title-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--board-accent);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+}
+
+.task-title-input:focus-visible {
+  outline: none;
+}
+
+/* Hover-revealed, like the board's own controls. Opacity rather than display,
+   so they stay in the layout and stay focusable. */
+.task-actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.task-row:hover .task-actions,
+.task-row:focus-within .task-actions {
+  opacity: 1;
+}
+
+.task-action {
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-dim);
+  font-size: var(--font-size-small);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.task-action:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.task-action:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+}
+
+/* A board is 340px by default. Below that the duration goes before the title
+   truncates: "how long did it take" is a question you ask of a board you have
+   widened, and the title is the part you cannot afford to lose. */
+@container board (max-width: 260px) {
+  .duration-value {
+    display: none;
+  }
 }
