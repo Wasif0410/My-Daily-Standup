@@ -29,6 +29,7 @@ function task(overrides: Partial<Task> = {}): Task {
     progressUnit: null,
     blocker: null,
     notes: null,
+    timeSpentMinutes: null,
     rolloverCount: 0,
     createdAt: "2026-08-21T00:00:00.000000Z",
     updatedAt: "2026-08-21T00:00:00.000000Z",
@@ -205,6 +206,26 @@ describe("actions", () => {
     expect(mockInvoke).toHaveBeenCalledWith("task_reschedule", {
       id: "task-1",
       to: "2026-08-25",
+    });
+  });
+
+  it("recordTimeSpent sends the duration", async () => {
+    await useTaskStore.getState().recordTimeSpent("task-1", 45);
+
+    expect(mockInvoke).toHaveBeenCalledWith("task_set_time_spent", {
+      id: "task-1",
+      minutes: 45,
+    });
+  });
+
+  it("recordTimeSpent sends null to clear a duration", async () => {
+    // Null means unrecorded, which is distinct from zero: a task nobody timed
+    // must contribute nothing to a total rather than counting as instant.
+    await useTaskStore.getState().recordTimeSpent("task-1", null);
+
+    expect(mockInvoke).toHaveBeenCalledWith("task_set_time_spent", {
+      id: "task-1",
+      minutes: null,
     });
   });
 

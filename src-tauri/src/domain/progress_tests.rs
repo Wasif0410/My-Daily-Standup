@@ -32,6 +32,7 @@ fn task(status: TaskStatus) -> Task {
         progress_unit: None,
         blocker: None,
         notes: None,
+        time_spent_minutes: None,
         rollover_count: 0,
         created_at: "2026-08-20T00:00:00.000000Z".into(),
         updated_at: "2026-08-20T00:00:00.000000Z".into(),

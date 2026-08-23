@@ -80,6 +80,9 @@ pub struct PeriodStats {
     pub cancelled: usize,
     /// `completed / planned`, or zero when nothing was planned.
     pub completion_rate: f64,
+    /// Total recorded minutes. Tasks with no duration contribute nothing:
+    /// unmeasured is not the same as zero (spec §10.4).
+    pub minutes_tracked: i64,
 }
 
 /// Summarises a period.
@@ -115,5 +118,6 @@ pub fn period_stats(tasks: &[Task]) -> PeriodStats {
         } else {
             completed as f64 / planned as f64
         },
+        minutes_tracked: super::minutes_in_period(tasks),
     }
 }

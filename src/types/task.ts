@@ -53,6 +53,10 @@ export interface Task {
   blocker: string | null;
   notes: string | null;
 
+  /** How long the task took, in minutes. Null means not recorded, which is
+   *  deliberately different from zero (spec §10.4). */
+  timeSpentMinutes: number | null;
+
   /** Incremented only when a task is rescheduled (spec §10.3). */
   rolloverCount: number;
 
@@ -127,6 +131,7 @@ export interface TaskPatch {
   progressUnit?: string | null;
   blocker?: string | null;
   notes?: string | null;
+  timeSpentMinutes?: number | null;
 }
 
 /** What went wrong, in a form the UI can branch on. */

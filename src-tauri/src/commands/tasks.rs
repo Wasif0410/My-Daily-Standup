@@ -57,6 +57,16 @@ pub fn task_list_for_period(
     state.list_for_period(&start, &end)
 }
 
+/// Records how long a task took. `minutes: null` clears it.
+#[tauri::command]
+pub fn task_set_time_spent(
+    state: State<'_, AppState>,
+    id: String,
+    minutes: Option<i64>,
+) -> Result<Task, CommandError> {
+    state.set_time_spent(&id, minutes)
+}
+
 /// Moves a task to a new date, counting the move as a deferral when it pushes
 /// the date later. The only route that may change `scheduled_date`.
 #[tauri::command]

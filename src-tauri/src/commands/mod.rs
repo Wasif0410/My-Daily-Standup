@@ -135,6 +135,24 @@ impl AppState {
         self.with_conn(|repo, conn| repo.list_for_period(conn, start, end))
     }
 
+    /// Records how long a task took, in minutes.
+    ///
+    /// `None` clears the value back to unrecorded, which is distinct from
+    /// zero: an unmeasured task must contribute nothing to a total rather
+    /// than dragging an average down.
+    pub fn set_time_spent(&self, id: &str, minutes: Option<i64>) -> Result<Task, CommandError> {
+        self.with_conn(|repo, conn| {
+            repo.update(
+                conn,
+                id,
+                TaskPatch {
+                    time_spent_minutes: Some(minutes),
+                    ..Default::default()
+                },
+            )
+        })
+    }
+
     /// Moves a task to a new date through the rollover engine.
     ///
     /// Deliberately not a plain `update_task` carrying a new `scheduled_date`:

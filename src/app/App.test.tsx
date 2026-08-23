@@ -32,6 +32,7 @@ function task(overrides: Partial<Task> = {}): Task {
     progressUnit: null,
     blocker: null,
     notes: null,
+    timeSpentMinutes: null,
     rolloverCount: 0,
     createdAt: "2026-08-21T00:00:00.000000Z",
     updatedAt: "2026-08-21T00:00:00.000000Z",

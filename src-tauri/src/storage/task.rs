@@ -149,6 +149,10 @@ pub struct Task {
     pub blocker: Option<String>,
     pub notes: Option<String>,
 
+    /// How long the task actually took, in minutes. `None` means not
+    /// recorded, which is deliberately different from zero (spec §10.4).
+    pub time_spent_minutes: Option<i64>,
+
     /// Incremented only when a task is rescheduled (spec §10.3).
     pub rollover_count: i64,
 
@@ -288,6 +292,8 @@ pub struct TaskPatch {
     pub blocker: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
     pub notes: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub time_spent_minutes: Option<Option<i64>>,
 
     /// Set only by the domain layer's reschedule path (spec §10.3). Editing a
     /// title or adding a blocker must never touch it, so it is deliberately

@@ -106,6 +106,16 @@ export function listTasksForPeriod(start: string, end: string): Promise<Task[]> 
 }
 
 /**
+ * Records how long a task took, in minutes.
+ *
+ * `null` clears it back to unrecorded, which is distinct from zero: an
+ * unmeasured task contributes nothing to a total.
+ */
+export function setTimeSpent(id: string, minutes: number | null): Promise<Task> {
+  return call<Task>("task_set_time_spent", { id, minutes });
+}
+
+/**
  * Moves a task to a new date.
  *
  * Routed through the rollover engine, so a deferral is counted. Never set
