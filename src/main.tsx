@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "@/app/App";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BoardRoot } from "@/features/boards/BoardRoot";
 import { QuickAddWindow } from "@/features/quick-add/QuickAddWindow";
 import { parseBoardKind } from "@/types/board";
@@ -32,6 +33,11 @@ function currentWindow() {
   return <App />;
 }
 
+// Every window gets a boundary at its root. Without one, a single throw
+// unmounts the tree and a frameless transparent window renders as an opaque
+// white rectangle — no title, no controls, nothing to say what happened.
 ReactDOM.createRoot(rootElement).render(
-  <React.StrictMode>{currentWindow()}</React.StrictMode>,
+  <React.StrictMode>
+    <ErrorBoundary>{currentWindow()}</ErrorBoundary>
+  </React.StrictMode>,
 );

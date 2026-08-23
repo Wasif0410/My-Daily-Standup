@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { BoardShell } from "@/components/BoardShell";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BoardMenu } from "@/features/boards/components/BoardMenu";
 import { PriorityBoard } from "@/features/boards/PriorityBoard";
 import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
 import { MonthlyBoard } from "@/features/boards/MonthlyBoard";
 import { WeeklyProgressBoard } from "@/features/boards/WeeklyProgressBoard";
 import {
+  closeBoard,
   listBoards,
   saveBoardGeometry,
   setBoardBehavior,
@@ -70,11 +72,17 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
     let ignore = false;
 
     void (async () => {
-      const boards = await listBoards();
-      const mine = boards.find((b) => b.kind === kind);
-      if (!ignore && mine) {
-        setBoard(mine);
-        expandedHeight.current = mine.height;
+      // Guarded: an unhandled rejection here used to escape as a render-time
+      // throw, which unmounted the whole tree and left the window blank.
+      try {
+        const boards = await listBoards();
+        const mine = boards.find((b) => b.kind === kind);
+        if (!ignore && mine) {
+          setBoard(mine);
+          expandedHeight.current = mine.height;
+        }
+      } catch (error) {
+        if (!ignore) setFailure(toCommandError(error));
       }
     })();
 
@@ -116,16 +124,32 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
   }, [kind]);
 
   useEffect(() => {
-    const window = getCurrentWindow();
-    const moved = window.onMoved(persistGeometry);
-    const resized = window.onResized(persistGeometry);
+    // getCurrentWindow() reads Tauri's injected metadata. On a window that has
+    // just been recreated that injection can lose the race with the bundle,
+    // and an uncaught throw here takes the entire board down with it — the
+    // blank-window failure. A board that cannot track its own position is a
+    // far smaller problem than one that does not render.
+    let moved: Promise<() => void> | null = null;
+    let resized: Promise<() => void> | null = null;
+
+    try {
+      const window = getCurrentWindow();
+      moved = window.onMoved(persistGeometry);
+      resized = window.onResized(persistGeometry);
+    } catch (error) {
+      // Logged, not surfaced. The board renders and works; it just stops
+      // remembering where it was dragged to. Raising a banner on every board
+      // for that would be a worse trade than the silence — and setting state
+      // from an effect body is what the React Compiler rejects anyway.
+      console.error("board could not track its own geometry:", error);
+    }
 
     return () => {
       if (timer.current) clearTimeout(timer.current);
-      void moved.then((off) => {
+      void moved?.then((off) => {
         off();
       });
-      void resized.then((off) => {
+      void resized?.then((off) => {
         off();
       });
     };
@@ -190,7 +214,10 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
       theme={board?.theme ?? "dark"}
       compact={board?.compact ?? false}
       onToggleCollapsed={toggleCollapsed}
-      onClose={() => void getCurrentWindow().close()}
+      // Through the command, never getCurrentWindow().close(): only this path
+      // records that the board is hidden, and without it `visible` stays true
+      // and the board reappears on the next launch.
+      onClose={() => void closeBoard(kind)}
       headerActions={
         <button
           type="button"
@@ -208,7 +235,7 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
           {failure.message}
         </p>
       )}
-      {boardContent(kind)}
+      <ErrorBoundary label={TITLES[kind]}>{boardContent(kind)}</ErrorBoundary>
 
       {menuOpen && board && (
         <BoardMenu
