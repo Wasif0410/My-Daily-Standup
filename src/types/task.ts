@@ -171,3 +171,38 @@ export interface WeekDay {
   /** English day name, e.g. "Monday". */
   name: string;
 }
+
+/** A month, mirroring `src-tauri/src/domain/month.rs`. */
+export interface Month {
+  start: string;
+  end: string;
+  /** In words, e.g. "August 2026" — the board's heading (spec §6.5). */
+  label: string;
+  /** The date this month was derived from: today. */
+  today: string;
+}
+
+/**
+ * How far along a task is, mirroring `src-tauri/src/domain/progress.rs`.
+ *
+ * Internally tagged so the UI switches on `kind` rather than guessing from
+ * which fields happen to be present — the three cases render differently and
+ * "12 of 20 applications" is a different statement from "2 of 3 subtasks".
+ */
+export type TaskProgress =
+  | { kind: "binary"; completed: boolean }
+  | { kind: "numeric"; current: number; target: number }
+  | { kind: "subtasks"; completed: number; total: number };
+
+/**
+ * A monthly commitment with its progress, mirroring
+ * `src-tauri/src/domain/commitment.rs`.
+ */
+export interface Commitment {
+  task: Task;
+  progress: TaskProgress;
+  /** Already clamped to 0..1 by Rust. Never recomputed here — the whole point
+   *  of shipping it alongside the raw numbers (spec §3.6). */
+  fraction: number;
+  complete: boolean;
+}
