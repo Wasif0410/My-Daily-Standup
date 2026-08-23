@@ -79,7 +79,7 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
 - `pub fn current_month() -> Month` — `Local::now()`, matching `current_week`.
 - Command `month_current -> Month`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a_month_runs_from_the_first_to_the_last_day`
   - `february_in_a_leap_year_ends_on_the_twenty_ninth` — 2028; the arithmetic must come
     from the calendar, not from a table of lengths
@@ -87,11 +87,11 @@ Inherited verbatim from `docs/superpowers/plans/2026-08-20-pr-sequence.md`.
   - `december_ends_on_the_thirty_first_and_does_not_roll_the_year`
   - `a_month_is_labelled_in_words`
   - `a_month_remembers_the_date_it_was_derived_from`
-- [ ] **Step 2: Run to verify they fail.**
-- [ ] **Step 3: Implement**, finding the last day as "first of next month, minus one day"
+- [x] **Step 2: Run to verify they fail.**
+- [x] **Step 3: Implement**, finding the last day as "first of next month, minus one day"
       rather than a length table.
-- [ ] **Step 4: Run to verify they pass. Step 5: Full Rust gate.**
-- [ ] **Step 6: Commit** — `feat: compute the current month in Rust`
+- [x] **Step 4: Run to verify they pass. Step 5: Full Rust gate.**
+- [x] **Step 6: Commit** — `feat: compute the current month in Rust`
 
 ---
 
@@ -134,7 +134,7 @@ WHERE horizon = ?1
 ORDER BY priority DESC NULLS LAST, created_at
 ```
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - repo: `list_by_horizon_in_period_returns_only_that_horizon`;
     `list_by_horizon_in_period_matches_on_overlap_not_containment`
   - `a_commitment_with_a_numeric_target_reports_it`
@@ -151,10 +151,10 @@ ORDER BY priority DESC NULLS LAST, created_at
   - `a_commitment_with_nothing_under_it_is_binary`
   - `the_fraction_is_clamped_over_target` — `22 / 20` reports `1.0`
   - `the_fraction_of_an_empty_target_is_zero_not_a_division_by_zero`
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Add `task_monthly_progress { start, end } -> Vec<Commitment>`** and
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Add `task_monthly_progress { start, end } -> Vec<Commitment>`** and
       register it. **Step 6: Full Rust gate.**
-- [ ] **Step 7: Commit** — `feat: roll monthly commitments up from their children`
+- [x] **Step 7: Commit** — `feat: roll monthly commitments up from their children`
 
 ---
 
@@ -179,9 +179,9 @@ export function currentMonth(): Promise<Month>;
 export function monthlyProgress(start: string, end: string): Promise<Commitment[]>;
 ```
 
-- [ ] **Step 1: Add them** (types and thin wrappers; covered by the board's tests rather
+- [x] **Step 1: Add them** (types and thin wrappers; covered by the board's tests rather
       than duplicated ones). **Step 2: Typecheck.**
-- [ ] **Step 3: Commit** — `feat: type monthly commitments`
+- [x] **Step 3: Commit** — `feat: type monthly commitments`
 
 ---
 
@@ -192,7 +192,7 @@ export function monthlyProgress(start: string, end: string): Promise<Commitment[
 
 **Interfaces:** `<ProgressBar fraction={number} label={string} />`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `renders an empty bar at zero`
   - `renders a full bar at one`
   - `renders a partial bar` — 0.6 → 60%
@@ -203,10 +203,10 @@ export function monthlyProgress(start: string, end: string): Promise<Commitment[
   - `is a real progressbar` — `role="progressbar"` with `aria-valuenow`, `aria-valuemin`,
     `aria-valuemax`. No run of block characters can carry that.
   - `names what it is measuring` — an unlabelled bar on a board of four says nothing
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Style** — a filled div over a track, sized in percent so it stays legible
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Style** — a filled div over a track, sized in percent so it stays legible
       at small font sizes and low opacity where block characters go ragged.
-- [ ] **Step 6: Commit** — `feat: add the progress bar`
+- [x] **Step 6: Commit** — `feat: add the progress bar`
 
 ---
 
@@ -225,7 +225,7 @@ JOB SEARCH
 ████████████░░░░░░░░ 60%
 ```
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `asks Rust for the current month`
   - `loads the commitments for that month`
   - `shows the month in words`
@@ -240,8 +240,8 @@ JOB SEARCH
   - `refetches when another window announces a change`
   - `stops listening when it unmounts`
   - `surfaces a failure rather than failing silently`
-- [ ] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: Commit** — `feat: add the monthly progress board`
+- [x] **Step 2: Run to verify they fail. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: Commit** — `feat: add the monthly progress board`
 
 ---
 
@@ -249,18 +249,33 @@ JOB SEARCH
 
 **Files:** `src/features/boards/BoardRoot.tsx` (+test).
 
-- [ ] **Step 1: Write the failing test** — `puts the monthly board in the
+- [x] **Step 1: Write the failing test** — `puts the monthly board in the
       monthly-progress window`. Every board now has content, so the placeholder branch
       disappears and the switch becomes exhaustive over real components.
-- [ ] **Step 2: Run to verify it fails. Step 3: Implement. Step 4: Verify.**
-- [ ] **Step 5: The full local gate** — all seven commands.
-- [ ] **Step 6: Launch and read the dev log.** Verify:
-  - A monthly commitment with a numeric target shows its figure and a bar.
-  - **Completing a daily task moves the monthly number** — the DoD. Check the figure
-    before and after, and confirm in the database that the *weekly* parent's status was
-    not silently changed.
-  - No sidecar process.
-- [ ] **Step 7: Commit, push, open the PR, tick PR 15 in the sequence document.**
+- [x] **Step 2: Run to verify it fails. Step 3: Implement. Step 4: Verify.**
+- [x] **Step 5: The full local gate** — all seven commands.
+- [ ] **Step 6: Launch and read the dev log.**
+
+      **Done so far:** the app launched and built clean, the dev log carries no error,
+      permission denial, or panic, and no sidecar process appeared. Three `[seed]` monthly
+      commitments were written — one numeric, one with a real monthly → weekly → daily
+      chain, one binary with nothing under it.
+
+      **The DoD was demonstrated against the real database.** Completing one outstanding
+      daily task moved `DAILY STANDUP MVP` from `1 / 2 done` (50%) to `2 / 2 done` (100%),
+      and the weekly parent's status stayed `planned` — the §10.1 guarantee that computing
+      progress never writes. Note the verification script *mirrors* the Rust roll-up
+      rather than calling it; the implementation itself is covered by
+      `a_completed_daily_task_moves_the_monthly_number` and
+      `rolling_up_never_writes_a_status`.
+
+      **Still needs a human at the keyboard:** confirming the board renders the bars
+      legibly at a small font size and low opacity, which is the one claim only eyes can
+      settle.
+
+      Remove the seeded rows afterwards with
+      `DELETE FROM tasks WHERE title LIKE '[seed]%'`.
+- [x] **Step 7: Commit, push, open the PR, tick PR 15 in the sequence document.**
 
 ---
 
