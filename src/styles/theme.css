@@ -516,3 +516,31 @@ body.board-window {
   outline: 2px solid var(--board-accent);
   outline-offset: -1px;
 }
+
+/* ---- Quick add ---------------------------------------------------------
+   Sits above the groups so the cursor lands where the eye starts. No submit
+   button: a 340px board has no room, and Enter is the gesture everyone
+   already reaches for. */
+
+.quick-add {
+  width: 100%;
+  margin-bottom: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-bottom-color: var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+}
+
+.quick-add::placeholder {
+  color: var(--text-dim);
+}
+
+.quick-add:focus-visible {
+  border-color: var(--board-accent);
+  background: var(--surface-sunken);
+  outline: none;
+}
