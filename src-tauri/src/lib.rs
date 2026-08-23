@@ -7,6 +7,7 @@
 pub mod commands;
 pub mod domain;
 pub mod storage;
+pub mod tray;
 pub mod windows;
 
 use tauri::Manager;
