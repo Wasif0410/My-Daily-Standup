@@ -180,3 +180,30 @@ body.board-window {
   color: var(--status-blocked);
   font-size: var(--font-size-small);
 }
+
+/* ---- Task row ----------------------------------------------------------
+   The primitive every board reuses. A board is 340px wide by default, so the
+   row is built to degrade in a fixed order: the duration collapses first, and
+   the title truncates only after that. */
+
+.priority-badge {
+  flex: none;
+  min-width: 2.1em;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--priority-low);
+}
+
+.priority-badge[data-tier="high"] {
+  color: var(--priority-high);
+}
+
+.priority-badge[data-tier="medium"] {
+  color: var(--priority-medium);
+}
+
+.priority-badge[data-tier="none"] {
+  color: var(--text-dim);
+}
