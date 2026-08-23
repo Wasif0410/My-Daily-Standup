@@ -95,6 +95,29 @@ pub fn task_children_of(
     state.children_of(&parent_id)
 }
 
+/// Sets or clears a blocker. `blocker: null` clears it.
+///
+/// The only route that may change `blocker`, since it is also what keeps the
+/// `blocked` status honest.
+#[tauri::command]
+pub fn task_set_blocker(
+    state: State<'_, AppState>,
+    id: String,
+    blocker: Option<String>,
+) -> Result<Task, CommandError> {
+    state.set_blocker(&id, blocker.as_deref())
+}
+
+/// Appends a dated comment to a task's notes.
+#[tauri::command]
+pub fn task_add_comment(
+    state: State<'_, AppState>,
+    id: String,
+    comment: String,
+) -> Result<Task, CommandError> {
+    state.add_comment(&id, &comment)
+}
+
 /// The week today falls in, so the frontend never derives a date itself.
 ///
 /// `starts_on` accepts "monday", "sunday", or "saturday" and defaults to Monday

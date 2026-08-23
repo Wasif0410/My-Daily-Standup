@@ -167,6 +167,21 @@ impl AppState {
         self.with_conn(|repo, conn| crate::domain::reschedule(repo, conn, id, to))
     }
 
+    /// Sets or clears a blocker, keeping the task's status in step.
+    ///
+    /// Deliberately not a plain `update_task` carrying a `blocker`: that would
+    /// let the text and the `blocked` status drift apart, and every view would
+    /// then have to guess which one to believe.
+    pub fn set_blocker(&self, id: &str, blocker: Option<&str>) -> Result<Task, CommandError> {
+        self.with_conn(|repo, conn| crate::domain::set_blocker(repo, conn, id, blocker))
+    }
+
+    /// Appends a dated comment to a task's notes.
+    pub fn add_comment(&self, id: &str, comment: &str) -> Result<Task, CommandError> {
+        self.with_conn(|repo, conn| {
+            crate::domain::add_comment(repo, conn, id, comment, crate::domain::today())
+        })
+    }
     pub fn children_of(&self, parent_id: &str) -> Result<Vec<Task>, CommandError> {
         self.with_conn(|repo, conn| repo.children_of(conn, parent_id))
     }
