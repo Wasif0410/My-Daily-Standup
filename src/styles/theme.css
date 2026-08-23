@@ -826,3 +826,30 @@ body.board-window {
   font-family: var(--font-mono);
   color: var(--text-secondary);
 }
+
+/* ---- Quick add window --------------------------------------------------
+   The tray's capture box (spec §6.8). One line, no chrome, and gone as soon
+   as it has taken the task. */
+
+.quick-add-window {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-top: var(--board-border-top) solid var(--accent-weekly-tasks);
+  border-radius: var(--radius-board);
+  background: var(--surface-base);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 50%);
+  font-family: var(--font-ui);
+  font-size: var(--board-font-size);
+  color: var(--text-primary);
+}
+
+/* Larger than the board's inline field: this window exists only for this
+   input, so it gets the whole of the space. */
+.quick-add-window .quick-add {
+  margin: 0;
+  border-color: var(--border-subtle);
+  font-size: var(--font-size-body);
+}
