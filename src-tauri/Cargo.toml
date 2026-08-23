@@ -27,6 +27,7 @@ rusqlite = { version = "0.40.2", features = ["bundled"] }
 thiserror = "2.0.20"
 uuid = { version = "1.24.1", features = ["v4"] }
 chrono = { version = "0.4.45", features = ["serde"] }
+tauri-plugin-global-shortcut = "2.3.2"
 
 [profile.release]
 codegen-units = 1
