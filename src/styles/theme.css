@@ -419,3 +419,10 @@ body.board-window {
     display: none;
   }
 }
+
+/* Distinct from the dev shell's .task-list, which global.css still owns. */
+.task-list-plain {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
