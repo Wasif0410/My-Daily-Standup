@@ -55,6 +55,8 @@ pub fn run() {
             commands::tasks::task_add_comment,
             commands::tasks::week_current,
             commands::boards::board_open,
+            commands::boards::ui_state_get,
+            commands::boards::ui_state_set,
             commands::boards::board_close,
             commands::boards::board_save_geometry,
             commands::boards::board_set_collapsed,

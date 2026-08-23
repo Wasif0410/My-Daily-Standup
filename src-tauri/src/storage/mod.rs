@@ -9,6 +9,7 @@ mod db;
 mod migrations;
 mod task;
 mod task_repo;
+mod ui_state;
 
 #[cfg(test)]
 mod board_tests;
@@ -18,12 +19,15 @@ mod patch_tests;
 mod task_repo_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod ui_state_tests;
 
 pub use board::{BoardKind, BoardRepo, BoardWindow};
 pub use db::Db;
 pub use migrations::{run_migrations, schema_version, LATEST_VERSION};
 pub use task::{NewTask, Task, TaskHorizon, TaskPatch, TaskSource, TaskStatus};
 pub use task_repo::TaskRepo;
+pub use ui_state::UiStateRepo;
 
 /// Filename of the application database inside the app data directory.
 ///
