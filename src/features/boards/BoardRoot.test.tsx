@@ -166,3 +166,73 @@ describe("BoardRoot window behaviours", () => {
     });
   });
 });
+
+describe("BoardRoot closing and failure", () => {
+  function board(overrides: Record<string, unknown> = {}) {
+    return {
+      kind: "priority",
+      x: 0,
+      y: 0,
+      width: 340,
+      height: 460,
+      monitor: null,
+      visible: true,
+      collapsed: false,
+      opacity: 1,
+      alwaysOnTop: false,
+      locked: false,
+      fontSize: 13,
+      theme: "dark",
+      compact: false,
+      desktopLevel: false,
+      ...overrides,
+    };
+  }
+
+  it("closes through the command, so the board stays shut after a restart", async () => {
+    // getCurrentWindow().close() destroys the window but never records it, so
+    // `visible` stays 1 and restore_boards brings the board straight back on
+    // the next launch. Only board_close persists the choice.
+    const user = userEvent.setup();
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "board_list") return Promise.resolve([board()]);
+      return Promise.resolve(null);
+    });
+    render(<BoardRoot kind="priority" />);
+
+    await user.click(await screen.findByRole("button", { name: /close board/i }));
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("board_close", { kind: "priority" });
+    });
+  });
+
+  it("shows the failure instead of a blank window when loading throws", async () => {
+    // The white-window bug: an unguarded throw in this component unmounted the
+    // whole tree, leaving a frameless transparent window rendering as an
+    // opaque white rectangle.
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "board_list") return Promise.reject(new Error("no IPC here"));
+      return Promise.resolve([]);
+    });
+
+    render(<BoardRoot kind="priority" />);
+
+    expect(await screen.findByText("no IPC here")).toBeInTheDocument();
+  });
+
+  it("still renders its chrome when loading fails", async () => {
+    // A board that loses its title bar has no close button and no menu, so
+    // there is no way to get rid of it.
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === "board_list") return Promise.reject(new Error("no IPC here"));
+      return Promise.resolve([]);
+    });
+
+    render(<BoardRoot kind="priority" />);
+
+    await screen.findByText("no IPC here");
+    expect(screen.getByRole("heading", { name: "Priority Tasks" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /close board/i })).toBeInTheDocument();
+  });
+});

@@ -104,6 +104,18 @@ pub fn apply_to_window(window: &WebviewWindow, board: &BoardWindow) -> Result<()
         .set_ignore_cursor_events(board.locked)
         .map_err(window_error)?;
 
+    // Visibility is a window operation, not just a stored flag. Leaving this
+    // out is what made "Hide this board" write `visible = false` and change
+    // nothing on screen.
+    //
+    // Hidden rather than closed: the window keeps its position and its loaded
+    // page, so showing it again is instant and cannot hit the reload path.
+    if board.visible {
+        window.show().map_err(window_error)?;
+    } else {
+        window.hide().map_err(window_error)?;
+    }
+
     Ok(())
 }
 

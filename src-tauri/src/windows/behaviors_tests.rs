@@ -163,3 +163,32 @@ fn a_non_finite_font_size_falls_back_too() {
     assert!(b.font_size.is_finite());
     assert!((10.0..=24.0).contains(&b.font_size));
 }
+
+// ---- visibility ---------------------------------------------------------------
+
+#[test]
+fn hiding_a_board_records_it_as_not_visible() {
+    let mut b = board();
+    apply_to_state(&mut b, Behavior::Visible(true));
+
+    apply_to_state(&mut b, Behavior::Visible(false));
+
+    assert!(!b.visible);
+}
+
+#[test]
+fn visibility_is_the_only_thing_hiding_changes() {
+    // Hiding a board is a display choice, not a reset: its position, size, and
+    // every appearance setting have to survive so reopening puts it back the
+    // way it was.
+    let mut b = board();
+    apply_to_state(&mut b, Behavior::Opacity(0.5));
+    apply_to_state(&mut b, Behavior::FontSize(18.0));
+    apply_to_state(&mut b, Behavior::AlwaysOnTop(true));
+
+    apply_to_state(&mut b, Behavior::Visible(false));
+
+    assert_eq!(b.opacity, 0.5);
+    assert_eq!(b.font_size, 18.0);
+    assert!(b.always_on_top);
+}

@@ -61,13 +61,26 @@ pub fn open_board(app: &AppHandle, kind: BoardKind) -> Result<(), CommandError> 
     Ok(())
 }
 
-/// Closes a board window and records that it is hidden.
+/// Hides a board window and records that it is hidden.
 ///
-/// Closing a board is a display choice, not a deletion: its geometry is kept so
-/// reopening puts it back where it was.
+/// **Hidden, not destroyed.** Closing the webview and building a replacement
+/// with the same label leaves a window that is correct in every observable
+/// way — right label, right position, right URL, and its bundle runs and
+/// reaches IPC — but paints as an opaque white rectangle. The transparent
+/// surface does not survive being recreated in the same process, and no amount
+/// of frontend error handling helps, because nothing has thrown.
+///
+/// Hiding sidesteps the whole problem: the window is never torn down, so
+/// reopening is a `show()` and the page is already loaded. It is also simply
+/// better — reopening is instant and keeps scroll position and any open menu.
+///
+/// The cost is a hidden window per closed board for the lifetime of the
+/// process, which is a few megabytes. Quit tears them all down, and a board
+/// hidden at shutdown is never recreated at startup because `restore_boards`
+/// skips it.
 pub fn close_board(app: &AppHandle, kind: BoardKind) -> Result<(), CommandError> {
     if let Some(window) = app.get_webview_window(&kind.window_label()) {
-        window.close().map_err(window_error)?;
+        window.hide().map_err(window_error)?;
     }
 
     let state = app.state::<AppState>();

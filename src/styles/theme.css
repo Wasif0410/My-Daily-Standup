@@ -853,3 +853,54 @@ body.board-window {
   border-color: var(--border-subtle);
   font-size: var(--font-size-body);
 }
+
+/* ---- Render failure ----------------------------------------------------
+   What a window shows when something throws. Opaque and legible on purpose:
+   the alternative is a transparent window painting white, with no title, no
+   controls, and no clue what went wrong. */
+
+.board-failure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-board);
+  background: var(--surface-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-small);
+}
+
+.board-failure-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--status-blocked);
+}
+
+/* Monospaced and wrapping: this is an error string, and truncating it would
+   remove the only useful thing on screen. */
+.board-failure-message {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  line-height: var(--line-height-body);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.board-failure-retry {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+  cursor: pointer;
+}
+
+.board-failure-retry:hover {
+  border-color: var(--board-accent);
+  color: var(--board-accent);
+}
