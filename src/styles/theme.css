@@ -1074,9 +1074,9 @@ body.board-window {
 /* Entry fields read as text, not as boxes. A bordered input inside a panel
    inside a board is three nested rectangles in 340px. */
 .section-entry,
-.section-new-input,
 .section-item-input,
-.section-heading-input {
+.section-heading-input,
+.section-new-input {
   width: 100%;
   padding: 1px 0;
   border: 0;
@@ -1100,9 +1100,28 @@ body.board-window {
   border-bottom-color: var(--board-accent);
 }
 
-.section-heading-input {
+/* Both of these are a section heading being typed, so they are dressed as one
+   rather than as a form field. A naming box that looks like the quick-add bar
+   above it reads as a second search box, and the thing it is about to become
+   is a heading. */
+.section-heading-input,
+.section-new-input {
   font-size: var(--font-size-heading);
   font-weight: 600;
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* No underline on the new-section field: the bar is what made it read as a
+   search box. The caret and the placeholder are enough to say it is live. */
+.section-new-input,
+.section-new-input:focus {
+  border-bottom-color: transparent;
+}
+
+.section-new-input::placeholder {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-label);
 }

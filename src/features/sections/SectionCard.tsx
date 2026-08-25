@@ -69,12 +69,18 @@ export function SectionCard({
     setEditingItem(id);
   }
 
-  function commitItem(id: string, original: string) {
+  function commitItem(id: string, original: string, thenAddAnother = false) {
     setEditingItem(null);
     if (discarded.current) {
       discarded.current = false;
       return;
     }
+
+    // Enter on a bullet opens the next one, the way any outliner behaves. It
+    // is the second route in — the header's + is the first — and it is the one
+    // that matters while actually writing, because it never leaves the
+    // keyboard.
+    if (thenAddAnother) setAdding(true);
 
     const next = draft.trim();
     if (!next || next === original) return;
@@ -160,7 +166,7 @@ export function SectionCard({
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    commitItem(item.id, item.text);
+                    commitItem(item.id, item.text, true);
                   } else if (event.key === "Escape") {
                     event.preventDefault();
                     discard();

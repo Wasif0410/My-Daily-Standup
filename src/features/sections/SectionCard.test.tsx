@@ -183,6 +183,32 @@ describe("SectionCard", () => {
     expect(h.onAddItem).toHaveBeenNthCalledWith(2, "s1", "Two");
   });
 
+  it("opens the next bullet when Enter ends the one being edited", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<SectionCard section={section()} {...h} />);
+
+    await user.click(screen.getByText("Rewrite the resume"));
+    const editor = screen.getByLabelText("Edit bullet");
+    await user.clear(editor);
+    await user.type(editor, "Rewrite it properly{Enter}");
+
+    // The second route in, and the one that matters while writing: it never
+    // leaves the keyboard.
+    expect(h.onUpdateItem).toHaveBeenCalledWith("i1", "Rewrite it properly");
+    expect(screen.getByLabelText("Add to Job Search")).toBeInTheDocument();
+  });
+
+  it("does not open a new bullet when an edit is abandoned", async () => {
+    const user = userEvent.setup();
+    render(<SectionCard section={section()} {...handlers()} />);
+
+    await user.click(screen.getByText("Rewrite the resume"));
+    await user.type(screen.getByLabelText("Edit bullet"), " more{Escape}");
+
+    expect(screen.queryByLabelText("Add to Job Search")).not.toBeInTheDocument();
+  });
+
   it("closes the add field on Escape", async () => {
     const user = userEvent.setup();
     render(<SectionCard section={section()} {...handlers()} />);

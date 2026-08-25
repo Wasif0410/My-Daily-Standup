@@ -61,7 +61,10 @@ export function SectionList({
         <input
           className="section-new-input"
           aria-label="New section name"
-          placeholder="Section name…"
+          // Says what it is making, in the shape it will become. The old
+          // "Section name…" in a bordered box sat directly under the Weekly
+          // board's task quick-add and read as a second search field.
+          placeholder="Add section"
           autoFocus
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
