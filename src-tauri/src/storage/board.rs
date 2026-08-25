@@ -53,6 +53,14 @@ impl BoardKind {
         format!("board-{}", self.as_str())
     }
 
+    /// The board a label names, if it names one at all.
+    ///
+    /// The inverse of [`Self::window_label`]. A window event carries nothing
+    /// but a label, so routing a close back to the right board depends on it.
+    pub fn from_window_label(label: &str) -> Option<Self> {
+        Self::parse(label.strip_prefix("board-")?)
+    }
+
     /// Title shown in the taskbar and by screen readers.
     pub fn title(self) -> &'static str {
         match self {

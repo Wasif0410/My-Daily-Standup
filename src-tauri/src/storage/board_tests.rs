@@ -279,3 +279,28 @@ fn an_unknown_theme_is_rejected() {
 
     assert!(written.is_err());
 }
+
+#[test]
+fn a_window_label_identifies_its_board() {
+    // The window event handler only receives a label. Without this, a board
+    // closed by Alt+F4 cannot be told from any other window, and the close
+    // cannot be routed to the hide-and-record path.
+    for &kind in BoardKind::ALL {
+        assert_eq!(
+            BoardKind::from_window_label(&kind.window_label()),
+            Some(kind),
+            "{kind:?} must be recoverable from its own label"
+        );
+    }
+}
+
+#[test]
+fn only_board_labels_name_a_board() {
+    // The main window and the capture box are not boards, and a bare kind is
+    // not a label. Treating any of them as one would hide the wrong window.
+    assert_eq!(BoardKind::from_window_label("main"), None);
+    assert_eq!(BoardKind::from_window_label("quick-add"), None);
+    assert_eq!(BoardKind::from_window_label("priority"), None);
+    assert_eq!(BoardKind::from_window_label("board-nonsense"), None);
+    assert_eq!(BoardKind::from_window_label(""), None);
+}

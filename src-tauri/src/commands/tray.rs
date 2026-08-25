@@ -40,8 +40,13 @@ pub fn autostart_set(app: AppHandle, enabled: bool) -> Result<(), CommandError> 
 #[tauri::command]
 pub fn quick_add_close(app: AppHandle) -> Result<(), CommandError> {
     if let Some(window) = app.get_webview_window(QUICK_ADD_LABEL) {
+        // Hidden, not closed. The capture box is transparent too, so
+        // destroying it and building a replacement in the same process leaves
+        // the same dead drawing surface that PR 21 found behind the blank
+        // boards. open_quick_add already shows an existing window rather than
+        // rebuilding one.
         window
-            .close()
+            .hide()
             .map_err(|error| internal(&error.to_string()))?;
     }
 

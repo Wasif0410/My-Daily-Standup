@@ -6,9 +6,16 @@ use super::{AppState, CommandError};
 use crate::storage::{BoardKind, BoardWindow};
 use crate::windows;
 
+/// Opens a board window.
+///
+/// Async, and the work is handed to the main thread, because this command can
+/// create a window. Building a webview needs the event loop to turn, and a
+/// synchronous command is running *on* that loop — so `build()` would never
+/// return and the board would appear as a blank rectangle. See
+/// [`windows::dispatch`] for the full account.
 #[tauri::command]
-pub fn board_open(app: AppHandle, kind: BoardKind) -> Result<(), CommandError> {
-    windows::open_board(&app, kind)
+pub async fn board_open(app: AppHandle, kind: BoardKind) -> Result<(), CommandError> {
+    windows::on_main_thread(app, move |app| windows::open_board(app, kind)).await
 }
 
 #[tauri::command]
