@@ -6,6 +6,7 @@
 //! without constructing a Tauri runtime.
 
 pub mod boards;
+pub mod sections;
 pub mod tasks;
 pub mod tray;
 
@@ -15,8 +16,8 @@ use std::sync::Mutex;
 use serde::Serialize;
 
 use crate::storage::{
-    BoardKind, BoardRepo, BoardWindow, Db, NewTask, StorageError, Task, TaskHorizon, TaskPatch,
-    TaskRepo, UiStateRepo, DATABASE_FILENAME,
+    BoardKind, BoardRepo, BoardSection, BoardWindow, Db, NewTask, SectionItem, SectionRepo,
+    StorageError, Task, TaskHorizon, TaskPatch, TaskRepo, UiStateRepo, DATABASE_FILENAME,
 };
 
 /// How an error is reported across the IPC boundary.
@@ -47,8 +48,12 @@ pub enum ErrorKind {
 impl From<StorageError> for CommandError {
     fn from(error: StorageError) -> Self {
         let kind = match error {
-            StorageError::TaskNotFound { .. } => ErrorKind::NotFound,
-            StorageError::InvalidDate { .. } => ErrorKind::InvalidInput,
+            StorageError::TaskNotFound { .. }
+            | StorageError::SectionNotFound { .. }
+            | StorageError::ItemNotFound { .. } => ErrorKind::NotFound,
+            StorageError::InvalidDate { .. } | StorageError::Validation { .. } => {
+                ErrorKind::InvalidInput
+            }
             StorageError::Sqlite(_) | StorageError::Migration { .. } => ErrorKind::Storage,
             StorageError::Io(_) => ErrorKind::Internal,
         };
@@ -68,6 +73,7 @@ pub struct AppState {
     db: Mutex<Db>,
     repo: TaskRepo,
     boards: BoardRepo,
+    sections: SectionRepo,
     ui: UiStateRepo,
 }
 
@@ -80,6 +86,7 @@ impl AppState {
             db: Mutex::new(db),
             repo: TaskRepo::new(),
             boards: BoardRepo::new(),
+            sections: SectionRepo::new(),
             ui: UiStateRepo::new(),
         })
     }
@@ -90,6 +97,7 @@ impl AppState {
             db: Mutex::new(Db::open_in_memory()?),
             repo: TaskRepo::new(),
             boards: BoardRepo::new(),
+            sections: SectionRepo::new(),
             ui: UiStateRepo::new(),
         })
     }
@@ -271,6 +279,67 @@ impl AppState {
         let guard = self.db.lock().map_err(poisoned)?;
         self.boards
             .save(guard.conn(), window)
+            .map_err(CommandError::from)
+    }
+}
+
+impl AppState {
+    /// Every section on one board, with its items.
+    pub fn sections(&self, board_kind: BoardKind) -> Result<Vec<BoardSection>, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.sections
+            .list(guard.conn(), board_kind)
+            .map_err(CommandError::from)
+    }
+
+    pub fn create_section(
+        &self,
+        board_kind: BoardKind,
+        title: &str,
+    ) -> Result<BoardSection, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.sections
+            .create(guard.conn(), board_kind, title)
+            .map_err(CommandError::from)
+    }
+
+    pub fn rename_section(&self, id: &str, title: &str) -> Result<BoardSection, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.sections
+            .rename(guard.conn(), id, title)
+            .map_err(CommandError::from)
+    }
+
+    /// Deletes a section and every item in it.
+    pub fn delete_section(&self, id: &str) -> Result<(), CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.sections
+            .delete(guard.conn(), id)
+            .map_err(CommandError::from)
+    }
+
+    pub fn add_section_item(
+        &self,
+        section_id: &str,
+        text: &str,
+    ) -> Result<SectionItem, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.sections
+            .add_item(guard.conn(), section_id, text)
+            .map_err(CommandError::from)
+    }
+
+    pub fn update_section_item(&self, id: &str, text: &str) -> Result<SectionItem, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.sections
+            .update_item(guard.conn(), id, text)
+            .map_err(CommandError::from)
+    }
+
+    pub fn delete_section_item(&self, id: &str) -> Result<(), CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.sections
+            .delete_item(guard.conn(), id)
             .map_err(CommandError::from)
     }
 }

@@ -7,6 +7,7 @@ import { PriorityBoard } from "@/features/boards/PriorityBoard";
 import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
 import { MonthlyBoard } from "@/features/boards/MonthlyBoard";
 import { WeeklyProgressBoard } from "@/features/boards/WeeklyProgressBoard";
+import { BoardSections } from "@/features/sections/BoardSections";
 import {
   closeBoard,
   listBoards,
@@ -235,6 +236,13 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
           {failure.message}
         </p>
       )}
+      {/* Above the tasks, and in its own boundary. Sections are notes the user
+          wrote by hand; a failure in the generated task content below must not
+          take them off the screen, and vice versa. */}
+      <ErrorBoundary label={`${TITLES[kind]} sections`}>
+        <BoardSections kind={kind} />
+      </ErrorBoundary>
+
       <ErrorBoundary label={TITLES[kind]}>{boardContent(kind)}</ErrorBoundary>
 
       {menuOpen && board && (

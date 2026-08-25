@@ -19,6 +19,7 @@ import type {
   Month,
   Week,
 } from "@/types/task";
+import type { BoardSection, SectionItem } from "@/types/section";
 
 /**
  * A failed command.
@@ -311,4 +312,48 @@ export function setUiState(key: string, value: string): Promise<void> {
  */
 export function closeQuickAdd(): Promise<void> {
   return call<void>("quick_add_close");
+}
+
+// --- sections ----------------------------------------------------------------
+
+/**
+ * The sections of one board, in display order.
+ *
+ * Each section arrives with its items already nested, so a board renders from
+ * one round-trip rather than one per section.
+ */
+export function listSections(kind: BoardKind): Promise<BoardSection[]> {
+  return call<BoardSection[]>("section_list", { boardKind: kind });
+}
+
+/**
+ * Adds a section to a board.
+ *
+ * The id and the position are assigned by Rust — a caller choosing either
+ * could collide with a section that already exists.
+ */
+export function createSection(kind: BoardKind, title: string): Promise<BoardSection> {
+  return call<BoardSection>("section_create", { boardKind: kind, title });
+}
+
+/** Returns the stored section, whose position may differ from the caller's copy. */
+export function renameSection(id: string, title: string): Promise<BoardSection> {
+  return call<BoardSection>("section_rename", { id, title });
+}
+
+/** Deletes a section and, with it, every item inside it. */
+export function deleteSection(id: string): Promise<void> {
+  return call<void>("section_delete", { id });
+}
+
+export function addSectionItem(sectionId: string, text: string): Promise<SectionItem> {
+  return call<SectionItem>("section_item_add", { sectionId, text });
+}
+
+export function updateSectionItem(id: string, text: string): Promise<SectionItem> {
+  return call<SectionItem>("section_item_update", { id, text });
+}
+
+export function deleteSectionItem(id: string): Promise<void> {
+  return call<void>("section_item_delete", { id });
 }
