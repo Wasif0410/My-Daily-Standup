@@ -19,10 +19,11 @@ const MIGRATIONS: &[(u32, &str)] = &[
     (3, include_str!("../../migrations/003_time_spent.sql")),
     (4, include_str!("../../migrations/004_ui_state.sql")),
     (5, include_str!("../../migrations/005_board_appearance.sql")),
+    (6, include_str!("../../migrations/006_board_sections.sql")),
 ];
 
 /// The schema version a fully migrated database reports.
-pub const LATEST_VERSION: u32 = 5;
+pub const LATEST_VERSION: u32 = 6;
 
 /// Applies every migration newer than the database's current `user_version`.
 ///

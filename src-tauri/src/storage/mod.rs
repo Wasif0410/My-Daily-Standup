@@ -7,6 +7,7 @@
 mod board;
 mod db;
 mod migrations;
+mod section;
 mod task;
 mod task_repo;
 mod ui_state;
@@ -15,6 +16,8 @@ mod ui_state;
 mod board_tests;
 #[cfg(test)]
 mod patch_tests;
+#[cfg(test)]
+mod section_tests;
 #[cfg(test)]
 mod task_repo_tests;
 #[cfg(test)]
@@ -25,6 +28,7 @@ mod ui_state_tests;
 pub use board::{BoardKind, BoardRepo, BoardTheme, BoardWindow};
 pub use db::Db;
 pub use migrations::{run_migrations, schema_version, LATEST_VERSION};
+pub use section::{BoardSection, SectionItem, SectionRepo, MAX_ITEM_CHARS, MAX_TITLE_CHARS};
 pub use task::{NewTask, Task, TaskHorizon, TaskPatch, TaskSource, TaskStatus};
 pub use task_repo::TaskRepo;
 pub use ui_state::UiStateRepo;
@@ -48,6 +52,21 @@ pub enum StorageError {
 
     #[error("no task with id {id}")]
     TaskNotFound { id: String },
+
+    #[error("no section with id {id}")]
+    SectionNotFound { id: String },
+
+    #[error("no section item with id {id}")]
+    ItemNotFound { id: String },
+
+    /// Input the user could correct, caught before it reaches SQLite.
+    ///
+    /// Separate from [`Self::Sqlite`] even where a CHECK constraint would
+    /// also have rejected the value, because a constraint failure carries
+    /// SQLite's wording rather than an explanation anyone would want read
+    /// back to them.
+    #[error("{message}")]
+    Validation { message: String },
 
     #[error("migration {version} failed: {source}")]
     Migration {

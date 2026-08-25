@@ -151,6 +151,13 @@ pub fn run() {
             commands::boards::board_save_geometry,
             commands::boards::board_set_collapsed,
             commands::boards::board_list,
+            commands::sections::section_list,
+            commands::sections::section_create,
+            commands::sections::section_rename,
+            commands::sections::section_delete,
+            commands::sections::section_item_add,
+            commands::sections::section_item_update,
+            commands::sections::section_item_delete,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
