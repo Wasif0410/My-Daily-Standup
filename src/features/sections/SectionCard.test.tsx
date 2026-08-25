@@ -51,6 +51,7 @@ describe("SectionCard", () => {
     const h = handlers();
     render(<SectionCard section={section()} {...h} />);
 
+    await user.click(screen.getByRole("button", { name: "Add a note to Job Search" }));
     const field = screen.getByLabelText("Add to Job Search");
     await user.type(field, "Call the agency{Enter}");
 
@@ -65,6 +66,7 @@ describe("SectionCard", () => {
     const h = handlers();
     render(<SectionCard section={section()} {...h} />);
 
+    await user.click(screen.getByRole("button", { name: "Add a note to Job Search" }));
     await user.type(screen.getByLabelText("Add to Job Search"), "   {Enter}");
 
     expect(h.onAddItem).not.toHaveBeenCalled();
@@ -146,11 +148,48 @@ describe("SectionCard", () => {
     expect(h.onDeleteItem).toHaveBeenCalledWith("i1");
   });
 
-  it("still offers the add field on a section with no bullets yet", () => {
+  it("keeps the add field out of the way until the plus is pressed", async () => {
+    const user = userEvent.setup();
+    render(<SectionCard section={section()} {...handlers()} />);
+
+    // A standing field under every section is a row of empty boxes down a
+    // 340px board. The plus sits in the section header instead, beside the
+    // heading it belongs to.
+    expect(screen.queryByLabelText("Add to Job Search")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Add a note to Job Search" }));
+    expect(screen.getByLabelText("Add to Job Search")).toBeInTheDocument();
+  });
+
+  it("offers the plus on a section with no bullets yet", () => {
     render(<SectionCard section={section({ items: [] })} {...handlers()} />);
 
-    // A new section is empty by definition; with no field it would be a dead
-    // heading with no way to fill it.
-    expect(screen.getByLabelText("Add to Job Search")).toBeInTheDocument();
+    // A new section is empty by definition; with no way in it would be a dead
+    // heading nobody could fill.
+    expect(
+      screen.getByRole("button", { name: "Add a note to Job Search" }),
+    ).toBeInTheDocument();
+  });
+
+  it("stays open after a bullet so a run of notes is one gesture each", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<SectionCard section={section()} {...h} />);
+
+    await user.click(screen.getByRole("button", { name: "Add a note to Job Search" }));
+    await user.type(screen.getByLabelText("Add to Job Search"), "One{Enter}Two{Enter}");
+
+    expect(h.onAddItem).toHaveBeenNthCalledWith(1, "s1", "One");
+    expect(h.onAddItem).toHaveBeenNthCalledWith(2, "s1", "Two");
+  });
+
+  it("closes the add field on Escape", async () => {
+    const user = userEvent.setup();
+    render(<SectionCard section={section()} {...handlers()} />);
+
+    await user.click(screen.getByRole("button", { name: "Add a note to Job Search" }));
+    await user.type(screen.getByLabelText("Add to Job Search"), "{Escape}");
+
+    expect(screen.queryByLabelText("Add to Job Search")).not.toBeInTheDocument();
   });
 });

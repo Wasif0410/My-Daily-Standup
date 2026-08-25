@@ -15,7 +15,16 @@ import type { BoardKind } from "@/types/board";
  * and leaving it out would be a bug waiting for the first component that
  * reuses this.
  */
-export function BoardSections({ kind }: { kind: BoardKind }) {
+export function BoardSections({
+  kind,
+  adding,
+  onDoneAdding,
+}: {
+  kind: BoardKind;
+  /** Owned by BoardRoot, because the + that sets it lives in the header. */
+  adding: boolean;
+  onDoneAdding: () => void;
+}) {
   const sections = useSectionStore((state) => state.sections);
   const load = useSectionStore((state) => state.load);
   const addSection = useSectionStore((state) => state.addSection);
@@ -32,6 +41,8 @@ export function BoardSections({ kind }: { kind: BoardKind }) {
   return (
     <SectionList
       sections={sections}
+      adding={adding}
+      onDoneAdding={onDoneAdding}
       onAddSection={(title) => void addSection(kind, title)}
       onRenameSection={(id, title) => void renameSection(id, title)}
       onDeleteSection={(id) => void removeSection(id)}
