@@ -449,3 +449,27 @@ fn a_section_serialises_with_the_field_names_the_frontend_reads() {
     assert_eq!(json["boardKind"], "weekly-tasks");
     assert_eq!(json["items"][0]["sectionId"], "section-1");
 }
+
+#[test]
+fn every_board_can_carry_sections_including_the_week_of_days() {
+    // The Weekly Progress board is seven fixed day panels, which makes it the
+    // one board where a user section looks like it might not belong. It does:
+    // nothing in the repository is board-specific, and this pins that so a
+    // future filter has to break a test rather than quietly drop a board.
+    let (db, repo) = setup();
+
+    for &kind in BoardKind::ALL {
+        let created = repo
+            .create(db.conn(), kind, "Job Search")
+            .unwrap_or_else(|error| panic!("{kind:?} refused a section: {error}"));
+
+        assert_eq!(created.board_kind, kind);
+
+        let listed = repo.list(db.conn(), kind).expect("sections list");
+        assert_eq!(
+            listed.len(),
+            1,
+            "{kind:?} should list exactly the section just made for it"
+        );
+    }
+}

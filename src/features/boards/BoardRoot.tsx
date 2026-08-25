@@ -64,6 +64,8 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
   const [board, setBoard] = useState<BoardWindow | null>(null);
   const [failure, setFailure] = useState<CommandError | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  /** Set by the header + and cleared once the name field is finished with. */
+  const [addingSection, setAddingSection] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Height to restore when expanding. Kept in a ref so collapsing twice in a
    *  row cannot overwrite it with the collapsed height. */
@@ -220,15 +222,28 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
       // and the board reappears on the next launch.
       onClose={() => void closeBoard(kind)}
       headerActions={
-        <button
-          type="button"
-          className="board-action"
-          aria-label="Board settings"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          ⚙
-        </button>
+        <>
+          {/* Beside the gear, with the board's other controls. Adding a
+              section is a board-level action, and the header is where this
+              board's actions already live. */}
+          <button
+            type="button"
+            className="board-action"
+            aria-label="Add a section"
+            onClick={() => setAddingSection(true)}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="board-action"
+            aria-label="Board settings"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            ⚙
+          </button>
+        </>
       }
     >
       {failure && (
@@ -240,7 +255,11 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
           wrote by hand; a failure in the generated task content below must not
           take them off the screen, and vice versa. */}
       <ErrorBoundary label={`${TITLES[kind]} sections`}>
-        <BoardSections kind={kind} />
+        <BoardSections
+          kind={kind}
+          adding={addingSection}
+          onDoneAdding={() => setAddingSection(false)}
+        />
       </ErrorBoundary>
 
       <ErrorBoundary label={TITLES[kind]}>{boardContent(kind)}</ErrorBoundary>

@@ -169,10 +169,11 @@ body.board-window {
 
 /* A group heading — "Job Search", "Health". These were --text-dim at label
    size, which is the treatment for figures the eye should skip, and they were
-   the one thing on the board actually organising it. Lifted to secondary text
-   at heading size: the structure should be findable without being louder than
-   the tasks it organises, so the colour stops short of primary and the accent
-   appears only as a rule, never as the words themselves. */
+   the one thing on the board actually organising it. Size, weight and letter
+   spacing carry the hierarchy on their own; the colour stops short of primary
+   so a heading never outweighs the tasks beneath it. No rule and no accent —
+   colour on a board this narrow is spent on the four window identities and on
+   status, and a heading is neither. */
 .board-section-title {
   display: flex;
   align-items: center;
@@ -183,20 +184,6 @@ body.board-window {
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
   color: var(--text-secondary);
-}
-
-/* The rule runs from the end of the words to the edge and fades out. A
-   full-width divider at this density reads as a boundary between boards
-   rather than between groups. */
-.board-section-title::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--board-accent) 35%, transparent),
-    transparent
-  );
 }
 
 .board-empty {
@@ -1018,17 +1005,6 @@ body.board-window {
   cursor: text;
 }
 
-.section-heading::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--board-accent) 35%, transparent),
-    transparent
-  );
-}
-
 .section-heading:focus-visible {
   outline: 2px solid var(--board-accent);
   outline-offset: 2px;
@@ -1098,9 +1074,9 @@ body.board-window {
 /* Entry fields read as text, not as boxes. A bordered input inside a panel
    inside a board is three nested rectangles in 340px. */
 .section-entry,
-.section-new-input,
 .section-item-input,
-.section-heading-input {
+.section-heading-input,
+.section-new-input {
   width: 100%;
   padding: 1px 0;
   border: 0;
@@ -1124,30 +1100,28 @@ body.board-window {
   border-bottom-color: var(--board-accent);
 }
 
-.section-heading-input {
+/* Both of these are a section heading being typed, so they are dressed as one
+   rather than as a form field. A naming box that looks like the quick-add bar
+   above it reads as a second search box, and the thing it is about to become
+   is a heading. */
+.section-heading-input,
+.section-new-input {
   font-size: var(--font-size-heading);
   font-weight: 600;
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
-.section-add {
-  align-self: flex-start;
-  padding: var(--space-1) var(--space-2);
-  border: 1px dashed var(--border-subtle);
-  border-radius: var(--radius-control);
-  background: none;
+/* No underline on the new-section field: the bar is what made it read as a
+   search box. The caret and the placeholder are enough to say it is live. */
+.section-new-input,
+.section-new-input:focus {
+  border-bottom-color: transparent;
+}
+
+.section-new-input::placeholder {
   color: var(--text-dim);
-  font: inherit;
-  font-size: var(--font-size-label);
-  cursor: pointer;
-  transition:
-    color var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.section-add:hover,
-.section-add:focus-visible {
-  color: var(--board-accent);
-  border-color: color-mix(in srgb, var(--board-accent) 50%, transparent);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-label);
 }

@@ -35,6 +35,10 @@ export function SectionCard({
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [entry, setEntry] = useState("");
+  /** The add field is opened from the header rather than standing open. A
+   *  field under every section is a column of empty boxes down a 340px
+   *  board. */
+  const [adding, setAdding] = useState(false);
 
   /** Set by Escape so the teardown that follows does not commit the draft. */
   const discarded = useRef(false);
@@ -65,12 +69,18 @@ export function SectionCard({
     setEditingItem(id);
   }
 
-  function commitItem(id: string, original: string) {
+  function commitItem(id: string, original: string, thenAddAnother = false) {
     setEditingItem(null);
     if (discarded.current) {
       discarded.current = false;
       return;
     }
+
+    // Enter on a bullet opens the next one, the way any outliner behaves. It
+    // is the second route in — the header's + is the first — and it is the one
+    // that matters while actually writing, because it never leaves the
+    // keyboard.
+    if (thenAddAnother) setAdding(true);
 
     const next = draft.trim();
     if (!next || next === original) return;
@@ -121,6 +131,17 @@ export function SectionCard({
           </h3>
         )}
 
+        {/* Beside the heading it fills, so the way in sits with the thing it
+            acts on rather than at the far end of a list of notes. */}
+        <button
+          type="button"
+          className="section-action"
+          aria-label={`Add a note to ${section.title}`}
+          onClick={() => setAdding(true)}
+        >
+          +
+        </button>
+
         <button
           type="button"
           className="section-action"
@@ -145,7 +166,7 @@ export function SectionCard({
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    commitItem(item.id, item.text);
+                    commitItem(item.id, item.text, true);
                   } else if (event.key === "Escape") {
                     event.preventDefault();
                     discard();
@@ -174,31 +195,37 @@ export function SectionCard({
         ))}
       </ul>
 
-      {/* Always present, including on a section with nothing in it yet. A new
-          section is empty by definition; without the field it would be a
-          heading with no way to fill it. */}
-      <input
-        className="section-entry"
-        aria-label={`Add to ${section.title}`}
-        placeholder="Add a note…"
-        value={entry}
-        onChange={(event) => setEntry(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            const text = entry.trim();
-            if (!text) return;
+      {/* Opened by the header's plus, and it stays open afterwards: notes
+          arrive in bursts, so a run of them should be one Enter each rather
+          than a trip back to the button between every line. */}
+      {adding && (
+        <input
+          className="section-entry"
+          aria-label={`Add to ${section.title}`}
+          placeholder="Add a note…"
+          autoFocus
+          value={entry}
+          onChange={(event) => setEntry(event.target.value)}
+          onBlur={() => {
+            setEntry("");
+            setAdding(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              const text = entry.trim();
+              if (!text) return;
 
-            onAddItem(section.id, text);
-            // Cleared rather than kept: notes arrive in bursts, and clearing
-            // by hand between them doubles the gestures.
-            setEntry("");
-          } else if (event.key === "Escape") {
-            event.preventDefault();
-            setEntry("");
-          }
-        }}
-      />
+              onAddItem(section.id, text);
+              setEntry("");
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              setEntry("");
+              setAdding(false);
+            }
+          }}
+        />
+      )}
     </section>
   );
 }
