@@ -56,14 +56,17 @@ body.board-window {
   cursor: grabbing;
 }
 
+/* Set in the board's own accent and at heading size rather than as small
+   uppercase text. Four windows scattered across a desktop are identified by
+   their titles before anything else, and an uppercase caption in secondary
+   grey is the one thing on the board that does not read as a heading. */
 .board-title {
   flex: 1;
   margin: 0;
-  font-size: var(--font-size-label);
+  font-size: var(--font-size-title);
   font-weight: 600;
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  line-height: var(--line-height-tight);
+  color: var(--board-accent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -558,8 +561,34 @@ body.board-window {
    Seven of these, always. An empty day renders exactly like a busy one —
    a week with three empty days *is* the information (spec §6.4). */
 
+/* Each day is its own panel rather than a row divided by a hairline. Seven
+   hairline-separated rows read as one undifferentiated list; seven panels read
+   as seven days, which is the whole point of §6.4's shape-of-the-week. The
+   panel also gives an expanded day's tasks something to sit inside, so the
+   nesting survives without an indent guide. */
+.day-section {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
 .day-section + .day-section {
-  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-1);
+}
+
+.day-section:hover {
+  border-color: var(--border-subtle);
+}
+
+/* Today carries the board's accent as a tinted panel, not just coloured text:
+   at a glance the eye should find the day before it reads any labels. */
+.day-section[data-today="true"] {
+  border-color: color-mix(in srgb, var(--board-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--board-accent) 8%, var(--surface-raised));
 }
 
 .day-header {
@@ -572,7 +601,7 @@ body.board-window {
   background: none;
   color: var(--text-primary);
   font: inherit;
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-heading);
   text-align: left;
   cursor: pointer;
 }
@@ -596,6 +625,7 @@ body.board-window {
 .day-name {
   flex: 1;
   min-width: 0;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -629,16 +659,33 @@ body.board-window {
   text-align: right;
 }
 
+/* The fraction of the day that got done. Sits beside the count rather than
+   replacing it: "67%" alone cannot distinguish 2 of 3 from 200 of 300, and the
+   count is what the user reasons about when planning tomorrow. */
+.day-percent {
+  min-width: 4ch;
+  text-align: right;
+}
+
+/* A day that came out whole. The only colour in the summary, so it means one
+   thing and is not competing with anything for attention. */
+.day-percent[data-complete="true"] {
+  color: var(--status-complete);
+  font-weight: 600;
+}
+
 .day-empty {
-  margin: 0 0 var(--space-1) var(--space-4);
+  margin: 0 0 var(--space-1);
   color: var(--text-dim);
   font-size: var(--font-size-label);
 }
 
-/* Rows sit under their day's chevron rather than at the board's left edge, so
-   the nesting is legible without a rule or a border. */
+/* The panel itself now carries the nesting, so the old indent would only push
+   already-narrow rows further right. A small inset keeps them clear of the
+   chevron without stealing width from the titles. */
 .day-section .task-list-plain {
-  margin-left: var(--space-4);
+  margin-left: var(--space-2);
+  padding-bottom: var(--space-1);
 }
 
 /* The exact dates, secondary to the ISO label. Present because "2026-W34" is

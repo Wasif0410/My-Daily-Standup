@@ -144,8 +144,12 @@ describe("WeeklyProgressBoard", () => {
 
     render(<WeeklyProgressBoard />);
 
-    expect(await screen.findByLabelText("1 of 2 done, 35m")).toBeInTheDocument();
-    expect(screen.getByLabelText("0 of 1 done, no time recorded")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("1 of 2 done, 35m, 50 percent"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("0 of 1 done, no time recorded, 0 percent"),
+    ).toBeInTheDocument();
   });
 
   it("expands today on a board that has never been touched", async () => {
