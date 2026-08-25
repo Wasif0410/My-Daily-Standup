@@ -89,15 +89,35 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Closing the main window hides it rather than exiting. The
-            // lightweight tier — tray and boards — outlives the planning view
-            // (§26), and Quit in the tray is what actually ends the app.
-            if window.label() == "main" {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    api.prevent_close();
-                    let _ = window.hide();
-                }
+            // Every window the app can reopen hides rather than closing. The
+            // main window does so because §26's lightweight tier outlives the
+            // planning view and only tray Quit ends the app; the boards and the
+            // capture box do so because destroying a transparent webview and
+            // rebuilding it leaves a dead drawing surface that paints blank.
+            //
+            // This is the whole policy, not just the close buttons: Alt+F4 and
+            // the window menu arrive here too.
+            let tauri::WindowEvent::CloseRequested { api, .. } = event else {
+                return;
+            };
+
+            let label = window.label().to_string();
+            if !windows::hides_on_close(&label) {
+                return;
             }
+
+            api.prevent_close();
+
+            // A board must also record that it is hidden, or it reopens at the
+            // next launch. close_board hides and writes in one step.
+            if let Some(kind) = storage::BoardKind::from_window_label(&label) {
+                if let Err(error) = windows::close_board(window.app_handle(), kind) {
+                    eprintln!("could not close the {kind:?} board: {}", error.message);
+                }
+                return;
+            }
+
+            let _ = window.hide();
         })
         .invoke_handler(tauri::generate_handler![
             commands::tasks::task_create,

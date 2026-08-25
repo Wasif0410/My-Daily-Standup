@@ -15,6 +15,16 @@ pub fn open_board(app: &AppHandle, kind: BoardKind) -> Result<(), CommandError> 
     if let Some(existing) = app.get_webview_window(&label) {
         existing.show().map_err(window_error)?;
         existing.set_focus().map_err(window_error)?;
+
+        // Record it as visible here too. Now that closing a board hides its
+        // window rather than destroying it, this is the path a reopen normally
+        // takes, and without the write the board stays `visible = 0` and is
+        // not restored at the next launch.
+        let state = app.state::<AppState>();
+        let mut shown = state.board(kind)?;
+        shown.visible = true;
+        state.save_board(&shown)?;
+
         return Ok(());
     }
 
@@ -44,6 +54,9 @@ pub fn open_board(app: &AppHandle, kind: BoardKind) -> Result<(), CommandError> 
         builder = builder.center();
     }
 
+    // Reached only from the main thread: a webview cannot finish building
+    // while the event loop that drives it is blocked waiting for this call.
+    // `commands::boards::board_open` is what guarantees that.
     let window = builder.build().map_err(window_error)?;
 
     if saved.locked {
@@ -79,6 +92,8 @@ pub fn open_board(app: &AppHandle, kind: BoardKind) -> Result<(), CommandError> 
 /// hidden at shutdown is never recreated at startup because `restore_boards`
 /// skips it.
 pub fn close_board(app: &AppHandle, kind: BoardKind) -> Result<(), CommandError> {
+    // A board with no window is not an error: the row still has to record that
+    // the board is closed, or it reopens at the next launch.
     if let Some(window) = app.get_webview_window(&kind.window_label()) {
         window.hide().map_err(window_error)?;
     }
