@@ -78,3 +78,24 @@ export function bucketByDay(days: WeekDay[], tasks: Task[]): Day[] {
     };
   });
 }
+
+/**
+ * How much of a day is done, as a whole percentage.
+ *
+ * `100` is returned only when every counted task is actually finished. A day
+ * that merely rounds up to 100 — 199 of 200 is 99.5 — reports 99 instead,
+ * because a header reading 100% is the one signal that lets someone stop
+ * looking at the day, and it must never say that while work remains.
+ *
+ * An empty day is 0, not 100 and not NaN. Dividing 0 by 0 would produce NaN
+ * and render as "NaN%", and treating "nothing planned" as "everything done"
+ * would light up an untouched day as finished.
+ */
+export function completionPercent(totals: DayTotals): number {
+  if (totals.total <= 0) return 0;
+
+  const exact = (totals.completed / totals.total) * 100;
+  if (exact >= 100) return totals.completed >= totals.total ? 100 : 99;
+
+  return Math.min(99, Math.max(0, Math.round(exact)));
+}

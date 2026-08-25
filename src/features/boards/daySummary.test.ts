@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { bucketByDay, summarise } from "@/features/boards/daySummary";
+import {
+  bucketByDay,
+  completionPercent,
+  summarise,
+} from "@/features/boards/daySummary";
 import type { Task, WeekDay } from "@/types/task";
 
 const WEEK: WeekDay[] = [
@@ -168,5 +172,43 @@ describe("summarise", () => {
     ]);
 
     expect(totals.minutes).toBe(30);
+  });
+});
+
+describe("completionPercent", () => {
+  it("rounds to the nearest whole percent", () => {
+    expect(completionPercent({ completed: 2, total: 3, minutes: null })).toBe(67);
+  });
+
+  it("reports half a day as 50", () => {
+    expect(completionPercent({ completed: 1, total: 2, minutes: null })).toBe(50);
+  });
+
+  it("reports a finished day as 100", () => {
+    expect(completionPercent({ completed: 1, total: 1, minutes: null })).toBe(100);
+  });
+
+  it("reports an empty day as 0, never 100 and never NaN", () => {
+    // Nothing planned is not everything done, and 0/0 must not divide into NaN.
+    const percent = completionPercent({ completed: 0, total: 0, minutes: null });
+
+    expect(percent).toBe(0);
+    expect(Number.isNaN(percent)).toBe(false);
+  });
+
+  it("reports an untouched day as 0", () => {
+    expect(completionPercent({ completed: 0, total: 4, minutes: null })).toBe(0);
+  });
+
+  it("reports 99 for a day that is all but finished rather than rounding up to 100", () => {
+    // 199 of 200 is 99.5, which rounds to 100. Showing 100% while a task is
+    // still open is a lie the user would act on — they would close the board
+    // believing the day is done. 100 is reserved for actually done.
+    expect(completionPercent({ completed: 199, total: 200, minutes: null })).toBe(99);
+  });
+
+  it("never goes above 100 or below 0", () => {
+    expect(completionPercent({ completed: 5, total: 5, minutes: null })).toBe(100);
+    expect(completionPercent({ completed: 0, total: 1, minutes: null })).toBe(0);
   });
 });
