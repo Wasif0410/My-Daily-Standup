@@ -46,7 +46,7 @@ interface OpenMenu {
 export function PriorityBoard({
   threshold = DEFAULT_PRIORITY_THRESHOLD,
 }: {
-  threshold?: number;
+  threshold?: number | undefined;
 }) {
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const [editing, setEditing] = useState<string | null>(null);

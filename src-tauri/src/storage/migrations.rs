@@ -24,10 +24,11 @@ const MIGRATIONS: &[(u32, &str)] = &[
         7,
         include_str!("../../migrations/007_sections_are_task_groups.sql"),
     ),
+    (8, include_str!("../../migrations/008_settings.sql")),
 ];
 
 /// The schema version a fully migrated database reports.
-pub const LATEST_VERSION: u32 = 7;
+pub const LATEST_VERSION: u32 = 8;
 
 /// Applies every migration newer than the database's current `user_version`.
 ///

@@ -155,6 +155,8 @@ pub fn run() {
             commands::sections::section_create,
             commands::sections::section_rename,
             commands::sections::section_delete,
+            commands::settings::settings_get,
+            commands::settings::settings_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

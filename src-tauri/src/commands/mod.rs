@@ -7,6 +7,7 @@
 
 pub mod boards;
 pub mod sections;
+pub mod settings;
 pub mod tasks;
 pub mod tray;
 
@@ -16,8 +17,9 @@ use std::sync::Mutex;
 use serde::Serialize;
 
 use crate::storage::{
-    BoardKind, BoardRepo, BoardSection, BoardWindow, Db, NewTask, SectionRepo, StorageError, Task,
-    TaskHorizon, TaskPatch, TaskRepo, UiStateRepo, DATABASE_FILENAME,
+    BoardKind, BoardRepo, BoardSection, BoardWindow, Db, NewTask, SectionRepo, Settings,
+    SettingsPatch, SettingsRepo, StorageError, Task, TaskHorizon, TaskPatch, TaskRepo, UiStateRepo,
+    DATABASE_FILENAME,
 };
 
 /// How an error is reported across the IPC boundary.
@@ -75,6 +77,7 @@ pub struct AppState {
     boards: BoardRepo,
     sections: SectionRepo,
     ui: UiStateRepo,
+    settings: SettingsRepo,
 }
 
 impl AppState {
@@ -88,6 +91,7 @@ impl AppState {
             boards: BoardRepo::new(),
             sections: SectionRepo::new(),
             ui: UiStateRepo::new(),
+            settings: SettingsRepo::new(),
         })
     }
 
@@ -99,6 +103,7 @@ impl AppState {
             boards: BoardRepo::new(),
             sections: SectionRepo::new(),
             ui: UiStateRepo::new(),
+            settings: SettingsRepo::new(),
         })
     }
 
@@ -331,6 +336,82 @@ impl AppState {
         self.ui
             .set(guard.conn(), key, value)
             .map_err(CommandError::from)
+    }
+}
+
+impl AppState {
+    /// The user's settings, or the defaults if none have been saved.
+    pub fn settings(&self) -> Result<Settings, CommandError> {
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.settings.get(guard.conn()).map_err(CommandError::from)
+    }
+
+    /// Applies a settings patch, putting `launch_at_login` into effect.
+    ///
+    /// `set_autostart` is the plugin call, passed in rather than reached for
+    /// directly: it needs a live `AppHandle`, and taking it as an argument is
+    /// what lets the ordering below be tested at all.
+    ///
+    /// The order is validate, then register, then store, and each step exists
+    /// because of the one after it:
+    ///
+    /// - **Validate first**, so a patch that will be refused for its threshold
+    ///   cannot register a login entry on its way to being refused. The user
+    ///   sees an error and nothing about their machine has changed.
+    /// - **Register before storing**, so a failing plugin call fails the whole
+    ///   update and leaves the row untouched. A stored `true` beside a disabled
+    ///   autostart is a setting that lies, which is the exact bug this PR
+    ///   exists to remove.
+    ///
+    /// The remaining window is a plugin call that succeeds followed by a write
+    /// that fails, leaving the app registered while the row still says it is
+    /// not. That is the better of the two failures: the tray reads the plugin
+    /// rather than this column, so the user sees the true state and can toggle
+    /// it back. The reverse — a row nothing honours — is invisible.
+    ///
+    /// The plugin is called whenever the patch names `launch_at_login`, not
+    /// only when the value differs from the stored one. Skipping a call that
+    /// "changes nothing" assumes the row and the OS already agree, which is
+    /// precisely the assumption this PR is here to stop making: if they have
+    /// drifted, the one save the user makes to fix it would be the one that
+    /// does nothing. Enabling and disabling are both idempotent, so re-asserting
+    /// costs a registry key or a plist and repairs the drift.
+    pub fn update_settings(
+        &self,
+        patch: SettingsPatch,
+        set_autostart: impl FnOnce(bool) -> Result<(), CommandError>,
+    ) -> Result<Settings, CommandError> {
+        let validated = patch.validate().map_err(CommandError::from)?;
+
+        if let Some(wanted) = validated.launch_at_login {
+            set_autostart(wanted)?;
+        }
+
+        let guard = self.db.lock().map_err(poisoned)?;
+        self.settings
+            .apply_validated(guard.conn(), validated)
+            .map_err(CommandError::from)
+    }
+
+    /// The week today falls in, honouring the stored week-start day.
+    ///
+    /// `starts_on` overrides the setting when the caller names one — the
+    /// Weekly Progress board paging through weeks passes what it is already
+    /// showing rather than re-reading a setting that cannot have changed.
+    ///
+    /// A settings read that fails falls back to the default rather than
+    /// propagating, matching [`crate::domain::parse_weekday`]: this value only
+    /// decides which column a board draws first, and a broken database must
+    /// not be able to make a board unopenable.
+    pub fn current_week(&self, starts_on: Option<&str>) -> crate::domain::Week {
+        let configured = match starts_on {
+            Some(_) => None,
+            None => self.settings().ok().map(|s| s.week_starts_on),
+        };
+
+        let day = starts_on.or(configured.as_deref());
+
+        crate::domain::current_week(crate::domain::parse_weekday(day))
     }
 }
 

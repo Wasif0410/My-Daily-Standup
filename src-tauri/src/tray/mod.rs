@@ -15,15 +15,8 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::commands::{AppState, CommandError, ErrorKind};
-use crate::storage::BoardKind;
+use crate::storage::{BoardKind, SettingsPatch};
 use crate::windows;
-
-/// Where the Pause Reminders flag lives until PR 18 builds a settings table.
-///
-/// `ui_state` rather than a new table: reminders themselves arrive in the very
-/// next PR, and inventing a settings schema one PR early would mean migrating
-/// it immediately.
-pub const PAUSED_KEY: &str = "reminders.paused";
 
 /// Builds the tray icon and its menu.
 pub fn create(app: &AppHandle) -> Result<TrayIcon, CommandError> {
@@ -57,13 +50,15 @@ pub fn refresh(app: &AppHandle) -> Result<(), CommandError> {
 }
 
 fn build_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, CommandError> {
-    let state = app.state::<AppState>();
-    let paused = state.ui_state(PAUSED_KEY)?.as_deref() == Some("true");
+    // Read from the plugin rather than from the settings row, so the tick
+    // shows what the OS is actually registered to do. The stored setting is
+    // written from the same call and cannot disagree without the plugin having
+    // failed — in which case this is the honest half.
     let autostart = app.autolaunch().is_enabled().unwrap_or(false);
 
     let menu = Menu::new(app).map_err(tauri_error)?;
 
-    for entry in menu_entries(paused, autostart) {
+    for entry in menu_entries(autostart) {
         // A separator before Quit, so the one irreversible action is not
         // adjacent to the toggles above it.
         if entry.id == "quit" {
@@ -110,26 +105,38 @@ fn handle(app: &AppHandle, id: &str) -> Result<(), CommandError> {
             }
             Ok(())
         }
+        "settings" => {
+            // Shown and focused rather than created: closing the main window
+            // hides it (§26), so it is still there — and building a second one
+            // with the same label is what leaves a dead, blank surface.
+            let Some(main) = app.get_webview_window(windows::MAIN_LABEL) else {
+                return Ok(());
+            };
+            main.show().map_err(tauri_error)?;
+            main.set_focus().map_err(tauri_error)
+        }
         "quick-add" => windows::open_quick_add(app),
         "unlock-boards" => windows::unlock_all(app),
-        "pause-reminders" => {
-            let state = app.state::<AppState>();
-            let paused = state.ui_state(PAUSED_KEY)?.as_deref() == Some("true");
-            state.set_ui_state(PAUSED_KEY, if paused { "false" } else { "true" })?;
-            refresh(app)
-        }
         "autostart" => {
-            let manager = app.autolaunch();
-            let enabled = manager.is_enabled().unwrap_or(false);
+            let enabled = app.autolaunch().is_enabled().unwrap_or(false);
 
-            let changed = if enabled {
-                manager.disable()
-            } else {
-                manager.enable()
-            };
-            changed.map_err(|error| internal(&error.to_string()))?;
+            // Routed through the settings update rather than straight at the
+            // plugin, so the stored `launch_at_login` follows the tray. Two
+            // controls over one piece of OS state that write to different
+            // places are two controls that will eventually disagree, and the
+            // settings window would then show the stale one.
+            //
+            // `autostart_set` refreshes the menu itself once the plugin call
+            // lands, which is what puts the new tick on this row.
+            app.state::<AppState>().update_settings(
+                SettingsPatch {
+                    launch_at_login: Some(!enabled),
+                    ..Default::default()
+                },
+                |wanted| crate::commands::tray::autostart_set(app.clone(), wanted),
+            )?;
 
-            refresh(app)
+            Ok(())
         }
         "quit" => {
             // The only way out, now that closing the main window merely hides

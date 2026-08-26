@@ -148,11 +148,17 @@ pub fn task_add_comment(
 
 /// The week today falls in, so the frontend never derives a date itself.
 ///
-/// `starts_on` accepts "monday", "sunday", or "saturday" and defaults to Monday
-/// (spec §6.4). PR 16 supplies it from settings.
+/// `starts_on` accepts "monday", "sunday", or "saturday" (spec §6.4). Omitting
+/// it now reads the stored setting rather than assuming Monday, which is what
+/// it did while nothing supplied the argument — every caller passed `None`, so
+/// the setting existed and the calendar was permanently Monday anyway.
+///
+/// Still returns a `Week` rather than a `Result`: a settings read that fails
+/// falls back to the default. Which column a board draws first is not worth a
+/// board that will not open.
 #[tauri::command]
-pub fn week_current(starts_on: Option<String>) -> crate::domain::Week {
-    crate::domain::current_week(crate::domain::parse_weekday(starts_on.as_deref()))
+pub fn week_current(state: State<'_, AppState>, starts_on: Option<String>) -> crate::domain::Week {
+    state.current_week(starts_on.as_deref())
 }
 
 /// The month today falls in, for the Monthly Progress board.

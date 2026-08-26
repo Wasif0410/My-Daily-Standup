@@ -8,6 +8,7 @@ mod board;
 mod db;
 mod migrations;
 mod section;
+mod settings;
 mod task;
 mod task_repo;
 mod ui_state;
@@ -19,6 +20,8 @@ mod patch_tests;
 #[cfg(test)]
 mod section_tests;
 #[cfg(test)]
+mod settings_tests;
+#[cfg(test)]
 mod task_repo_tests;
 #[cfg(test)]
 mod tests;
@@ -29,6 +32,10 @@ pub use board::{BoardKind, BoardRepo, BoardTheme, BoardWindow, SectionField};
 pub use db::Db;
 pub use migrations::{run_migrations, schema_version, LATEST_VERSION};
 pub use section::{BoardSection, SectionRepo, MAX_TITLE_CHARS};
+pub use settings::{
+    Settings, SettingsPatch, SettingsRepo, ValidatedPatch, MAX_PRIORITY_THRESHOLD,
+    MIN_PRIORITY_THRESHOLD, WEEK_START_DAYS,
+};
 pub use task::{NewTask, Task, TaskHorizon, TaskPatch, TaskSource, TaskStatus};
 pub use task_repo::TaskRepo;
 pub use ui_state::UiStateRepo;

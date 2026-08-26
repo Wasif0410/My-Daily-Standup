@@ -220,3 +220,58 @@ body {
 .escape-hatch kbd {
   font-family: "Cascadia Code", Consolas, monospace;
 }
+
+/* ---- Settings ----------------------------------------------------------
+   In the main window rather than a window of its own: a new window label has
+   to be granted permissions in the capabilities file, where a wrong
+   identifier is dropped silently rather than failing the build. */
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* The checkbox reads as a sentence, so its label sits beside it rather than
+   above it like the fields that take a value. */
+.settings-field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.settings-field select {
+  align-self: flex-start;
+  min-width: 12rem;
+  padding: 0.3rem 0.4rem;
+}
+
+/* Says what a setting does, not what it is called. The threshold is the one
+   that most needs it: below it a task is not on the board at all, which reads
+   as the task having been lost rather than filtered. */
+.settings-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+.settings-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #f7768e;
+}
