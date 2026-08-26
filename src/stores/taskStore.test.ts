@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emitTaskChanged } from "@/lib/taskEvents";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useTaskStore } from "@/stores/taskStore";
+import { sortTasks, useTaskStore } from "@/stores/taskStore";
 import type { Task } from "@/types/task";
 
 vi.mock("@/lib/taskEvents", () => ({
@@ -425,6 +425,36 @@ describe("the remaining §6.6 interactions", () => {
         id: "task-1",
         patch: { priority: null },
       });
+    });
+
+    it("moves the task up the board once the new priority lands", async () => {
+      // The point of the picker: priority is what the boards sort by, so
+      // raising it has to reorder the list rather than only recolour a badge.
+      useTaskStore.setState({
+        tasks: {
+          "task-1": task({
+            id: "task-1",
+            priority: 2,
+            createdAt: "2026-08-01T00:00:00Z",
+          }),
+          "task-2": task({
+            id: "task-2",
+            priority: 7,
+            createdAt: "2026-08-02T00:00:00Z",
+          }),
+        },
+      });
+
+      expect(sortTasks(Object.values(useTaskStore.getState().tasks))[0]?.id).toBe(
+        "task-2",
+      );
+
+      mockInvoke.mockResolvedValue(task({ id: "task-1", priority: 10 }));
+      await useTaskStore.getState().setPriority("task-1", 10);
+
+      expect(sortTasks(Object.values(useTaskStore.getState().tasks))[0]?.id).toBe(
+        "task-1",
+      );
     });
   });
 

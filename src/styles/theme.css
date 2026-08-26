@@ -1136,3 +1136,113 @@ body.board-window {
 .board-section-rename:focus {
   outline: none;
 }
+
+/* ---- Priority picker ---------------------------------------------------
+   The badge doubles as the control. Priority is the field the boards sort by,
+   so changing it moves the row and often the group — the gesture people reach
+   for most should not need a right-click to find. */
+
+.priority-field {
+  position: relative;
+  flex: none;
+}
+
+/* Anchored to the row and lifted above it, for the same reason as the duration
+   popover: a board is short, and a panel flowing into .board-body's overflow
+   would be clipped. */
+.priority-popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + var(--space-1));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
+}
+
+/* Two rows of five rather than one of ten: a 340px board cannot hold ten
+   tap targets across without shrinking them below a comfortable size. */
+.priority-levels {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-1);
+}
+
+.priority-level {
+  min-width: 2em;
+  padding: var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+/* Graded by the same tiers the badge uses, so the picker previews what the
+   row will look like rather than presenting ten identical buttons. */
+.priority-level[data-tier="high"] {
+  color: var(--priority-high);
+}
+
+.priority-level[data-tier="medium"] {
+  color: var(--priority-medium);
+}
+
+.priority-level[data-tier="low"] {
+  color: var(--priority-low);
+}
+
+.priority-level:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.priority-level:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+}
+
+/* Where you already are. Bordered rather than filled, so the tier colour still
+   reads through it. */
+.priority-level[aria-current="true"] {
+  border-color: var(--board-accent);
+}
+
+.priority-clear {
+  padding: var(--space-1);
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--font-size-label);
+  cursor: pointer;
+}
+
+.priority-clear:hover {
+  color: var(--text-primary);
+}
+
+/* A badge that is a control still reads as a badge, not a button. */
+button.priority-badge {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+button.priority-badge:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-control);
+}

@@ -137,6 +137,10 @@ export function PriorityBoard({
       onEdit: (title: string) => void editTitle(task.id, title),
       onSetTimeSpent: (minutes: number | null) =>
         void recordTimeSpent(task.id, minutes),
+      // Priority is the field the board sorts by, so changing it moves the
+      // row and often the group with it. That is exactly why it is on the
+      // badge rather than only in the menu.
+      onSetPriority: (priority: number | null) => void setPriority(task.id, priority),
       onDelete: () => void remove(task.id),
       onOpenMenu: (at: { x: number; y: number }) =>
         setMenu({ taskId: task.id, x: at.x, y: at.y }),
