@@ -16,7 +16,7 @@
 
 Every PR's requirements implicitly include this section. A PR that violates any line here is rejected regardless of whether its tests pass.
 
-- **Windows-first.** The MVP targets Windows 11. macOS/Linux are Wave 8 only. Never add a platform-specific dependency without a `cfg` guard.
+- **Windows-first.** The MVP targets Windows 11. macOS/Linux are Wave 9 only. Never add a platform-specific dependency without a `cfg` guard.
 - **Local-first.** All core functionality must work with no internet connection after models are downloaded. No feature may hard-depend on a network call.
 - **No telemetry, no remote logging, no accounts.** Not behind a flag, not opt-out. Absent.
 - **The LLM must not be loaded merely because sticky notes are visible.** Any board interaction (complete, uncomplete, edit, move, add, delete, expand a day, record how long something took) that starts an inference process is a bug.
@@ -26,7 +26,7 @@ Every PR's requirements implicitly include this section. A PR that violates any 
 - **Sidecars bind to localhost only, on a randomly selected port, and reject remote connections.** They terminate when the parent session ends.
 - **Raw audio is processed in memory and deleted after transcription** unless the user explicitly enables retention.
 - **Never execute file operations from unvalidated model text.** All structured output passes a Rust-side schema validator first.
-- **Obsidian is the long-term source of truth.** SQLite holds operational state only (current tasks, window geometry, settings, session metadata).
+- **Obsidian is the long-term source of truth once it is connected.** From Wave 7 onward SQLite holds operational state only (current tasks, window geometry, settings, session metadata). Before Wave 7 there is no vault, so SQLite is the only source there is — which is why the standup in Wave 4 is built to read it directly rather than to wait for a vault.
 
 ---
 
@@ -44,7 +44,7 @@ One installer, one binary. The profile is detected at runtime and overridable in
 
 **Always-on tier footprint (every profile):** Tauri shell + 5 board windows + SQLite ≈ **under 1 GB**, with zero model memory. This is the number that has to stay true for §26 to hold.
 
-**Prefill dominates latency, so context size matters more than model size.** At ~250 tok/s CPU prefill, a 3k prompt costs ~12s and an 8k prompt costs ~32s. The tiered vault map (PR 24) is what keeps CPU-only machines usable, not just what improves answer quality.
+**Prefill dominates latency, so context size matters more than model size.** At ~250 tok/s CPU prefill, a 3k prompt costs ~12s and an 8k prompt costs ~32s. The tiered context map (PR 25) is what keeps CPU-only machines usable, not just what improves answer quality.
 
 **On an 8 GB VRAM card, run Whisper on CPU.** The LLM plus KV cache takes ~6 GB of the 8 GB; Whisper base transcribes 10s of audio on CPU in 1–2s anyway, and the headroom is better spent on context.
 
@@ -146,13 +146,36 @@ A PR is not ready for your review until all of these hold:
 
 | Tag | After PR | What you can do |
 |---|---|---|
-| `v0.1.0` | 18 | A full non-AI desktop planner: persistent sticky boards, an expandable Monday-to-Sunday week, priorities, and per-task time tracking |
-| `v0.2.0` | 22 | Promote real tasks out of your Obsidian vault onto the boards |
-| `v0.3.0` | 28 | Run a typed local-LLM standup that proposes and saves a daily plan |
-| `v0.4.0` | 32 | Run the whole standup by voice — MVP feature-complete |
-| `v1.0.0-rc` | 38 | Evening/weekly/monthly reviews with approved Obsidian writeback |
+| `v0.1.0` | 18 | A full non-AI desktop planner: persistent sticky boards, an expandable Monday-to-Sunday week, priorities, named sections, and per-task time tracking |
+| `v0.2.0` | 28 | Run a typed local-LLM standup that reads your own boards and proposes a daily plan you approve |
+| `v0.3.0` | 32 | Run the whole standup by voice — MVP feature-complete |
+| `v0.4.0` | 35 | Close the loop with evening, weekly, and monthly reviews built on real numbers |
+| `v1.0.0-rc` | 38 | Point the app at your Obsidian vault: promote real vault tasks onto the boards, and write reviews back after approving the diff |
 
 Each milestone is a usable product. You can stop at any tag and still have something worth running.
+
+---
+
+## Execution order
+
+PR numbers are **identities, not positions.** A PR keeps the number it was given the day it was written, because that number is cited in commit messages, branch names, other documents, and half the cross-references in this file — renumbering to restore a tidy sequence would silently invalidate all of them. The waves are what got resequenced when Obsidian moved to the end, so the waves are what carry the ordering. Read this table, not the PR numbers, to know what comes next.
+
+| Wave | Name | PRs | Status |
+|---|---|---|---|
+| 0 | Foundation | 1–3 | Done |
+| 1 | Data layer | 4–7 | Done |
+| 2 | Sticky-note boards | 8–15, 15a–15c | Done |
+| 3 | Desktop shell | 16, 17, 17a, 18 | 18 is next |
+| 4 | Local LLM text standup | 23–28 | |
+| 5 | Voice | 29–32 | |
+| 6 | Reviews | 33–35 | |
+| 7 | Obsidian read integration | 19–22 | |
+| 8 | Obsidian writeback | 36–38 | |
+| 9 | Cross-platform & community | post-1.0 | Not yet planned |
+
+**Why Obsidian moved to the end.** Every AI capability now ships before any vault code does. The standup was originally sequenced behind the vault because the vault was assumed to be where the model's context came from. It isn't any more — Waves 2 and 3 grew commitments, priorities, sections, rollover counts, and logged durations, which is a richer and more structured picture of the user's week than a folder of markdown ever was. Waiting on the vault would have meant holding the whole AI product hostage to an integration that turns out to be an enrichment rather than a foundation.
+
+The lettered PRs (15a–15c, 17a) are work that shipped on `main` without having been predicted here. They are recorded in their wave for the sake of an honest history; they take letters rather than numbers so that no existing identity shifts.
 
 ---
 
@@ -329,7 +352,7 @@ fn period_stats(tasks: &[Task]) -> PeriodStats  // planned, completed, rate, car
 
 ---
 
-# Wave 2 — Sticky-note boards (PR 8–15)
+# Wave 2 — Sticky-note boards (PR 8–15, 15a–15c)
 
 ### - [ ] PR 8 — Frontend store & data hooks
 **Branch:** `feat/pr-08-store`
@@ -530,7 +553,66 @@ Progress values come from PR 7's `compute_progress`, never computed in the compo
 
 ---
 
-# Wave 3 — Desktop shell (PR 16–18)
+> **PR 15a–15c were not in the original sequence.** They came out of using the boards daily and finding that the plan had described the data correctly and the reading of it badly. They are recorded here because a plan that only lists what was predicted is not a history of the project.
+>
+> They are filed with the boards because that is what they change, but they **landed after Wave 3's shipped PRs** — 16, 17, and 17a were already on `main` when this work started, which is how a per-board setting from PR 16 was there to reveal that PR 10's type scale could not respond to it. Wave membership here is about subject matter, not chronology.
+
+### - [x] PR 15a — Board text scaling & day panels
+**Branch:** `feat/pr-15a-board-text-scale` · shipped as GitHub PR #23
+**Depends on:** PR 15
+**What this gives the app:** Makes the per-board font size setting actually do something, and turns the week's days from a list of lines into panels you can tell apart at a glance.
+
+**Modifies:** `src/styles/tokens.css`, `src/styles/theme.css`, `src/features/boards/components/DaySummary.tsx`. **Creates:** `src/features/boards/daySummary.ts`.
+
+**The size setting was unreachable, and the reason was in the tokens.** PR 10's type scale was written in `rem`, which resolves against the root font size of the document — one value shared by every board window. A per-board setting cannot move it. The fix is to express the scale relative to the board's own container instead, so the per-board CSS custom property is the thing the text is actually sized from. This is the failure mode a design-token layer is supposed to prevent, and it took a real setting to reveal it.
+
+**Each day gets a completion percentage** alongside its `2/3` count. The fraction answers "how many", the percentage answers "how did the day go", and at a glance the second question is the one being asked. Days with nothing planned report nothing rather than 0% — an empty day is not a failed one.
+
+**DoD:** Changing one board's font size changes only that board and the change survives a restart. Every day renders as a distinct panel with its count, duration, and percentage.
+**Test:** Vitest — the percentage is computed from planned versus completed and omitted for an empty day; the summary keeps its count and duration alongside it.
+
+---
+
+### - [x] PR 15b — Sections: user-named task groups
+**Branch:** `feat/pr-15b-board-sections` · shipped as GitHub PRs #24, #25, #26
+**Depends on:** PR 15a
+**What this gives the app:** Lets you name the groups on a board yourself — "Job Search", "House" — instead of living with whatever grouping the app decided on.
+
+**Creates:** `src-tauri/migrations/006_board_sections.sql`, `migrations/007_sections_are_task_groups.sql`, `src-tauri/src/storage/section.rs`, `src-tauri/src/commands/sections.rs`, `src/features/sections/{BoardSections,SectionList,SectionCard}.tsx`, `src/stores/sectionStore.ts`, `src/features/boards/components/TaskGroup.tsx`, `src/features/boards/grouping.ts`, `src/types/section.ts`.
+
+**A section is a name for a group of tasks, not a container that owns them.** It maps onto a field the task already has: `tasks.area` on the Priority board, `tasks.project` on Weekly Tasks. Nothing is duplicated, and a task promoted or rescheduled elsewhere keeps its grouping without any section bookkeeping following it around.
+
+That mapping is what makes the two destructive operations behave sensibly:
+
+| Operation | Behaviour | Why |
+|---|---|---|
+| **Rename** | Rewrites `area`/`project` across every task in the group, in one transaction | A rename is a rename. Half-renamed tasks scattered across two spellings is the worst outcome available, so it is all-or-nothing. |
+| **Delete** | Unfiles the tasks — clears the field, leaves the tasks | Deleting a label must never delete work. The user removing "House" from the board means the heading is wrong, not that the errands are cancelled. |
+
+**Weekly Progress and Monthly Progress refuse sections.** They group by day and by commitment respectively, and neither is a thing the user gets to name — Tuesday is Tuesday, and a monthly commitment is already a task with its own title. Offering a section control there would suggest a grouping that cannot exist. The refusal lives in the section commands rather than in the UI, so a board added later cannot acquire sections by accident.
+
+It arrived in three passes: free-written note cards first (#24), then the add control moved into the board header and the per-section accent rules dropped (#25), then the cards became real task groups (#26). Migration 007 is named `sections_are_task_groups` because that is the correction it makes.
+
+**DoD:** A section can be created, renamed, and deleted on Priority and Weekly Tasks. A rename moves every task in the group. A delete leaves the tasks on the board, ungrouped. The two progress boards expose no section control and reject the command if one is sent.
+**Test:** Rust — rename rewrites all matching rows and rolls back whole on failure; delete nulls the field and deletes no task; a section create against a progress board is rejected. Vitest — section list rendering, inline rename commit and cancel, delete confirmation, tasks reappear ungrouped after a delete.
+
+---
+
+### - [x] PR 15c — Priority editable from the badge
+**Branch:** `feat/pr-15c-priority-badge-edit` · shipped as GitHub PR #26
+**Depends on:** PR 15b
+**What this gives the app:** Lets you change a task's priority by clicking the number on it, and the board reorders itself immediately.
+
+**Modifies:** `src/features/boards/components/PriorityBadge.tsx`, `TaskRow.tsx`, `src/stores/taskStore.ts`.
+
+PR 12 made the badge readable and left it read-only, which put the most frequently changed field on the boards behind the context menu. Priority is now settable 1–10 from the badge itself, and every board that sorts by it re-sorts on the change rather than waiting for a reload — otherwise the number says one thing and the position says another.
+
+**DoD:** Clicking a badge sets a priority, it persists, and the board re-sorts in place.
+**Test:** Vitest — the picker dispatches the new value, the badge still renders the number and not only a colour, and the surrounding list order updates.
+
+---
+
+# Wave 3 — Desktop shell (PR 16, 17, 17a, 18)
 
 ### - [x] PR 16 — Window behaviors
 **Branch:** `feat/pr-16-window-behaviors`
@@ -557,7 +639,7 @@ Always-on-top, desktop-level mode, lock position, click-through when locked (`se
 
 Tray menu exactly as §6.8: Open Boards, Start Daily Standup, Start Evening Check-In, Plan My Week, Monthly Review, Quick Add Task, Pause Reminders, Settings, Quit.
 
-AI entries are present but **disabled with a "coming soon" tooltip** until Wave 5 — they must not silently do nothing. Quick Add opens a small always-on-top input window; adding a task **must not** start any model.
+AI entries are present but **disabled with a "coming soon" tooltip** until Wave 4 — they must not silently do nothing. Quick Add opens a small always-on-top input window; adding a task **must not** start any model.
 
 Adds `tauri-plugin-autostart` for launch-at-login.
 
@@ -566,12 +648,34 @@ Adds `tauri-plugin-autostart` for launch-at-login.
 
 ---
 
+### - [x] PR 17a — Board window lifecycle & close policy
+**Branch:** `fix/pr-17a-board-window-lifecycle` · shipped as GitHub PRs #21, #22
+**Depends on:** PR 17
+**What this gives the app:** Boards that open and close the way you expect them to, from wherever you asked — the tray, the main window, the board's own close button, or Alt+F4.
+
+**Creates:** `src-tauri/src/windows/dispatch.rs`, `windows/close_policy.rs`, `src/components/ErrorBoundary.tsx`. **Modifies:** `src-tauri/src/windows/board_windows.rs`, `commands/boards.rs`, `commands/tray.rs`, `src/features/boards/BoardRoot.tsx`.
+
+Two faults, one root. PR 9 created board windows and PR 17 added a second way to ask for one, and the two paths did not agree about what "close" means or about which thread they were on.
+
+**Window creation has to happen on the main thread.** A board opened from a tray-menu callback or from an async command handler is not on it, and the resulting window came up blank rather than failing loudly. The fix is an explicit dispatch: every route that opens or closes a board posts the request to the main thread and awaits the result, so there is exactly one code path regardless of who asked. A blank window is now impossible by construction rather than by care.
+
+**Closing needs a policy, not a handler.** A board can be dismissed four ways — the board's own close button, Alt+F4, the system window menu, and the taskbar — and the OS routes them differently. Handling three of them and forgetting the fourth is what happened, and the symptom was a board that was gone from the screen but still marked visible in `board_windows`, so it never came back on restart. `close_policy.rs` names the outcome for each route in one place: dismissing a board hides it and records that, it does not destroy state, and reopening restores it.
+
+An `ErrorBoundary` wraps the board root so a render failure inside one board shows an error in that board rather than painting an empty window with no explanation.
+
+**DoD:** Every board opens from the tray, from the main window, and after a previous close, on every route, with content rendered. All four dismissal routes leave `board_windows` agreeing with what is on screen. Reopening a closed board shows the board, not a blank frame.
+**Test:** Rust — the dispatcher runs creation on the main thread; each of the four close routes maps to the intended policy; visibility persisted on close matches what was rendered. Vitest — the error boundary catches a throwing board and renders the fallback rather than nothing.
+
+---
+
 ### - [ ] PR 18 — Settings & reminders → **tag `v0.1.0`**
 **Branch:** `feat/pr-18-settings-reminders`
-**Depends on:** PR 17
+**Depends on:** PR 17a
 **What this gives the app:** Settings you can change and reminders that nudge you morning and evening. **This is the first version genuinely worth using every day.**
 
-**Creates:** `src-tauri/src/storage/settings.rs`, `migrations/003_settings.sql`, `src/features/settings/SettingsWindow.tsx`, `settings/sections/{General,StickyNotes,Planning}.tsx`, `src-tauri/src/reminders.rs`.
+**Creates:** `src-tauri/src/storage/settings.rs`, `migrations/008_settings.sql`, `src/features/settings/SettingsWindow.tsx`, `settings/sections/{General,StickyNotes,Planning}.tsx`, `src-tauri/src/reminders.rs`.
+
+**The schema is at 007.** Waves 2 and 3 spent more migrations than this plan predicted — `004_ui_state`, `005_board_appearance`, and PR 15b's `006_board_sections` and `007_sections_are_task_groups` — so this PR's migration is **008**, not the `003` written here originally, and every later migration number in this file has been moved up to match. Migration numbers are positions in a sequence, unlike PR numbers; a duplicate is a runtime failure, not a documentation nit.
 
 Settings sections per §18 — only General, Sticky Notes, and Planning here; Obsidian/AI/Voice sections are added by the PRs that introduce those subsystems.
 
@@ -584,102 +688,13 @@ Reminders: morning and evening notification at configurable times via `tauri-plu
 
 ---
 
-# Wave 4 — Obsidian read integration (PR 19–22)
+# Wave 4 — Local LLM text standup (PR 23–28)
 
-### - [ ] PR 19 — Vault selection & folder scoping
-**Branch:** `feat/pr-19-vault-config`
-**Depends on:** PR 18
-**What this gives the app:** Lets the app point at your Obsidian vault — and lets you decide which folders it must never look at.
-
-**Creates:** `src-tauri/src/obsidian/mod.rs`, `obsidian/config.rs`, `migrations/004_vault.sql`, `src/features/settings/sections/Obsidian.tsx`.
-
-Folder picker for the vault root. Include/exclude lists with the spec's suggested defaults pre-filled as *suggestions the user confirms*: `Private/`, `Journal/`, `Medical/`, `Financial/`. Read-only mode toggle, defaulting to **on**. Configurable target folders for daily/weekly/monthly notes.
-
-Exclusion is enforced by a single `is_indexable(path) -> bool` function that every later Obsidian code path must call. Centralizing it is the whole point — a second exclusion check somewhere else is how a private note eventually leaks into a prompt.
-
-**Interfaces produced:** `VaultConfig { root, include, exclude, read_only, daily_folder, weekly_folder, monthly_folder }`, `is_indexable(&VaultConfig, &Path) -> bool`.
-
-**DoD:** Selecting a vault persists it. Excluded paths return false, including nested children and case variations.
-**Test:** Rust tests over a temp fixture vault — exclusion of nested paths, glob edge cases, symlink refusal.
-
----
-
-### - [ ] PR 20 — Markdown parser
-**Branch:** `feat/pr-20-markdown-parser`
-**Depends on:** PR 19
-**What this gives the app:** Teaches the app to read your notes: the checkboxes, the tags, the priorities, the links between them.
-
-Pure parsing library, zero I/O, so it can be tested exhaustively against fixtures.
-
-**Creates:** `src-tauri/src/obsidian/parser.rs`, `obsidian/frontmatter.rs`, `tests/fixtures/vault/**` (realistic sample notes).
-
-Parses per §9.1: YAML frontmatter (`serde_yaml`), note title, headings, markdown checkboxes with line numbers, wikilinks, `parent` relationships, tags, `status`, `priority`, due dates, `last_updated`, callouts.
-
-Also extracts a **`summary_line`** — the one-line description that feeds the vault map in PR 25. Resolution order, first hit wins: the `desired_outcome` frontmatter field (§9.6) → the first non-empty prose line after the H1 → the title alone. Truncate to 100 characters at a word boundary. Fully deterministic; no model involved.
-
-**Interfaces produced:**
-```rust
-fn parse_note(content: &str, path: &Path) -> Result<ParsedNote>
-struct ParsedNote { title, summary_line: String, frontmatter, headings, tasks: Vec<ParsedTask>, wikilinks, tags }
-struct ParsedTask { text, checked, line: usize, heading_path: Vec<String> }
-```
-
-**Careful:** malformed YAML must degrade to "no frontmatter", never error the whole scan. One broken note cannot break indexing.
-
-**DoD:** Parses the spec's example note correctly, including `parent: "[[Projects]]"` and `- [ ] Schedule a dental cleaning...` at the right line number.
-**Test:** Fixture-driven Rust tests — nested checkboxes, indented tasks, `- [x]`/`- [X]`/`- [-]`, CRLF line endings, notes with no frontmatter, malformed YAML, unicode.
-
----
-
-### - [ ] PR 21 — Vault indexer & file watcher
-**Branch:** `feat/pr-21-vault-indexer`
-**Depends on:** PR 20
-**What this gives the app:** Builds a fast index of your vault and keeps it current as you edit in Obsidian, so nothing has to be re-read from scratch.
-
-**Creates:** `src-tauri/src/obsidian/indexer.rs`, `obsidian/watcher.rs`, `migrations/005_vault_index.sql`.
-
-Walks the vault (honoring `is_indexable`), parses each note, writes a lightweight index across three tables:
-
-- `notes` — path, title, **`summary_line`**, frontmatter fields (status, priority, parent, due), mtime, hash
-- `note_tasks` — note_path, line, text, checked
-- **`note_links`** — an edge list (`from_path`, `to_path`, `kind`) built from wikilinks and `parent:` frontmatter
-
-The edge table is what makes the vault a real graph rather than a flat list. It costs almost nothing to populate and buys three things: rendering the hierarchy in PR 25's map, **neighbor expansion** (pulling in a note's parent summary alongside the note itself), and §5.5's "identify neglected areas" as a graph query. Ancestor and descendant traversal is a recursive CTE — roughly eight lines of SQL.
-
-Incremental — reindex a file only when mtime or hash changed.
-
-File watcher via `notify`, debounced 1s, triggering targeted reindex. Full scan runs off the UI thread with progress events.
-
-**Interfaces produced:** `index_vault(&VaultConfig) -> Result<IndexStats>`, `reindex_file(path)`, `start_watcher(app)`, `stop_watcher()`.
-
-**DoD:** Indexing a real vault completes and reports counts. Editing a note in Obsidian updates the index within ~2s. Excluded folders produce zero rows — verify by querying the DB directly. A recursive CTE returns the correct ancestor chain for a nested note.
-**Test:** Rust tests over a temp vault — initial index, incremental no-op, file added/modified/deleted, ancestor/descendant traversal, a link to a non-existent note (must not error), a link cycle (must terminate), and an explicit test asserting excluded files never appear in *any* of the three tables.
-
----
-
-### - [ ] PR 22 — Relevance ranking & promote-to-board → **tag `v0.2.0`**
-**Branch:** `feat/pr-22-ranking-promote`
-**Depends on:** PR 21
-**What this gives the app:** The app can now tell you which vault tasks matter most today, and you can pull one onto a board with a link back to the note it came from.
-
-**Creates:** `src-tauri/src/obsidian/ranking.rs`, `src/features/vault/VaultBrowser.tsx`, `src/features/vault/components/SourceBadge.tsx`.
-
-Deterministic scoring per §9.3 — project priority + due-date urgency + active-status weight + weekly/monthly connection + rollover count + recent mentions. Weights are named constants in one place, documented, and tunable. **No embeddings.**
-
-UI: browse ranked candidate tasks, promote one onto a board. Promotion copies text and sets `source_type: 'obsidian'`, `source_file`, `source_line`. Every promoted task shows a source badge; clicking it opens the note via the `obsidian://open?path=` URI.
-
-**DoD:** Ranking is stable and explainable — each candidate shows its score breakdown, matching §9.4's transparency example. Promoted tasks keep working source links.
-**Test:** Rust table-driven tests on scoring (a priority-9 overdue task outranks a priority-3 one; ordering is deterministic for equal scores); Vitest on the badge and promote flow.
-
-**After merge:** tag `v0.2.0`.
-
----
-
-# Wave 5 — Local LLM text standup (PR 23–28)
+The standup runs on the app's own data. There is no vault at this point in the sequence and the wave does not need one — Waves 1 through 3 built monthly commitments, weekly milestones, named sections, priorities, due dates, rollover counts, and logged durations, all in SQLite and all more structured than the markdown the model was originally going to be handed.
 
 ### - [ ] PR 23 — Model registry, hardware detection & download
 **Branch:** `feat/pr-23-model-registry`
-**Depends on:** PR 22
+**Depends on:** PR 18
 **What this gives the app:** The app works out what your computer can handle and downloads a language model that fits it.
 
 **Creates:** `src-tauri/src/inference/mod.rs`, `inference/registry.rs`, `inference/hardware.rs`, `inference/benchmark.rs`, `inference/download.rs`, `models/catalog.json`, `src/features/settings/sections/AI.tsx`.
@@ -732,48 +747,56 @@ Also covers §17.1: if the model fails to start, show a clear error with diagnos
 
 ---
 
-### - [ ] PR 25 — Vault map & tiered context builder
-**Branch:** `feat/pr-25-vault-map-context`
+### - [ ] PR 25 — Commitment map & tiered context builder
+**Branch:** `feat/pr-25-context-builder`
 **Depends on:** PR 24
-**What this gives the app:** Gives the AI a map of your goals instead of your whole vault, so it knows where to look without having to read everything.
+**What this gives the app:** Gives the AI a map of your commitments instead of everything you have ever written down, so it knows where to look without having to read all of it.
 
-Per §9.2, **never send the whole vault** — a 500-note vault is ~260k tokens, which is roughly 33 GB of KV cache and ~9 minutes of prefill. Instead the model gets a small **map** of what exists plus a small set of ranked excerpts, and can request more.
+Per §9.2, **never send everything** — the reason is arithmetic, not taste. A 500-note vault is ~260k tokens, roughly 33 GB of KV cache and ~9 minutes of prefill, and a year of accumulated tasks gets there too. So the model gets a small **map** of what exists plus a small set of ranked detail, and can ask for more.
+
+**The tiered budget was always the point; the vault was one way to fill it.** This PR was originally written to source all three tiers from indexed Obsidian notes, and was sequenced after the vault for that reason. It no longer is. The architecture below is unchanged — three tiers, hard token budgets, deterministic ranking, on-demand expansion — but every tier is fed from SQLite, which by the end of Wave 3 holds monthly commitments, weekly milestones, user-named sections, priorities, statuses, due dates, rollover counts, and logged durations. That is a *better* input than markdown prose: it is already typed, already scored, and already the thing the user manipulates every day. When Obsidian lands in Wave 7 it becomes an **additional source feeding these same tiers** — a vault branch in the map, more candidates for the ranker, notes as one more thing Tier 3 can fetch. It does not replace anything here, and nothing in this PR should be written as though it were temporary.
 
 **Creates:** `src-tauri/src/inference/map.rs`, `inference/context.rs`, `inference/prompt.rs`, `prompts/daily-standup.md`, `prompts/evening-review.md`, `prompts/weekly-planning.md`, `prompts/monthly-review.md`.
 
-**Tier 1 — the vault map (~1,500 token budget, always present).** Active goals and projects only, rendered from `notes` + `note_links` as an indented tree with priority, status, and `summary_line`. Roughly 12–15 tokens per line, so ~20 goals and ~90 child notes fit the budget. Capped by count *and* tokens; overflow drops the lowest-ranked goals first.
+**Tier 1 — the commitment map (~1,500 token budget, always present).** Active work only, rendered from `tasks` as an indented tree with three levels: the user's named **sections** (PR 15b) as the headings, the month's commitment for each one on that heading line, and the weekly milestones indented beneath. Every line carries priority and status. Roughly 12–15 tokens per line, so ~20 headings and ~90 children fit the budget. Capped by count *and* tokens; overflow drops the lowest-ranked sections first.
 
 ```
-VAULT MAP — active projects
+COMMITMENT MAP — active
 
-Job Search [p9, ongoing] — Find a senior dev role by December
-  → Fall 2026.md ......... application tracker, 12/20 submitted
-  → Resume.md ............ master resume + per-company variants
+Job Search [p9, in progress] — 12/20 applications this month
+  Fall 2026 applications ....... weekly, 3/5 done
+  Rewrite resume ............... weekly, blocked
+  Referral follow-ups .......... weekly, not started
 
-Health [p8, ongoing] — Clear the backlog of overdue appointments
-  → Dental.md ............ routine cleaning, not scheduled
+Health [p8, in progress] — clear the overdue appointments
+  Schedule dental cleaning ..... daily, deferred 4×
+  Book eye test ................ weekly, not started
 ```
 
-**Tier 2 — ranked excerpts (~2,000 token budget).** Top-N candidates from PR 22's scorer with their surrounding note context, plus current weekly/monthly commitments, yesterday's incomplete tasks, upcoming due dates, and repeatedly-deferred tasks per §11.2.
+Sections are what make the tree legible rather than a flat priority-ordered dump. The user named them, so they are the grouping the user already thinks in — the model gets the shape of the week for free instead of inferring categories from task titles.
 
-**Tier 3 — on demand.** Fetch a single note by path for PR 28's expansion loop.
+**Tier 2 — ranked context (~2,000 token budget).** All of it already in SQLite: current weekly and monthly commitments, yesterday's incomplete tasks, upcoming due dates, and repeatedly-deferred tasks per §11.2. Each item carries its own detail — blocker text, progress numbers, time logged, `rollover_count` — because that detail is what turns "this is on your list" into "this has moved four times and has a blocker on it."
 
-The division of labor matters: **the map tells the model what exists; the ranker tells it what is urgent.** Dropping the ranker would force the model to infer priority from the map, which is exactly the judgment §3.6 says must stay deterministic.
+**Tier 3 — on demand.** Fetch one task's subtree for PR 28's expansion loop: the task, its children, its notes, and its blocker. A subtree rather than a single row, because the interesting question is almost never about one task in isolation.
+
+The division of labor is unchanged and still matters: **the map tells the model what exists; the ranker tells it what is urgent.** Dropping the ranker would force the model to infer priority from the map, which is exactly the judgment §3.6 says must stay deterministic.
 
 Prompts live in editable markdown files with a `{{variable}}` substitution layer, so users can customize them later without a rebuild.
 
 **Interfaces produced:**
 ```rust
-fn build_map(cfg: &VaultConfig, budget: usize) -> Result<VaultMap>
+fn build_map(repo: &TaskRepo, budget: usize) -> Result<CommitmentMap>
 fn build_context(session_kind, budget: TokenBudget) -> Result<SessionContext>
-fn fetch_note(path: &str) -> Result<NoteExcerpt>   // Tier 3, used by PR 28
+fn fetch_task_subtree(id: &str) -> Result<TaskSubtree>   // Tier 3, used by PR 28
 fn render_prompt(template, &SessionContext) -> String
 ```
 
-**Careful:** the map is built from indexed notes only, so excluded folders are absent by construction — the model never learns they exist, rather than being filtered after the fact. Assert this in code; it is the last checkpoint before text reaches a model.
+`SessionContext` is the seam Wave 7 widens: a tier holds a list of context items, not a list of tasks, so PR 25 needs no change when vault-sourced items start arriving alongside task-sourced ones.
 
-**DoD:** The rendered map for a real vault fits its budget and reads like the example above. Total prompt stays under the profile's context size. Nothing from an excluded folder appears anywhere.
-**Test:** Rust tests — map respects both count and token caps; overflow drops lowest-ranked goals first; a note with no `summary_line` degrades to title-only; a vault with a link cycle renders without hanging; a decoy test filling an excluded folder with distinctive content asserts none of it reaches the rendered prompt.
+**Careful:** the budgets are enforced in the builder, not hoped for in the template. A prompt that renders 6k tokens on a 2k-context Lightweight profile is a truncated prompt, and a truncated prompt is a model answering a question it was never fully asked.
+
+**DoD:** The rendered map for a real board set fits its budget and reads like the example above. Total prompt stays under the profile's context size on every hardware profile.
+**Test:** Rust tests — map respects both count and token caps; overflow drops lowest-ranked sections first; a task with no section renders ungrouped rather than being dropped; a deep parent chain renders without hanging; a task tree far larger than the budget still produces a prompt under the Lightweight profile's context size; `fetch_task_subtree` returns children, notes, and blocker for a task and an empty subtree for a leaf.
 
 ---
 
@@ -786,7 +809,7 @@ fn render_prompt(template, &SessionContext) -> String
 
 Stages are driven by **Rust**, not the model: Context → Previous progress → Current priorities → Blockers → Capacity → Proposed commitments → Approval → Save & close. The model generates the language for each stage; it cannot skip, reorder, or invent stages.
 
-UI shows streaming responses, a stage indicator, the retrieved Obsidian context with sources, and the §7.5 loading sequence ("Starting local assistant… Loading language model… Ready."). Typed input only in this PR — voice arrives in Wave 6.
+UI shows streaming responses, a stage indicator, the retrieved context with the board each item came from, and the §7.5 loading sequence ("Starting local assistant… Loading language model… Ready."). Showing the context is not decoration: a user who can see the six tasks the model was handed can tell the difference between a bad suggestion and a bad retrieval. Typed input only in this PR — voice arrives in Wave 5.
 
 **Interfaces produced:** `start_session(kind) -> SessionId`, `send_message(session, text)`, `advance_stage(session)`, `end_session(session)` (which shuts down inference).
 
@@ -802,21 +825,27 @@ UI shows streaming responses, a stage indicator, the retrieved Obsidian context 
 
 **Creates:** `src-tauri/src/session/proposal.rs`, `session/validator.rs`, `src/features/standup/components/ApprovalPanel.tsx`.
 
-The model returns the §11.5 JSON shape. Rust deserializes it with strict serde types and validates: titles non-empty and under a length cap, `horizon` a known variant, `parentTaskId` referencing an existing task, `sourceFile` inside the vault and not excluded, no duplicate proposals. Invalid output triggers **one** repair round-trip with the validation errors appended to the prompt; a second failure surfaces an error rather than guessing.
+The model returns the §11.5 JSON shape. Rust deserializes it with strict serde types and validates: titles non-empty and under a length cap, `horizon` a known variant, `parentTaskId` referencing an existing task, no duplicate proposals, and no path traversal in any string that will be treated as a path.
+
+**`sourceFile` is optional and unvalidated until Wave 7.** The check the original plan specified — inside the vault, not in an excluded folder — has nothing to check against while there is no vault configured, and a validator that cannot answer its own question must not pretend to. So the field is accepted when present, carried through unread, and never used to resolve a file. PR 19's `is_indexable` is what makes it meaningful, and the inside-the-vault and exclusion checks are added to this validator in Wave 7 alongside it.
+
+**Every other adversarial check stands in full** — titles, horizon, `parentTaskId`, duplicates, path traversal. Those are the checks that hold regardless of where the model's context came from, and none of them is weakened by the vault's absence.
+
+Invalid output triggers **one** repair round-trip with the validation errors appended to the prompt; a second failure surfaces an error rather than guessing.
 
 Approval UI: every proposed task can be individually approved, edited, or rejected. Nothing is written to SQLite until approval. Approved tasks become real tasks and the boards refresh.
 
 **DoD:** A standup produces a plan you approve, and those tasks appear on the boards. **Deliberately malformed model JSON never reaches the database.**
-**Test:** Rust tests feeding adversarial payloads — missing fields, wrong types, `sourceFile` pointing at `Private/`, path traversal (`../../etc/passwd`), a parent ID that doesn't exist, 10,000-character titles. Each must be rejected.
+**Test:** Rust tests feeding adversarial payloads — missing fields, wrong types, path traversal (`../../etc/passwd`), a parent ID that doesn't exist, a duplicate proposal, 10,000-character titles. Each must be rejected. Plus one test asserting a proposal carrying a `sourceFile` is accepted and that the value is never resolved to a filesystem path — the Wave 7 PR that adds the vault checks inherits this test file and turns that case into a rejection.
 
 ---
 
-### - [ ] PR 28 — Bounded context expansion → **tag `v0.3.0`**
+### - [ ] PR 28 — Bounded context expansion → **tag `v0.2.0`**
 **Branch:** `feat/pr-28-context-expansion`
 **Depends on:** PR 27
-**What this gives the app:** Lets the AI ask to see a specific note, or ask you a question, when what it has is not enough to answer well.
+**What this gives the app:** Lets the AI ask to see the detail behind a specific commitment, or ask you a question, when what it has is not enough to answer well.
 
-Lets the model say "I need to look at that note" or "I don't know where you track this" — **without tool-calling.** Small quantized models are unreliable at tool-use protocols, and every tool call is another 5–10s round trip.
+Lets the model say "I need to see what's under that" or "I don't know where you track this" — **without tool-calling.** Small quantized models are unreliable at tool-use protocols, and every tool call is another 5–10s round trip.
 
 **Creates:** `src-tauri/src/session/expansion.rs`. **Modifies:** `session/proposal.rs`, `session/validator.rs`, `src/features/standup/components/MessageList.tsx`.
 
@@ -824,27 +853,29 @@ Extends PR 27's validated envelope with two optional fields:
 
 ```json
 {
-  "needs_context": ["Health/Dental.md"],
-  "question_for_user": "I don't see a note for travel — where do you track that?"
+  "needs_context": ["task:9d3f1a7c-..."],
+  "question_for_user": "I don't see anything about travel — where do you track that?"
 }
 ```
 
-Rust validates each requested path (exists, inside the vault, passes `is_indexable`), fetches it via PR 25's `fetch_note`, appends it, and re-prompts. **Capped at 2 expansion rounds** so a request loop cannot spiral into a minute of latency. Neighbor expansion comes free from `note_links` — fetching `Dental.md` also pulls its parent `Health.md` summary.
+`needs_context` asks for a **task subtree**, by the task ID the model saw in Tier 1's map. Rust validates each requested ID (well-formed, exists, belongs to this user's data), fetches it via PR 25's `fetch_task_subtree`, appends it, and re-prompts. An ID is a much easier thing for a small model to echo back correctly than a filesystem path, and a much easier thing for Rust to check — the id either resolves to a row or it does not. **Capped at 2 expansion rounds** so a request loop cannot spiral into a minute of latency. Parent context comes free from `parent_task_id` — fetching a weekly milestone also pulls the monthly commitment it sits under.
+
+The prefixed form (`task:<id>`) is deliberate. Wave 7 adds `note:<path>` as a second requestable kind without changing the envelope or reteaching the model a new field.
 
 `question_for_user` costs nothing extra: it just renders in the chat and waits for a reply.
 
 This works with a weak model because it is only JSON output — not a protocol the model has to execute correctly.
 
-**Interfaces produced:** `expand_context(session, requests: Vec<String>) -> Result<SessionContext>`, `ExpansionBudget { max_rounds: 2, max_notes_per_round: 3 }`.
+**Interfaces produced:** `expand_context(session, requests: Vec<String>) -> Result<SessionContext>`, `ExpansionBudget { max_rounds: 2, max_items_per_round: 3 }`.
 
-**DoD:** Asking about something outside the retrieved set causes the model to request the right note and answer correctly on the second pass. Expansion never exceeds 2 rounds. A request for an excluded path is refused and the refusal is invisible to the model — it is not told the file exists.
-**Test:** Rust tests — a request for `Private/Secrets.md` is refused; path traversal refused; a nonexistent path refused without erroring the session; the round cap holds when the model requests context every turn; neighbor expansion pulls the parent summary.
+**DoD:** Asking about something outside the retrieved set causes the model to request the right subtree and answer correctly on the second pass. Expansion never exceeds 2 rounds. An unresolvable request is refused without erroring the session.
+**Test:** Rust tests — a malformed ID is refused; a well-formed ID for a task that does not exist is refused without erroring the session; a request carrying a path instead of an ID is refused; the round cap holds when the model requests context every turn; parent expansion pulls the monthly commitment above a requested weekly milestone.
 
-**After merge:** tag `v0.3.0`.
+**After merge:** tag `v0.2.0`.
 
 ---
 
-# Wave 6 — Voice (PR 29–32)
+# Wave 5 — Voice (PR 29–32)
 
 ### - [ ] PR 29 — Audio capture, push-to-talk & VAD
 **Branch:** `feat/pr-29-audio-capture`
@@ -871,7 +902,7 @@ This works with a weak model because it is only JSON output — not a protocol t
 
 **Creates:** `src-tauri/src/audio/whisper.rs`, extends `inference/registry.rs` with Whisper models.
 
-Runs whisper.cpp on the captured buffer, resampling to 16kHz mono. Whisper model selection (tiny/base/small) follows the hardware profile from PR 22. Loaded on session start, unloaded on session end alongside the LLM.
+Runs whisper.cpp on the captured buffer, resampling to 16kHz mono. Whisper model selection (tiny/base/small) follows the hardware profile from PR 23. Loaded on session start, unloaded on session end alongside the LLM.
 
 **On cards with ≤8 GB VRAM, run Whisper on CPU.** The LLM plus KV cache already takes ~6 GB of 8 GB at the High Quality profile, and Whisper base transcribes 10s of audio on CPU in 1–2s. Make this the automatic default when detected VRAM headroom is under 2 GB.
 
@@ -902,25 +933,31 @@ Per §12.3 the assistant summarizes rather than reading long task lists aloud �
 
 ---
 
-### - [ ] PR 32 — Onboarding wizard → **tag `v0.4.0` (MVP)**
+### - [ ] PR 32 — Onboarding wizard → **tag `v0.3.0` (MVP)**
 **Branch:** `feat/pr-32-onboarding`
 **Depends on:** PR 31
 **What this gives the app:** A first-run walkthrough that takes a new user from install to their first standup without ever opening Settings.
 
 **Creates:** `src/features/onboarding/OnboardingWizard.tsx` and one step component per §5.1 stage.
 
-All twelve steps: explain local processing → pick vault → read-only first → scan → show discovered structure → exclude folders → detect hardware → recommend models → download after confirmation → test mic and voice → place boards → choose daily-only or all horizons.
+The steps that exist by now: explain local processing → detect hardware → recommend models → download after confirmation → test mic and voice → place boards → choose daily-only or all horizons → add a first commitment.
+
+**§5.1's five vault steps are not in this wizard** — pick vault, read-only first, scan, show discovered structure, exclude folders. Obsidian does not exist until Wave 7, and a wizard step for a subsystem that is not installed is a dead end with a "coming soon" on it. Wave 7 inserts those five steps into the same wizard, which is why the step list is a data structure rather than a hard-coded sequence of components: adding a step there must not mean rewriting navigation here. A user who onboarded before Wave 7 gets the vault steps offered once on the update, not silently skipped.
+
+The last step, **add a first commitment**, replaces what the vault scan used to provide. The original wizard ended with a vault full of structure the app had just discovered; without one, a new user reaches their first standup with nothing on the boards and the model has nothing to work from. Asking for one monthly commitment costs the user thirty seconds and makes the first session real.
 
 The hardware step surfaces PR 23's benchmark result plainly — measured tokens/sec, the selected profile, and the expected turn latency — so the §7.5 startup tradeoff is set as an expectation before first use rather than discovered as a surprise. Offer the CUDA backend download here when an NVIDIA GPU is present.
 
-**DoD:** A fresh install walks a new user from zero to a working first standup without touching Settings. Re-runnable from Settings.
-**Test:** Vitest on step navigation, back/forward state retention, and the skip paths.
+**DoD:** A fresh install walks a new user from zero to a working first standup without touching Settings. Re-runnable from Settings. A step can be added to the sequence without editing navigation.
+**Test:** Vitest on step navigation, back/forward state retention, the skip paths, and that the step list drives the wizard rather than being enumerated inside it.
 
-**After merge:** tag `v0.4.0` and cut a release. **This is the MVP** — check it against every line of §23's acceptance criteria before tagging.
+**After merge:** tag `v0.3.0` and cut a release. **This is the MVP** — check it against every line of §23's acceptance criteria that does not depend on Obsidian, and note the remainder as Wave 7's acceptance gate.
 
 ---
 
-# Wave 7 — Reviews & Obsidian writeback (PR 33–38)
+# Wave 6 — Reviews (PR 33–35)
+
+The review cycle closes the loop entirely inside the app. Each session reads the same SQLite numbers the boards show and writes its outcome back to them; nothing here waits on a file being written anywhere else, which is the reason the reviews can ship four PRs before the writer that eventually records them in a vault.
 
 ### - [ ] PR 33 — Evening check-in
 **Branch:** `feat/pr-33-evening-checkin`
@@ -946,7 +983,7 @@ Distinguishes the five outcomes the spec names: still important / blocked extern
 
 Per §5.4, using PR 7's `period_stats` for all numbers — **the model never calculates completion rates or hour totals.**
 
-**Includes the hours recap:** total time tracked for the week, broken down by area and project, from PR 11's `seconds_in_period`. Rust sums it; the model only narrates it. A week where the numbers and the narrative disagree is worse than no narrative.
+**Includes the hours recap:** total time tracked for the week, broken down by area and project, from PR 11's `minutes_in_period`. Rust sums it; the model only narrates it. A week where the numbers and the narrative disagree is worse than no narrative.
 
 Also surfaces the mismatches worth reflecting on: a task deferred five times with zero minutes recorded says something different from one deferred five times with six hours on it.
 
@@ -956,25 +993,130 @@ Also surfaces the mismatches worth reflecting on: a task deferred five times wit
 
 ---
 
-### - [ ] PR 35 — Monthly planning & retrospective
+### - [ ] PR 35 — Monthly planning & retrospective → **tag `v0.4.0`**
 **Branch:** `feat/pr-35-monthly-review`
 **Depends on:** PR 34
-**What this gives the app:** A monthly review that compares what you actually did against the long-term goals in your vault.
+**What this gives the app:** A monthly review that compares what you actually did against the commitments you set, and sets the next month's.
 
-Per §5.5 — compares completed work to long-term goals, surfaces neglected areas, sets a limited number of measurable monthly commitments, seeds initial weekly milestones.
+Per §5.5 — compares completed work to standing commitments, surfaces neglected areas, sets a limited number of measurable monthly commitments, seeds initial weekly milestones.
+
+"Long-term goals" here means the monthly commitments on the Monthly board and the sections the user has named, not vault notes. Wave 7 widens the comparison to vault-side goals; the retrospective structure does not change when it does.
 
 Uses tracked hours to make "neglected" concrete: an area with commitments but almost no recorded time is a clearer signal than one inferred from task counts alone.
 
 **Creates:** `src-tauri/src/session/monthly.rs`, `src/features/monthly-review/MonthlyReviewWindow.tsx`.
-**DoD:** A monthly session produces commitments with measurable targets that the Monthly board renders.
+**DoD:** A monthly session produces commitments with measurable targets that the Monthly board renders. **The full daily → evening → weekly → monthly cycle runs end to end on the app's own data.**
 **Test:** Rust tests on neglected-area detection and commitment→milestone seeding.
+
+**After merge:** tag `v0.4.0` and cut a release.
 
 ---
 
+# Wave 7 — Obsidian read integration (PR 19–22)
+
+By the time this wave starts the app is already a complete product: boards, a typed standup, voice, and the full review cycle, all running on its own SQLite data. Obsidian arrives as an **additional source**, not as the foundation it was originally sequenced to be. Nothing in Waves 4–6 gets rewritten to accommodate it; the context builder gains a tier and the ranker gains inputs.
+
+### - [ ] PR 19 — Vault selection & folder scoping
+**Branch:** `feat/pr-19-vault-config`
+**Depends on:** PR 35
+**What this gives the app:** Lets the app point at your Obsidian vault — and lets you decide which folders it must never look at.
+
+**Creates:** `src-tauri/src/obsidian/mod.rs`, `obsidian/config.rs`, `migrations/009_vault.sql`, `src/features/settings/sections/Obsidian.tsx`.
+
+Folder picker for the vault root. Include/exclude lists with the spec's suggested defaults pre-filled as *suggestions the user confirms*: `Private/`, `Journal/`, `Medical/`, `Financial/`. Read-only mode toggle, defaulting to **on**. Configurable target folders for daily/weekly/monthly notes.
+
+Exclusion is enforced by a single `is_indexable(path) -> bool` function that every later Obsidian code path must call. Centralizing it is the whole point — a second exclusion check somewhere else is how a private note eventually leaks into a prompt.
+
+**Interfaces produced:** `VaultConfig { root, include, exclude, read_only, daily_folder, weekly_folder, monthly_folder }`, `is_indexable(&VaultConfig, &Path) -> bool`.
+
+**DoD:** Selecting a vault persists it. Excluded paths return false, including nested children and case variations.
+**Test:** Rust tests over a temp fixture vault — exclusion of nested paths, glob edge cases, symlink refusal.
+
+---
+
+### - [ ] PR 20 — Markdown parser
+**Branch:** `feat/pr-20-markdown-parser`
+**Depends on:** PR 19
+**What this gives the app:** Teaches the app to read your notes: the checkboxes, the tags, the priorities, the links between them.
+
+Pure parsing library, zero I/O, so it can be tested exhaustively against fixtures.
+
+**Creates:** `src-tauri/src/obsidian/parser.rs`, `obsidian/frontmatter.rs`, `tests/fixtures/vault/**` (realistic sample notes).
+
+Parses per §9.1: YAML frontmatter (`serde_yaml`), note title, headings, markdown checkboxes with line numbers, wikilinks, `parent` relationships, tags, `status`, `priority`, due dates, `last_updated`, callouts.
+
+Also extracts a **`summary_line`** — the one-line description each note contributes to PR 25's map once the vault tier is switched on. Resolution order, first hit wins: the `desired_outcome` frontmatter field (§9.6) → the first non-empty prose line after the H1 → the title alone. Truncate to 100 characters at a word boundary. Fully deterministic; no model involved.
+
+**Interfaces produced:**
+```rust
+fn parse_note(content: &str, path: &Path) -> Result<ParsedNote>
+struct ParsedNote { title, summary_line: String, frontmatter, headings, tasks: Vec<ParsedTask>, wikilinks, tags }
+struct ParsedTask { text, checked, line: usize, heading_path: Vec<String> }
+```
+
+**Careful:** malformed YAML must degrade to "no frontmatter", never error the whole scan. One broken note cannot break indexing.
+
+**DoD:** Parses the spec's example note correctly, including `parent: "[[Projects]]"` and `- [ ] Schedule a dental cleaning...` at the right line number.
+**Test:** Fixture-driven Rust tests — nested checkboxes, indented tasks, `- [x]`/`- [X]`/`- [-]`, CRLF line endings, notes with no frontmatter, malformed YAML, unicode.
+
+---
+
+### - [ ] PR 21 — Vault indexer & file watcher
+**Branch:** `feat/pr-21-vault-indexer`
+**Depends on:** PR 20
+**What this gives the app:** Builds a fast index of your vault and keeps it current as you edit in Obsidian, so nothing has to be re-read from scratch.
+
+**Creates:** `src-tauri/src/obsidian/indexer.rs`, `obsidian/watcher.rs`, `migrations/010_vault_index.sql`.
+
+Walks the vault (honoring `is_indexable`), parses each note, writes a lightweight index across three tables:
+
+- `notes` — path, title, **`summary_line`**, frontmatter fields (status, priority, parent, due), mtime, hash
+- `note_tasks` — note_path, line, text, checked
+- **`note_links`** — an edge list (`from_path`, `to_path`, `kind`) built from wikilinks and `parent:` frontmatter
+
+The edge table is what makes the vault a real graph rather than a flat list. It costs almost nothing to populate and buys three things: a vault tier for PR 25's map, rendered as a hierarchy the same way the task tree is, **neighbor expansion** (pulling in a note's parent summary alongside the note itself), and §5.5's "identify neglected areas" as a graph query. Ancestor and descendant traversal is a recursive CTE — roughly eight lines of SQL.
+
+Incremental — reindex a file only when mtime or hash changed.
+
+File watcher via `notify`, debounced 1s, triggering targeted reindex. Full scan runs off the UI thread with progress events.
+
+**Interfaces produced:** `index_vault(&VaultConfig) -> Result<IndexStats>`, `reindex_file(path)`, `start_watcher(app)`, `stop_watcher()`.
+
+**DoD:** Indexing a real vault completes and reports counts. Editing a note in Obsidian updates the index within ~2s. Excluded folders produce zero rows — verify by querying the DB directly. A recursive CTE returns the correct ancestor chain for a nested note.
+**Test:** Rust tests over a temp vault — initial index, incremental no-op, file added/modified/deleted, ancestor/descendant traversal, a link to a non-existent note (must not error), a link cycle (must terminate), and an explicit test asserting excluded files never appear in *any* of the three tables.
+
+---
+
+### - [ ] PR 22 — Relevance ranking & promote-to-board
+**Branch:** `feat/pr-22-ranking-promote`
+**Depends on:** PR 21
+**What this gives the app:** The app can now tell you which vault tasks matter most today, and you can pull one onto a board with a link back to the note it came from.
+
+**Creates:** `src-tauri/src/obsidian/ranking.rs`, `src/features/vault/VaultBrowser.tsx`, `src/features/vault/components/SourceBadge.tsx`.
+
+Deterministic scoring per §9.3 — project priority + due-date urgency + active-status weight + weekly/monthly connection + rollover count + recent mentions. Weights are named constants in one place, documented, and tunable. **No embeddings.**
+
+UI: browse ranked candidate tasks, promote one onto a board. Promotion copies text and sets `source_type: 'obsidian'`, `source_file`, `source_line`. Every promoted task shows a source badge; clicking it opens the note via the `obsidian://open?path=` URI.
+
+**This ranker no longer feeds PR 25 — it enriches what PR 25 already ranks.** In the original sequence the standup had no context until this scorer existed. It ships four waves later now, and PR 25's Tier 2 has been ranking real tasks out of SQLite since Wave 4. What this adds is a second population of candidates and three signals the task table cannot supply on its own: recent mentions, note-graph connection, and vault-side project priority. The scoring weights stay in the same named-constants block, so a vault candidate and a board task are ordered against each other rather than in separate lists.
+
+**This is also where the two deferred safety checks land**, because this is the first PR in which a model-authored `sourceFile` can point at a real file. **Modifies:** `session/validator.rs` — `sourceFile` becomes required-to-be-valid when present: inside the vault root and passing `is_indexable`, per PR 27. **Modifies:** `session/expansion.rs` — `needs_context` accepts `note:<path>` alongside `task:<id>`, and a request for an excluded path is refused with the refusal invisible to the model; it is not told the file exists. Both were written as deferrals in Wave 4 with the tests already in place; this PR turns those tests from accept to reject.
+
+**DoD:** Ranking is stable and explainable — each candidate shows its score breakdown, matching §9.4's transparency example. Promoted tasks keep working source links. A vault candidate and a SQLite task with the same signals score the same. A proposal whose `sourceFile` points at an excluded folder is rejected, and a `needs_context` request for one is refused.
+**Test:** Rust table-driven tests on scoring (a priority-9 overdue task outranks a priority-3 one; ordering is deterministic for equal scores); a test asserting the vault-sourced signals change the ranking of an existing task rather than producing a separate ordering; the decoy-content test — an excluded folder filled with distinctive strings, asserted absent from the rendered prompt; `sourceFile` pointing at `Private/` rejected; `note:` path traversal refused; Vitest on the badge and promote flow.
+
+---
+
+# Wave 8 — Obsidian writeback (PR 36–38)
+
+Reading came first for a reason that survives the resequencing: the app must be able to describe a vault accurately before it is allowed to change one. Wave 7 built the index, the exclusion rule, and the source links; this wave is what earns the right to write.
+
 ### - [ ] PR 36 — Obsidian writer (append-only review notes)
 **Branch:** `feat/pr-36-obsidian-writer`
-**Depends on:** PR 35
+**Depends on:** PR 22
 **What this gives the app:** Your standups and reviews get written back into Obsidian — but only after you approve the exact change.
+
+The reviews themselves shipped in Wave 6 and have been running against SQLite since. What this adds is the record: the daily, weekly, and monthly notes those sessions produce, written into the vault in §13's formats.
 
 **Creates:** `src-tauri/src/obsidian/writer.rs`, `obsidian/diff.rs`, `src/features/approval/DiffApproval.tsx`.
 
@@ -1015,15 +1157,15 @@ The remaining §14 actions that may start AI after confirmation, invoked from a 
 Each is a single-shot request reusing PR 24's lifecycle and PR 27's validation and approval path — no new inference machinery. Every one shows a confirmation first ("This will start the local model, ~8s") because a board interaction must never silently spawn a process.
 
 **DoD:** Each helper produces an approvable proposal and shuts the model down afterward per the idle-timeout setting. Cancelling at the confirmation dialog starts nothing.
-**Test:** Rust tests that each helper routes through the same validator as PR 26; Vitest asserting the confirmation dialog gates the spawn call.
+**Test:** Rust tests that each helper routes through the same validator as PR 27; Vitest asserting the confirmation dialog gates the spawn call.
 
-**After merge:** tag `v1.0.0-rc` and validate every §23 acceptance criterion.
+**After merge:** tag `v1.0.0-rc` and validate every §23 acceptance criterion, including the vault-dependent ones deferred at `v0.3.0`.
 
 ---
 
-# Wave 8 — Cross-platform & community (post-1.0, not yet planned)
+# Wave 9 — Cross-platform & community (post-1.0, not yet planned)
 
-Deliberately unplanned until v1.0-rc ships and real usage reveals what actually matters. Expected content per §22 Phase 6: macOS support, Linux support, signed installers, automated releases, contributor documentation, a model adapter interface, theme and prompt customization, and an accessibility review.
+Deliberately unplanned until v1.0-rc ships and real usage reveals what actually matters. Expected content per §22 Phase 6: macOS support, Linux support, signed installers, automated releases, contributor documentation, a model adapter interface, theme and prompt customization, and an accessibility review. This wave was Wave 8 before Obsidian moved to the end; only its number changed.
 
 Write this wave's PR sequence after the RC, not before.
 
@@ -1033,15 +1175,16 @@ Write this wave's PR sequence after the RC, not before.
 
 | Risk | Where it bites | Guard |
 |---|---|---|
-| Sidecar binaries bloat the repo | PR 23, 29, 30 | Never commit binaries. Vendor at build time via a script; document in `binaries/README.md`. |
-| Windows Smart App Control blocks unsigned sidecars | PR 23, 29, 30 | **Confirmed real on 2026-08-20:** Smart App Control blocked `rustdoc.exe`, `rustfmt.exe`, and cargo build scripts on the dev machine, failing release builds outright. It judges on *reputation*, not signatures, so freshly-built zero-reputation binaries are exactly what it rejects — the same profile as a bundled `llama.cpp`, `whisper.cpp`, or Sherpa-ONNX sidecar. It ships enabled by default on many Windows 11 installs and has **no allowlist**; disabling it is irreversible without a system reset, so "turn off your security feature" is not an acceptable install step. Treat code-signing the sidecars as a shipping requirement, not a nice-to-have, and detect-and-explain the failure rather than letting a session hang. |
-| Model process leaks memory between sessions | PR 23 | Task Manager **and `nvidia-smi`** check is part of PR 24's DoD, repeated at every later voice/session PR. |
-| Excluded folders leak into a prompt | PR 18, 20, 24, 27 | Four independent guards, including PR 25's decoy-content test and PR 28's refusal of excluded paths in `needs_context`. |
-| VRAM misdetected, wrong profile chosen | PR 22 | Use DXGI/`nvidia-smi`, never WMI `AdapterRAM`. Regression test pinned to the 8 GB-reports-as-4,095 MB case, plus an empirical benchmark that overrides the heuristic. |
-| Context expansion spirals into latency | PR 27 | Hard cap of 2 rounds and 3 notes per round, enforced in Rust, not requested of the model. |
-| Vault map grows past its budget on a large vault | PR 24 | Capped by token count *and* node count; overflow drops lowest-ranked goals first, with a test. |
-| Window management fights the OS | PR 9, 15 | Keep behaviors in `behaviors.rs` behind a trait so platform quirks stay isolated in Wave 8. |
+| Sidecar binaries bloat the repo | PR 23, 30, 31 | Never commit binaries. Vendor at build time via a script; document in `binaries/README.md`. |
+| Windows Smart App Control blocks unsigned sidecars | PR 23, 30, 31 | **Confirmed real on 2026-08-20:** Smart App Control blocked `rustdoc.exe`, `rustfmt.exe`, and cargo build scripts on the dev machine, failing release builds outright. It judges on *reputation*, not signatures, so freshly-built zero-reputation binaries are exactly what it rejects — the same profile as a bundled `llama.cpp`, `whisper.cpp`, or Sherpa-ONNX sidecar. It ships enabled by default on many Windows 11 installs and has **no allowlist**; disabling it is irreversible without a system reset, so "turn off your security feature" is not an acceptable install step. Treat code-signing the sidecars as a shipping requirement, not a nice-to-have, and detect-and-explain the failure rather than letting a session hang. |
+| Model process leaks memory between sessions | PR 24 | Task Manager **and `nvidia-smi`** check is part of PR 24's DoD, repeated at every later voice/session PR. |
+| Excluded folders leak into a prompt | PR 19, 20, 21, 25 | Exclusion is one function (`is_indexable`) called by every Obsidian path, and the map's vault tier is built from indexed notes only, so an excluded folder is absent by construction rather than filtered after the fact. Wave 7 adds the decoy-content test — an excluded folder filled with distinctive strings, asserted absent from the rendered prompt — and restores the excluded-path refusal in `needs_context`. **This risk does not exist before Wave 7**, which is the one genuine safety benefit of the resequencing: the AI subsystem is fully exercised before it is ever pointed at private files. |
+| VRAM misdetected, wrong profile chosen | PR 23 | Use DXGI/`nvidia-smi`, never WMI `AdapterRAM`. Regression test pinned to the 8 GB-reports-as-4,095 MB case, plus an empirical benchmark that overrides the heuristic. |
+| Context expansion spirals into latency | PR 28 | Hard cap of 2 rounds and 3 items per round, enforced in Rust, not requested of the model. |
+| Context map grows past its budget | PR 25 | Capped by token count *and* node count; overflow drops the lowest-ranked sections first, with a test. The cap has to hold for a large task tree in Wave 4 and again for a large vault in Wave 7 — same budget, two populations. |
+| Window management fights the OS | PR 9, 16, 17a | Keep behaviors in `behaviors.rs` behind a trait so platform quirks stay isolated in Wave 9. **Already bitten once:** PR 17a found board creation off the main thread producing blank windows, and a close path that handled three of four dismissal routes. Route every open and close through one dispatcher. |
 | Nobody logs durations, so the recap is empty | PR 11, 12, 33 | Logging must be one gesture with presets, offered at the natural moment (completion), and never mandatory. A recap built on a third of the week is still useful; a prompt users learn to dismiss is not. Implausible values are queried rather than rejected. |
+| The standup has nothing to reason about | PR 25, 26, 32 | Moving Obsidian to the end means the model's context is whatever the user has put on the boards, and a new user has put nothing there. PR 32's wizard ends by asking for one monthly commitment; PR 26's first stage must handle an empty board set by asking rather than by proposing tasks out of nothing. A model inventing a plausible-looking week from an empty database is the worst first impression available. |
 | Scope creep inside a PR | Everywhere | The DoD line "touches only its stated scope." Spin extras into new issues. |
 | CI build times balloon | PR 3 onward | Rust cache from day one; gate model-dependent tests behind an env var. |
 

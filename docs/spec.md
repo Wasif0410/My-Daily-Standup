@@ -3,7 +3,7 @@ title: Local AI Daily Standup and Sticky-Note Planner
 type: Product and Technical Specification
 status: Concept
 version: 0.1
-last_updated: 2026-08-20
+last_updated: 2026-08-25
 license: MIT
 ---
 
@@ -13,7 +13,9 @@ license: MIT
 
 This project is an open-source, local-first desktop application that helps a person plan and review their life through private voice conversations.
 
-The application connects to an Obsidian vault containing long-term goals, projects, priorities, and tasks. It uses that information to conduct personal daily standups, weekly planning sessions, monthly planning sessions, and retrospective reviews.
+The application holds the user's goals, commitments, and tasks itself, and uses them to conduct personal daily standups, weekly planning sessions, monthly planning sessions, and retrospective reviews.
+
+It can also connect to an Obsidian vault containing long-term goals, projects, priorities, and tasks, and draw on that material during the same sessions. The vault is an enrichment rather than a prerequisite: everything above works before one is connected, and Obsidian integration is the last part of the roadmap (§22).
 
 After a planning conversation, the application converts approved commitments into lightweight desktop sticky-note boards.
 
@@ -35,6 +37,8 @@ Completed work and reflections
 Weekly/monthly progress written back to Obsidian
 ```
 
+This is the finished shape, not the first release. The top and bottom rows are the Obsidian phases; until those ship, the application holds the long-term goals itself and keeps the progress it produces locally. Every row between them works from day one.
+
 ---
 
 # 1. Product Vision
@@ -43,7 +47,7 @@ Create a private personal planning companion that turns long-term goals into act
 
 The application should feel like having a short standup with an organized version of yourself. It should:
 
-- Remember what matters through Obsidian.
+- Remember what matters — in its own goals and commitments, and through an Obsidian vault once one is connected.
 - Ask useful questions using voice.
 - Help identify realistic commitments.
 - Keep those commitments visible on the desktop.
@@ -116,6 +120,8 @@ The desktop application stores operational planning information such as:
 - Display preferences
 - Temporary conversation state
 
+This principle describes where long-term material *belongs* once a vault is connected, not when the vault arrives. Obsidian integration is the last thing this product builds (§22), and until it is connected the application holds its own goals, commitments and named task groups directly. A user who never connects a vault still has somewhere to put long-term direction; a user who does connect one gets the durable, linkable, greppable home that a Markdown vault is, and the application's copy defers to it. The rule stands either way: the app owns what is operational and current, and the vault owns what is permanent.
+
 ## 3.3 AI Is On Demand
 
 The LLM must not remain loaded simply because sticky notes are visible.
@@ -185,7 +191,7 @@ The LLM should help with:
 
 ## 4.1 Long-Term Goals
 
-Long-term goals live in Obsidian.
+Long-term goals live in the application until an Obsidian vault is connected, and in the vault afterwards (§3.2). The level exists from the first release either way, because monthly commitments need something above them to point at.
 
 Examples:
 
@@ -248,7 +254,7 @@ Daily action:
 Customize résumé and apply to Company X
 ```
 
-Completing a daily task contributes to the weekly milestone. Weekly progress contributes to the monthly commitment. Monthly reviews summarize progress toward the long-term Obsidian goal.
+Completing a daily task contributes to the weekly milestone. Weekly progress contributes to the monthly commitment. Monthly reviews summarize progress toward the long-term goal, wherever that goal is currently stored.
 
 ---
 
@@ -259,17 +265,23 @@ Completing a daily task contributes to the weekly milestone. Weekly progress con
 During onboarding, the application should:
 
 1. Explain that all AI processing is local.
-2. Ask the user to select an Obsidian vault.
-3. Request read-only access initially.
-4. Scan the vault's Markdown structure.
-5. Explain which files and task patterns it discovered.
-6. Let the user exclude private folders.
-7. Detect available CPU, RAM, and GPU capabilities.
-8. Recommend suitable local models.
-9. Download models only after confirmation.
-10. Test the microphone and selected voice.
-11. Ask where sticky-note boards should appear.
-12. Offer to start with daily planning only or enable all planning horizons.
+2. Ask where sticky-note boards should appear.
+3. Offer to start with daily planning only or enable all planning horizons.
+4. Invite the user to name a first few sections — the areas or projects their work falls into (§6.2).
+5. Detect available CPU, RAM, and GPU capabilities.
+6. Recommend suitable local models.
+7. Download models only after confirmation.
+8. Test the microphone and selected voice.
+
+Onboarding must not ask for an Obsidian vault. Setup should end with usable boards, and it can only do that if every step in it is something the application itself can act on. A vault question at this point either blocks a user who does not keep one or collects a path that nothing will read for several releases; both make the first run feel like configuration rather than planning.
+
+Connecting a vault is a later, optional step in Settings, added when the Obsidian phases ship (§22). That flow should then:
+
+1. Ask the user to select a vault.
+2. Request read-only access initially.
+3. Scan the vault's Markdown structure.
+4. Explain which files and task patterns it discovered.
+5. Let the user exclude private folders.
 
 ## 5.2 Morning Standup
 
@@ -281,7 +293,7 @@ When the user starts the session:
 
 1. The planning window opens.
 2. Whisper and the selected LLM are launched.
-3. Relevant Obsidian context is retrieved.
+3. Relevant context is retrieved: the user's goals, monthly commitments, weekly milestones, open tasks and sections, plus Obsidian excerpts once a vault is connected.
 4. The assistant summarizes the current situation.
 5. The assistant asks what happened yesterday.
 6. It asks what matters today.
@@ -328,7 +340,7 @@ A weekly planning session should:
 5. Select realistic milestones for the new week.
 6. Break large milestones into possible daily actions.
 7. Let the user approve the weekly plan.
-8. Save a weekly note in Obsidian.
+8. Save the weekly review, and write it to Obsidian once writeback is available (§22).
 9. Refresh the weekly sticky-note boards.
 
 Suggested questions:
@@ -351,7 +363,7 @@ A monthly planning session should:
 5. Select a limited number of monthly commitments.
 6. Define measurable outcomes.
 7. Create initial weekly milestones.
-8. Save the monthly plan and retrospective in Obsidian.
+8. Save the monthly plan and retrospective, and write them to Obsidian once writeback is available (§22).
 
 Suggested questions:
 
@@ -393,7 +405,76 @@ Suggested visual characteristics:
 - User-selectable accent colors.
 - Strong contrast and readable font sizes.
 
-## 6.2 Priority Tasks Board
+## 6.2 Sections
+
+A **section** is a user-named group of tasks on a board. On the Priority Tasks board a section is a task's `area`; on the Weekly Tasks board it is its `project` (§10). Those headings already existed — "Job search", "Health", "Travel" in the examples below — but they were derived: the board read the `area` values off the tasks and drew a heading for each distinct one. A section is the same heading, declared deliberately by the user instead of inferred from whatever happens to be filed there.
+
+### Why Declaring Matters
+
+A derived group exists only for as long as some task carries its name. That is fine for a group that is already full and useless for one that is not. A user who wants a place to put next month's job-search work has to invent the heading and fill it in the same motion, because a heading typed and not yet filled has nothing holding it up — it would vanish between being named and being used.
+
+Declaring separates the two acts:
+
+- A declared section stays on the board while it is empty.
+- It can be named now and filled later, or over several days.
+- It survives its last task being completed, moved, or deleted.
+- It is a thing the user can rename and delete, rather than a side effect of the tasks underneath it.
+
+Empty sections sort first. This looks backwards — the empty group is the one with nothing to show — but it follows from what the user just did. The only reason to create an empty section is to put something in it, and a section that appears below a screenful of existing work reads as the button having done nothing at all. The new heading should be where the user is already looking.
+
+### What Sits Inside One
+
+Ordinary tasks, and nothing else. A task under a section is the same task described in §10, with its priority, recorded time, completion state, and the full §6.7 interaction set. There is no second kind of item — no section-only note, no heading-level checkbox, no summary row that behaves differently from its neighbours. One task type keeps every board rule, every rollover count, and every progress calculation working the same way regardless of where a task is filed.
+
+Example:
+
+```text
+PRIORITY TASKS
+
+Interviews                        (empty)
+
+Job search
+P9  ☐  Submit remaining applications        —
+P6  ☑  Rewrite the cover letter template   45m
+
+Health
+P8  ☐  Schedule dental appointment           —
+```
+
+### Renaming
+
+Renaming a section rewrites the `area` or `project` of every task inside it, in a single transaction.
+
+This has to be atomic. A partial rename leaves some tasks answering to the old name and some to the new one, and because the headings are still derived from those values, the board draws both — the group visibly splits in two, with the same work under two names. There is no state in which a half-renamed section is a reasonable thing to show, so the rename either applies to every member or to none.
+
+### Deleting
+
+Deleting a section **unfiles** its tasks. It does not delete them.
+
+The tasks lose their `area` or `project` and fall into Unsorted, where they remain visible and can be filed somewhere else. Tidying a heading must never destroy work: the user's intent in removing a section is that the grouping was wrong, which says nothing about whether the tasks under it still matter. Making deletion destructive would mean the price of reorganising a board is remembering what was in it.
+
+### Name Matching
+
+Section names match case-insensitively and with surrounding whitespace trimmed. "Job Search", "job search" and `job search ` are one section, not three.
+
+The alternative is a board that quietly accumulates near-duplicate headings from ordinary typing, and a user who cannot tell why their tasks landed in two places. The name the user typed is preserved for display; only the comparison is normalised.
+
+### Which Boards Take Sections
+
+- **Priority Tasks** — yes, grouped by `area`.
+- **Weekly Tasks** — yes, grouped by `project`.
+- **Weekly Progress** — no. It groups by day.
+- **Monthly Progress** — no. It groups by commitment.
+
+The progress boards are excluded because their groupings are not names a user can invent. Monday is Monday whether or not anything is scheduled on it, and a monthly commitment is a task in its own right with a target and a measured result. Allowing a declared section alongside either one would put two competing grouping schemes on the same board.
+
+### Priority and Ordering
+
+A task's priority is settable from 1 to 10 directly from its priority badge, without opening an editor, and the boards re-sort as soon as it changes.
+
+Sections order by their highest-priority member. Raising one task can therefore lift its whole section up the board, which is usually the point: when one thing inside a group becomes urgent, the group is where the user's attention needs to go. Empty sections keep their place at the top regardless, since they have no member to take a priority from.
+
+## 6.3 Priority Tasks Board
 
 The Priority Tasks board contains important items that may span more than one day.
 
@@ -413,9 +494,11 @@ Personal
 • Transfer email accounts
 ```
 
-Priority tasks may originate from Obsidian or be promoted manually.
+Priority tasks are created or promoted manually, and may additionally originate from Obsidian once a vault is connected.
 
-## 6.3 Weekly Tasks Board
+Its headings are `area` values, and each one may be a declared section (§6.2).
+
+## 6.4 Weekly Tasks Board
 
 The Weekly Tasks board shows outcomes expected during the current week.
 
@@ -436,16 +519,37 @@ Travel
 ☐ Choose hotel
 ```
 
-## 6.4 Weekly Progress Board
+Its headings are `project` values, and each one may be a declared section (§6.2).
+
+## 6.5 Weekly Progress Board
 
 The Weekly Progress board shows the whole week, Monday through Sunday, as a set of collapsible days.
 
 Every day is always listed, even when empty, so the week reads as a complete shape rather than a list of only the busy days. Each day header summarises what is inside it without needing to be opened: how many tasks are done, and how much time was spent.
 
+### The Week Label
+
+The board labels its week as a date range followed by the week number:
+
+```text
+Aug 24-30 - Week 35
+```
+
+This line has one job: answer "which week am I looking at?" at a glance. An ISO identifier answers it precisely but not quickly. Rendering the same week as `2026-W35 2026-08-24 -> 2026-08-30` puts three near-identical strings of digits on the line, and the reader has to parse all three to extract the one fact they wanted. The month name breaks the run of numbers, and the range is what people actually recognise a week by.
+
+The week number is kept because it is how the week is named everywhere else in the product — in frontmatter, in filenames, and in note titles (§13) — and dropping it from the board would leave nothing connecting the board to the note it produces. It is placed last, as the technical identifier, rather than first, as the headline.
+
+Only the on-screen board label changed. ISO week identifiers remain the correct form wherever a week is being *identified* rather than *read*:
+
+- Frontmatter (`week: 2026-W35`).
+- Note filenames.
+- Note titles.
+- Any stored or exported reference to a week.
+
 Collapsed:
 
 ```text
-WEEKLY PROGRESS                    2026-W34
+WEEKLY PROGRESS         Aug 17-23 - Week 34
 
 ▸ Monday      2/3    1h 45m
 ▾ Tuesday     1/2      35m
@@ -475,7 +579,7 @@ Today's day should be expanded by default and visually distinguished. The user's
 
 Completed items remain visible but dimmed or crossed out. This makes the board a record of the week rather than a list that empties as work is finished.
 
-## 6.5 Monthly Board
+## 6.6 Monthly Board
 
 A monthly board should focus on outcomes and progress rather than every individual task.
 
@@ -497,21 +601,25 @@ HEALTH
 ██████░░░░░░░░░░░░░░ 33%
 ```
 
-## 6.6 Sticky-Note Interactions
+## 6.7 Sticky-Note Interactions
 
 Users should be able to:
 
 - Complete a task.
 - Uncomplete a task.
 - Edit task text.
-- Set or change a task's priority.
+- Set or change a task's priority from 1 to 10, using the task's priority badge.
 - Record or change how long a task took.
 - Expand and collapse a day or section.
+- Create a named section (§6.2).
+- Rename a section, rewriting every member task's area or project.
+- Delete a section, unfiling its tasks into Unsorted.
+- Move a task into a different section.
 - Move a task to another day.
 - Promote a daily task to weekly.
 - Move a weekly task to another week.
-- Link a task to an Obsidian note.
-- Open the source note in Obsidian.
+- Link a task to an Obsidian note, once a vault is connected.
+- Open the source note in Obsidian, once a vault is connected.
 - Add a blocker.
 - Add a short comment.
 - Delete or archive a task.
@@ -519,7 +627,7 @@ Users should be able to:
 
 Normal task operations, including recording how long something took, must not start the LLM.
 
-## 6.7 Window Behaviors
+## 6.8 Window Behaviors
 
 Each board should support:
 
@@ -539,7 +647,7 @@ Each board should support:
 - Independent visibility settings.
 - Restoring its previous state after reboot.
 
-## 6.8 Tray Menu
+## 6.9 Tray Menu
 
 The lightweight system-tray menu should provide:
 
@@ -578,6 +686,8 @@ Only during an AI session:
 ├── whisper.cpp
 └── Text-to-speech engine
 ```
+
+The file watcher exists only to notice Obsidian notes changing underneath the index, so it runs only once a vault has been connected. Before then it is absent rather than idle, and the lightweight tier is the sticky-note host, the tray icon, and the task database.
 
 ## 7.2 Normal Desktop State
 
@@ -762,6 +872,8 @@ Repository:
 Responsibilities:
 
 - Task hierarchy.
+- Long-term goals held before a vault is connected.
+- Declared sections, including empty ones (§6.2).
 - Daily plans.
 - Weekly plans.
 - Monthly plans.
@@ -771,11 +883,13 @@ Responsibilities:
 - Conversation metadata.
 - Rollover history.
 
-Obsidian remains the permanent long-term knowledge source.
+Obsidian remains the permanent long-term knowledge source once it is connected (§3.2).
 
 ---
 
 # 9. Obsidian Integration
+
+This section describes an integration that arrives at the end of the roadmap, after the boards, the standup, voice, and the reviews are all working (§22). Nothing described here is required for those features to function; the vault deepens them rather than enabling them.
 
 ## 9.1 Supported Markdown Information
 
@@ -939,6 +1053,8 @@ interface Task {
 }
 ```
 
+`area` and `project` are the section names described in §6.2 — `area` on the Priority board, `project` on the Weekly board. A section the user has declared exists whether or not any task currently carries its name, so an empty section is not represented by these fields alone; a task with neither field set is Unsorted.
+
 ## 10.1 Parent-Child Relationships
 
 Examples:
@@ -1034,9 +1150,12 @@ The assistant may summarize:
 - Current weekly commitments.
 - Yesterday's incomplete tasks.
 - Upcoming due dates.
-- High-priority Obsidian projects.
+- High-priority sections and projects on the boards.
 - Repeatedly deferred tasks.
 - Monthly progress.
+- High-priority Obsidian projects, once a vault is connected.
+
+Everything but the last item comes from the application's own database, which is why the standup is useful before any vault exists.
 
 ## 11.3 Capacity Check
 
@@ -1063,6 +1182,8 @@ It should explain how each task connects to a weekly or monthly outcome.
 ## 11.5 Structured Output
 
 The LLM should return structured data validated by application code.
+
+The example below shows the fullest form, with a vault connected. Before that, `sourceFile` is absent and `proposedObsidianWrites` is always empty; a proposal that names a `section` instead is equally valid. The schema does not change when Obsidian arrives — those fields simply start being populated.
 
 Example:
 
@@ -1157,6 +1278,10 @@ By default:
 ---
 
 # 13. Daily, Weekly, and Monthly Notes
+
+These notes are produced from the first release onward and saved locally, and can be exported as Markdown files. They are written into an Obsidian vault only once writeback ships (§22, Phase 6); the wikilinks in the Connections sections below appear only when there is a vault for them to point into.
+
+Notes identify a week by its ISO form — `2026-W34` — in frontmatter, in filenames, and in note titles. This is deliberate and is not what the boards show. A note is a stored artifact that will be sorted, searched, linked, and matched against other notes years later, and for that an unambiguous identifier that sorts correctly as plain text is worth more than a readable one. The Weekly Progress board has the opposite job and uses the readable form instead (§6.5).
 
 ## 13.1 Daily Standup Note
 
@@ -1319,10 +1444,12 @@ Lightweight mode should support:
 - Completing tasks.
 - Editing task text.
 - Recording how long a task took.
-- Expanding and collapsing days.
-- Moving tasks between dates.
+- Setting a task's priority.
+- Creating, renaming, and deleting sections.
+- Expanding and collapsing days and sections.
+- Moving tasks between dates and between sections.
 - Adding tasks.
-- Opening linked Obsidian notes.
+- Opening linked Obsidian notes, once a vault is connected.
 - Viewing progress.
 - Changing board positions.
 - Receiving reminders.
@@ -1494,6 +1621,8 @@ Suggested settings categories:
 
 ## Obsidian
 
+This category is where a vault is connected, and it appears only once the Obsidian phases ship (§22). Onboarding does not ask for a vault (§5.1).
+
 - Vault path.
 - Included folders.
 - Excluded folders.
@@ -1536,6 +1665,12 @@ Suggested settings categories:
 - Default boards.
 - Monitor assignment.
 - Completed-task appearance.
+
+## Sections
+
+- Whether to hide empty sections after a number of days.
+- Whether to show the Unsorted group when it is empty.
+- Confirmation before deleting a section.
 
 ## Time Logging
 
@@ -1662,17 +1797,17 @@ The first release should be deliberately focused.
 ## 21.1 Included
 
 - Windows-first Tauri desktop application.
-- Select an Obsidian vault.
-- Parse YAML frontmatter and Markdown checkboxes.
-- Read status and priority.
-- Identify active projects and unchecked tasks.
 - Manual task creation.
 - Daily, weekly, and monthly task types.
+- Long-term goals and monthly commitments held in the application itself.
 - Parent-child task relationships.
 - Priority Tasks board.
 - Weekly Tasks board.
 - Weekly Progress board.
 - Monthly Progress board.
+- User-declared sections on the Priority and Weekly boards (§6.2).
+- Renaming and deleting sections, with deletion unfiling rather than destroying.
+- Priority settable from 1 to 10 on any task row, with boards re-sorting on change.
 - Recording how long each task took.
 - Expandable Monday-to-Sunday weekly view.
 - Priority shown on every task row.
@@ -1684,11 +1819,28 @@ The first release should be deliberately focused.
 - Local LLM conversation.
 - Local text-to-speech.
 - Proposed daily plan with user approval.
-- Dedicated daily standup notes.
+- Daily standup summaries saved locally.
 - Complete model shutdown after the session.
 - Manual operation when AI is unavailable.
 
 ## 21.2 Excluded From the First MVP
+
+Obsidian is excluded from the first release. Specifically:
+
+- Selecting an Obsidian vault.
+- Parsing YAML frontmatter and Markdown checkboxes.
+- Reading status and priority out of notes.
+- Identifying active projects and unchecked tasks in a vault.
+- Writing daily standup, weekly review, or monthly review notes into a vault.
+- Folder exclusions, source links, and file watching.
+
+The reason is that the standup does not need the vault in order to be useful. The application now holds its own long-term goals, its own monthly and weekly commitments, and its own named sections (§6.2), which is everything a standup needs to ask a good question: what did you say you would do, what is still open, and what is worth doing today.
+
+Putting the vault first inverted that. It meant nothing worked until parsing somebody else's Markdown worked — an open-ended problem, because every vault is organised differently (§24) — and until it did, there was no planner to show anyone. The first release should be a planner that happens to have no vault yet, not a vault reader that cannot yet plan.
+
+Obsidian remains the long-term source of truth (§3.2) and the last two roadmap phases are dedicated to it (§22). It is deferred, not dropped.
+
+Also excluded:
 
 - Always-listening wake word.
 - Cloud synchronization.
@@ -1707,52 +1859,46 @@ The first release should be deliberately focused.
 
 # 22. Development Roadmap
 
+The phases are ordered so that every one of them ends with something a person can use. The application becomes a planner, then a planner that talks, then a planner that talks and reflects, and only then does it learn to read and write an Obsidian vault. Each phase adds a capability to a product that already worked without it.
+
+Obsidian comes last for that reason. It is the only phase whose difficulty depends on other people's files, so it is the one most likely to overrun — and putting it early would mean the overrun happened while there was still nothing to ship (§21.2).
+
 ## Phase 1: Lightweight Planning Boards
 
 Build the useful non-AI foundation:
 
 - SQLite task database.
 - Daily, weekly, and monthly task hierarchy.
+- Long-term goals and monthly commitments stored in the application.
 - Priority Tasks board.
 - Weekly Tasks board.
 - Weekly Progress board.
 - Monthly board.
+- User-declared sections, with rename and unfiling delete (§6.2).
+- Priority editing from the task badge, with re-sorting.
 - Window persistence.
 - Tray controls.
 - Manual task editing.
 
 Success means the application is already a functional desktop planner.
 
-## Phase 2: Obsidian Read Integration
-
-Add:
-
-- Vault selection.
-- Markdown scanning.
-- Frontmatter parsing.
-- Checkbox extraction.
-- Wikilink relationships.
-- Source links.
-- Folder exclusions.
-- File watching.
-
-Success means tasks can be promoted from Obsidian into planning boards.
-
-## Phase 3: Local Text Standup
+## Phase 2: Local Text Standup
 
 Add:
 
 - `llama.cpp` process manager.
 - Model setup.
 - Typed standup conversation.
-- Context selection.
+- Context selection from the application's own goals, commitments, sections, and open tasks.
 - Structured task proposals.
 - Approval workflow.
 - Model shutdown and resource verification.
 
+The context the assistant needs already exists after Phase 1: the boards hold the commitments, the sections name the areas of work, and the rollover counts record what keeps being deferred. No vault is required to hold a useful standup.
+
 Success means the user can plan the day using a local text conversation.
 
-## Phase 4: Local Voice
+## Phase 3: Local Voice
 
 Add:
 
@@ -1766,7 +1912,7 @@ Add:
 
 Success means the complete standup can be performed by voice.
 
-## Phase 5: Reviews and Obsidian Writeback
+## Phase 4: Reviews
 
 Add:
 
@@ -1775,11 +1921,44 @@ Add:
 - Weekly retrospective.
 - Monthly planning.
 - Monthly retrospective.
-- Dedicated Obsidian review notes.
-- Controlled task updates.
-- Diff and approval interface.
+- Review notes saved locally, and exportable as Markdown files.
+- Time and completion summaries by area and project.
 
-## Phase 6: Cross-Platform and Community Release
+Reviews are built before the vault because the material they review is the application's own: planned versus completed tasks, rollover counts, and recorded durations. Writing them out to Obsidian is a destination, and the destination can be added later without changing what a review says.
+
+Success means the full daily, weekly, and monthly cycle runs end to end.
+
+## Phase 5: Obsidian Read Integration
+
+Add:
+
+- Vault selection.
+- Markdown scanning.
+- Frontmatter parsing.
+- Checkbox extraction.
+- Wikilink relationships.
+- Source links.
+- Folder exclusions.
+- File watching.
+
+By this point there is a working planner for vault tasks to be promoted *into*, and a working standup for vault context to be cited *in*. Reading is deliberately shipped on its own, ahead of any writing, so that the risky half of the integration is proven while the vault is still strictly read-only (§9.2).
+
+Success means tasks can be promoted from Obsidian into planning boards, and standups can cite vault sources.
+
+## Phase 6: Obsidian Writeback
+
+Add:
+
+- Dedicated Obsidian daily standup, weekly review, and monthly review notes.
+- Controlled task updates in original notes.
+- Diff and approval interface.
+- Conflict detection against externally changed files.
+
+This is the last functional phase because it is the only one that modifies files the application did not create. Every safeguard it depends on — approval before writing (§3.4), source transparency (§9.4), append-only review folders (§9.5) — is easier to get right once the reviews being written already exist and are known to be correct.
+
+Success means planning artifacts reach the vault, and no note is ever changed without the user approving the exact diff.
+
+## Phase 7: Cross-Platform and Community Release
 
 Add:
 
@@ -1806,23 +1985,25 @@ The MVP is successful when all of the following are true:
 - Completing a task updates progress immediately.
 - Each task row shows its priority, completion state, and recorded time.
 - The weekly board lists Monday to Sunday, and days expand and collapse.
+- The weekly board labels its week as a readable range and number, such as `Aug 24-30 - Week 35`.
 - A task can be completed without recording a duration.
 - Recorded time survives a restart.
 - Board interactions, including recording time, do not load the LLM.
 
-## Obsidian
+## Sections
 
-- The user can select a vault.
-- The app identifies Markdown tasks and frontmatter.
-- Every promoted task retains its source link.
-- Excluded folders are never indexed.
-- No original note is changed without approval.
+- The user can declare a named section on the Priority and Weekly boards.
+- A newly created section stays visible while empty, and sorts above sections that contain work.
+- Renaming a section moves every task in it, with no state in which the group appears twice.
+- Deleting a section leaves its tasks in Unsorted rather than deleting them.
+- "Job Search" and `job search ` resolve to the same section.
+- Changing a task's priority re-sorts the board, and can move its section.
 
 ## AI
 
 - The user can start a standup manually.
 - The local model starts only when needed.
-- Relevant Obsidian context appears with sources.
+- The assistant's context comes from the user's own goals, commitments, sections, and open tasks, and the interface shows what it used.
 - The assistant proposes structured tasks.
 - The user can edit or reject every proposal.
 - The model process terminates after the session.
@@ -1841,8 +2022,19 @@ The MVP is successful when all of the following are true:
 - Daily completion contributes to weekly progress.
 - Weekly progress contributes to monthly progress.
 - Rollover counts are preserved.
-- Weekly and monthly summaries can be saved as Markdown.
+- Weekly and monthly summaries can be saved as Markdown files.
 - The weekly review reports hours tracked, broken down by area.
+
+## Obsidian (Post-MVP)
+
+None of the following is required for the MVP to be considered successful. These are the acceptance criteria for the Obsidian phases (§22, Phases 5 and 6), listed here so the standard they will be held to is agreed in advance:
+
+- The user can select a vault.
+- The app identifies Markdown tasks and frontmatter.
+- Every promoted task retains its source link.
+- Excluded folders are never indexed.
+- Vault-derived context appears in the assistant's summary with its sources.
+- No original note is changed without approval of the exact diff.
 
 ---
 
@@ -1880,6 +2072,7 @@ The MVP is successful when all of the following are true:
 
 **Mitigation:**
 
+- Ship the planner before the vault reader, so an overrun here delays an enhancement rather than the product (§22).
 - Configurable mappings.
 - Folder exclusions.
 - Preview discovered structure.
@@ -1960,13 +2153,13 @@ This provides the visibility of persistent desktop sticky notes without wasting 
 
 # 27. Short Product Description
 
-A private, open-source desktop planning companion that reads your Obsidian goals, conducts local voice standups, turns long-term priorities into monthly, weekly, and daily commitments, and keeps those commitments visible as lightweight desktop sticky notes.
+A private, open-source desktop planning companion that conducts local voice standups, turns long-term priorities into monthly, weekly, and daily commitments, keeps those commitments visible as lightweight desktop sticky notes, and can read the goals you already keep in Obsidian.
 
 ---
 
 # 28. One-Sentence Pitch
 
-Turn your long-term Obsidian goals into realistic monthly commitments, weekly milestones, and daily actions through private voice standups that run entirely on your computer.
+Turn your long-term goals — kept in the app, or in your Obsidian vault once you connect it — into realistic monthly commitments, weekly milestones, and daily actions through private voice standups that run entirely on your computer.
 
 ---
 
