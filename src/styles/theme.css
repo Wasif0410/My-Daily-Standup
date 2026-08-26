@@ -163,8 +163,6 @@ body.board-window {
 
 .board-section + .board-section {
   margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border-subtle);
 }
 
 /* A group heading — "Job Search", "Health". These were --text-dim at label
@@ -189,11 +187,55 @@ body.board-window {
 /* The heading and whatever acts on the group, on one line. The heading keeps
    its own bottom margin when it stands alone elsewhere, so the row takes it
    over rather than leaving the button hanging above the baseline. */
+/* The heading row carries its own divider rather than the gap between two
+   groups carrying it. A rule under the words reads as "this heading owns what
+   follows"; a rule between groups reads as a boundary, which at this density
+   looked like the end of the board. */
 .board-section-header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin: 0 0 var(--space-1);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Sized in ch so it holds its column as the board font scales, and never
+   pushes the heading around as the arrow changes shape. */
+.board-section-chevron {
+  flex: none;
+  width: 1.2ch;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.board-section-chevron:hover {
+  color: var(--text-primary);
+}
+
+.board-section-chevron:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+/* Right-aligned and tabular so seven group counts line up rather than jitter
+   as the digits change width. */
+.board-section-count {
+  flex: none;
+  min-width: 2ch;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
 }
 
 .board-section-header .board-section-title {

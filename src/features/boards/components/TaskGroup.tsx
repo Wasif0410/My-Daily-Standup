@@ -21,6 +21,9 @@ interface TaskGroupProps {
    * that merely lacks one. Absent, the heading stays a plain heading.
    */
   onRename?: ((title: string) => void) | undefined;
+  /** Closed groups keep their heading and their count, and drop their rows. */
+  collapsed?: boolean | undefined;
+  onToggle?: ((collapsed: boolean) => void) | undefined;
   /** Rendering is the caller's, so a group is reusable by any board. */
   renderTask: (task: Task) => ReactNode;
 }
@@ -40,9 +43,12 @@ export function TaskGroup({
   tasks,
   action,
   onRename,
+  collapsed = false,
+  onToggle,
   renderTask,
 }: TaskGroupProps) {
   const headingId = `group-${label.replace(/\s+/g, "-").toLowerCase()}`;
+  const listId = `${headingId}-tasks`;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -75,6 +81,20 @@ export function TaskGroup({
           the h2 becomes part of the heading's accessible name, so "Health"
           would be announced as "Health +". */}
       <div className="board-section-header">
+        {/* Collapsing lives on the chevron rather than on the heading, because
+            the heading is already the rename target and one gesture cannot
+            mean two things. */}
+        <button
+          type="button"
+          className="board-section-chevron"
+          aria-expanded={!collapsed}
+          aria-controls={listId}
+          aria-label={`${collapsed ? "Expand" : "Collapse"} ${label}`}
+          onClick={() => onToggle?.(!collapsed)}
+        >
+          <span aria-hidden="true">{collapsed ? "›" : "⌄"}</span>
+        </button>
+
         {editing ? (
           <input
             className="board-section-rename"
@@ -115,11 +135,16 @@ export function TaskGroup({
             {label}
           </h2>
         )}
+        {/* A closed group still reports its size. The whole point of closing
+            one is to stop reading it, which only works if the figure survives. */}
+        <span className="board-section-count">{tasks.length}</span>
         {action}
       </div>
-      <ul className="task-list-plain" aria-labelledby={headingId}>
-        {tasks.map(renderTask)}
-      </ul>
+      {!collapsed && (
+        <ul className="task-list-plain" id={listId} aria-labelledby={headingId}>
+          {tasks.map(renderTask)}
+        </ul>
+      )}
     </section>
   );
 }

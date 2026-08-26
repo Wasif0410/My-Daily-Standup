@@ -423,13 +423,14 @@ describe("WeeklyBoard", () => {
 
   it("shows the week it is displaying", async () => {
     // A week board without its week is ambiguous the moment you look away.
-    // The ISO label leads, matching the spec's mockups for both week boards.
+    // Rendered the way a person says it rather than as the ISO triple the
+    // spec mockup used: "2026-W34 2026-08-17 → 2026-08-23" is three
+    // near-identical numbers on the one line meant to answer "which week".
     respond();
 
     render(<WeeklyBoard />);
 
-    expect(await screen.findByText("2026-W34")).toBeInTheDocument();
-    expect(screen.getByText(/2026-08-17/)).toBeInTheDocument();
+    expect(await screen.findByText("Aug 17–23 · Week 34")).toBeInTheDocument();
   });
 
   it("surfaces a failure rather than failing silently", async () => {

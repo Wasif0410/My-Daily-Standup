@@ -152,3 +152,76 @@ describe("TaskGroup rename", () => {
     expect(onRename).not.toHaveBeenCalled();
   });
 });
+
+describe("TaskGroup collapse", () => {
+  it("shows how many tasks a group holds, so a closed one still reports", () => {
+    render(
+      <TaskGroup
+        label="Health"
+        tasks={[task(), task({ id: "t2" })]}
+        renderTask={() => null}
+      />,
+    );
+
+    expect(screen.getByText("2")).toBeInTheDocument();
+  });
+
+  it("counts an empty group as 0 rather than leaving a gap", () => {
+    render(<TaskGroup label="Health" tasks={[]} renderTask={() => null} />);
+
+    // A declared group is empty by definition until it is filled; a blank
+    // where the figure goes reads as a rendering failure.
+    expect(screen.getByText("0")).toBeInTheDocument();
+  });
+
+  it("hides its tasks when collapsed and still names itself", () => {
+    render(
+      <TaskGroup
+        label="Health"
+        tasks={[task({ title: "Dentist" })]}
+        collapsed
+        renderTask={(t) => <li key={t.id}>{t.title}</li>}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Health" })).toBeInTheDocument();
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.queryByText("Dentist")).not.toBeInTheDocument();
+  });
+
+  it("toggles from the chevron, not from the heading", async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    const onRename = vi.fn();
+    render(
+      <TaskGroup
+        label="Health"
+        tasks={[]}
+        onToggle={onToggle}
+        onRename={onRename}
+        renderTask={() => null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Collapse Health" }));
+
+    // The heading is the rename target, so collapsing has to live somewhere
+    // else or one gesture would have to mean two things.
+    expect(onToggle).toHaveBeenCalledWith(true);
+    expect(onRename).not.toHaveBeenCalled();
+  });
+
+  it("says it will expand when it is already closed", () => {
+    render(
+      <TaskGroup
+        label="Health"
+        tasks={[]}
+        collapsed
+        onToggle={vi.fn()}
+        renderTask={() => null}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Expand Health" })).toBeInTheDocument();
+  });
+});

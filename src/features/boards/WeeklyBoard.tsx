@@ -10,6 +10,8 @@ import {
   withDeclaredGroups,
 } from "@/features/boards/grouping";
 import { currentWeek, toCommandError } from "@/lib/ipc";
+import { formatWeek } from "@/features/boards/weekLabel";
+import { useCollapsedGroups } from "@/features/boards/useCollapsedGroups";
 import { useSectionStore } from "@/stores/sectionStore";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
 import type { CommandError, Task, Week } from "@/types/task";
@@ -83,6 +85,7 @@ export function WeeklyBoard() {
   const sections = useSectionStore((state) => state.sections);
   const sectionError = useSectionStore((state) => state.error);
   const loadSections = useSectionStore((state) => state.load);
+  const { isCollapsed, toggle: toggleGroup } = useCollapsedGroups("weekly-tasks");
   const renameSection = useSectionStore((state) => state.renameSection);
   const removeSection = useSectionStore((state) => state.removeSection);
 
@@ -181,14 +184,7 @@ export function WeeklyBoard() {
         </p>
       )}
 
-      {week && (
-        <p className="board-week">
-          {week.label}{" "}
-          <span className="board-week-dates">
-            {week.start} → {week.end}
-          </span>
-        </p>
-      )}
+      {week && <p className="board-week">{formatWeek(week)}</p>}
 
       {groups.length === 0 ? (
         <p className="board-empty">Nothing planned this week.</p>
@@ -198,6 +194,8 @@ export function WeeklyBoard() {
             key={group.label}
             label={group.label}
             tasks={group.tasks}
+            collapsed={isCollapsed(group.label)}
+            onToggle={(shut) => toggleGroup(group.label, shut)}
             onRename={
               declaredFor(group.label)
                 ? (title) => {

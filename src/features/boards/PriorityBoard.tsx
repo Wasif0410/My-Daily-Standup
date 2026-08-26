@@ -9,6 +9,7 @@ import {
   headingKey,
   withDeclaredGroups,
 } from "@/features/boards/grouping";
+import { useCollapsedGroups } from "@/features/boards/useCollapsedGroups";
 import { useSectionStore } from "@/stores/sectionStore";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
 import type { Task } from "@/types/task";
@@ -69,6 +70,7 @@ export function PriorityBoard({
   const sections = useSectionStore((state) => state.sections);
   const sectionError = useSectionStore((state) => state.error);
   const loadSections = useSectionStore((state) => state.load);
+  const { isCollapsed, toggle: toggleGroup } = useCollapsedGroups("priority");
   const renameSection = useSectionStore((state) => state.renameSection);
   const removeSection = useSectionStore((state) => state.removeSection);
 
@@ -157,6 +159,8 @@ export function PriorityBoard({
             key={group.label}
             label={group.label}
             tasks={group.tasks}
+            collapsed={isCollapsed(group.label)}
+            onToggle={(shut) => toggleGroup(group.label, shut)}
             onRename={
               declaredFor(group.label)
                 ? (title) => {
