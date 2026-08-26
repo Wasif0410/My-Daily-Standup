@@ -158,7 +158,7 @@ A PR is not ready for your review until all of these hold:
 
 | Tag | After PR | What you can do |
 |---|---|---|
-| `v0.1.0` | 18 | A full non-AI desktop planner: persistent sticky boards, an expandable Monday-to-Sunday week, priorities, named sections, and per-task time tracking |
+| `v0.1.0` | 18 — **held** | A full non-AI desktop planner: persistent sticky boards, an expandable Monday-to-Sunday week, priorities, named sections, and per-task time tracking. **The tag was not cut.** Everything it describes shipped and works; the decision to hold it is deliberate and the tag can be applied to any later commit. |
 | `v0.2.0` | 28 | Run a typed local-LLM standup that reads your own boards and proposes a daily plan you approve |
 | `v0.3.0` | 32 | Run the whole standup by voice — MVP feature-complete |
 | `v0.4.0` | 35 | Close the loop with evening, weekly, and monthly reviews built on real numbers |
@@ -751,7 +751,7 @@ An `ErrorBoundary` wraps the board root so a render failure inside one board sho
 **DoD:** Settings persist across restart, and each one visibly changes behaviour: raising the threshold empties the Priority board of lower-priority work, and changing the week-start day shifts both weekly boards. **Met.** Rust 246 → 273 tests, frontend 432 → 452.
 **Test:** Rust tests on get/set with defaults, on rejection of an out-of-range threshold and an unknown week-start day, and on the validate-then-plugin-then-store ordering; Vitest on the panel and the store.
 
-**After merge:** `git tag v0.1.0 && git push --tags`, and cut a GitHub release with the built `.msi`.
+**After merge:** no tag. `v0.1.0` is held — see Milestones. Everything the tag would have marked is on `main` and working; cutting it is a decision that can be made later, against any commit.
 
 ---
 
@@ -946,7 +946,9 @@ fn render_prompt(template, &SessionContext) -> String
 **Depends on:** PR 25
 **What this gives the app:** An actual standup conversation you can type. The app asks the questions, in order, and keeps control of the conversation.
 
-**Creates:** `src-tauri/src/session/mod.rs`, `session/state_machine.rs`, `src/features/standup/StandupWindow.tsx`, `standup/components/{MessageList,Composer,StageIndicator,ContextPanel}.tsx`.
+**Creates:** `src-tauri/src/session/mod.rs`, `session/state_machine.rs`, `src-tauri/src/reminders.rs`, `src/features/standup/StandupWindow.tsx`, `standup/components/{MessageList,Composer,StageIndicator,ContextPanel}.tsx`.
+
+**Reminders land here, having been cut from PR 18.** They were cut because a reminder's only job is to trigger a standup, and the standup did not exist — a notification pointing at a "(coming soon)" menu entry is exactly what this project refuses to ship. This is the first PR where there is something for a reminder to open, so it is where they belong: `tauri-plugin-notification`, §18's two reminder-time settings added to the settings table, and the tray's *Pause Reminders* re-enabled from the disabled "(coming soon)" state PR 18 left it in. Clicking a reminder opens the standup window; it does **not** auto-start a model, because §26's promise is that inference begins only when the user asks.
 
 Stages are driven by **Rust**, not the model: Context → Previous progress → Current priorities → Blockers → Capacity → Proposed commitments → Approval → Save & close. The model generates the language for each stage; it cannot skip, reorder, or invent stages.
 
