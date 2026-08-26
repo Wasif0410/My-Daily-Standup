@@ -28,6 +28,18 @@ The application makes **no network requests** during normal operation. There is 
 
 The only network activity is **downloading models and inference backends**, which is explicitly user-initiated, shows the source and size beforehand, and verifies a SHA-256 checksum before accepting the file.
 
+**Talking to the local model is not an exception to this.** The app runs
+inference by starting `llama-server` as a child process and speaking HTTP to it
+over `127.0.0.1`, on a port chosen at random each time. That traffic never
+leaves the machine, and the app is built so that it cannot:
+
+- the HTTP client is compiled with **no TLS support at all**, so it is
+  physically unable to open an `https://` connection;
+- proxies are disabled on the client, so a system proxy cannot route loopback
+  traffic off-machine;
+- the server is started with `--host 127.0.0.1`, never `0.0.0.0`, so nothing
+  outside this computer can reach the model either.
+
 If you observe any other outbound connection, that is a security bug. Please report it.
 
 ### Excluded folders never leave the machine

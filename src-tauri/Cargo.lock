@@ -1982,6 +1982,7 @@ name = "my-daily-standup"
 version = "0.0.0"
 dependencies = [
  "chrono",
+ "reqwest",
  "rusqlite",
  "serde",
  "serde_json",
@@ -1990,6 +1991,7 @@ dependencies = [
  "tauri-plugin-autostart",
  "tauri-plugin-global-shortcut",
  "thiserror 2.0.20",
+ "tokio",
  "uuid",
 ]
 

@@ -6,6 +6,7 @@
 //! without constructing a Tauri runtime.
 
 pub mod boards;
+pub mod inference;
 pub mod sections;
 pub mod settings;
 pub mod tasks;
@@ -262,6 +263,8 @@ impl AppState {
     }
 }
 
+#[cfg(test)]
+mod inference_tests;
 #[cfg(test)]
 mod tests;
 

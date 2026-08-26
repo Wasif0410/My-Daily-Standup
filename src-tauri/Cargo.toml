@@ -29,6 +29,20 @@ uuid = { version = "1.24.1", features = ["v4"] }
 chrono = { version = "0.4.45", features = ["serde"] }
 tauri-plugin-global-shortcut = "2.3.2"
 tauri-plugin-autostart = "2.5.1"
+# Talks to the local inference server on 127.0.0.1 and nothing else. This does
+# NOT contradict SECURITY.md's "no outbound connections": TLS is deliberately
+# switched off (`default-features = false`), so the client physically cannot
+# open an https:// connection — a loopback plaintext socket is all it can do.
+# Chosen over ureq/attohttpc because reqwest is already resolved in Cargo.lock
+# as a transitive dependency of tauri, so the feature-stripped build adds no
+# new crates to the tree, and because it is async: `chat_start` and `chat_send`
+# block for seconds and must not park a runtime thread each.
+reqwest = { version = "0.13.4", default-features = false, features = ["json"] }
+# Only for `time::sleep`, so the health-check poll parks its task instead of
+# holding a runtime worker for the whole sixty-second wait. Already in the tree
+# — it is what `tauri::async_runtime` runs on — so this adds no crates, only a
+# direct name for one already there.
+tokio = { version = "1.53.1", default-features = false, features = ["time"] }
 
 [profile.release]
 codegen-units = 1

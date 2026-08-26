@@ -20,6 +20,7 @@ import type {
   Week,
 } from "@/types/task";
 import type { BoardSection } from "@/types/section";
+import type { ChatReply, ChatStatus } from "@/types/chat";
 import type { Settings, SettingsPatch } from "@/types/settings";
 
 /**
@@ -383,4 +384,47 @@ export function getSettings(): Promise<Settings> {
  */
 export function updateSettings(patch: SettingsPatch): Promise<Settings> {
   return call<Settings>("settings_update", { patch });
+}
+
+// --- local model -------------------------------------------------------------
+
+/**
+ * Whether a model is currently loaded.
+ *
+ * Cheap and side-effect free — it does not start anything. A caller that wants
+ * a model has to say so with {@link chatStart}.
+ */
+export function chatStatus(): Promise<ChatStatus> {
+  return call<ChatStatus>("chat_status", {});
+}
+
+/**
+ * Loads the model and waits for it to answer a health check.
+ *
+ * Blocks for seconds, not milliseconds: measured at a few seconds to read
+ * 2.4 GB from disk and confirm the server is answering. Nothing is resident
+ * beforehand, which is the whole point — the machine is not paying for a model
+ * nobody has asked a question of. Callers must show that wait rather than
+ * appear frozen through it.
+ *
+ * Resolves to the status as it actually ended up. That a start was requested
+ * says nothing about whether one happened.
+ */
+export function chatStart(): Promise<ChatStatus> {
+  return call<ChatStatus>("chat_start", {});
+}
+
+/**
+ * Asks the loaded model one question.
+ *
+ * One message, not a conversation: nothing here carries history, so each call
+ * is answered with no memory of the last. Takes about a second.
+ */
+export function chatSend(message: string): Promise<ChatReply> {
+  return call<ChatReply>("chat_send", { message });
+}
+
+/** Unloads the model, freeing the memory it held. */
+export function chatStop(): Promise<ChatStatus> {
+  return call<ChatStatus>("chat_stop", {});
 }
