@@ -19,7 +19,7 @@ fn find<'a>(entries: &'a [MenuEntry], id: &str) -> &'a MenuEntry {
 
 #[test]
 fn the_menu_follows_the_order_in_the_spec() {
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
 
     // §6.8's list, in its order. Extra entries are allowed after it; the nine
     // the spec names are not allowed to move or disappear.
@@ -48,7 +48,7 @@ fn the_menu_follows_the_order_in_the_spec() {
 
 #[test]
 fn opening_boards_is_available_now() {
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
 
     assert!(find(&entries, "open-boards").enabled);
 }
@@ -56,7 +56,7 @@ fn opening_boards_is_available_now() {
 #[test]
 fn quick_add_is_available_now() {
     // The definition of done requires it to work.
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
 
     assert!(find(&entries, "quick-add").enabled);
 }
@@ -65,7 +65,7 @@ fn quick_add_is_available_now() {
 fn quit_is_always_available() {
     // Once the main window only hides, this is the only way out of the app.
     // A disabled Quit would strand the user in the tray.
-    let entries = menu_entries(true, true);
+    let entries = menu_entries(true);
 
     assert!(find(&entries, "quit").enabled);
 }
@@ -74,7 +74,7 @@ fn quit_is_always_available() {
 fn the_four_ai_entries_are_disabled() {
     // Wave 5. Present so the shape of the app is visible, disabled so they
     // cannot silently do nothing.
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
 
     for id in [
         "daily-standup",
@@ -90,17 +90,22 @@ fn the_four_ai_entries_are_disabled() {
 }
 
 #[test]
-fn settings_is_disabled_until_pr_18() {
-    let entries = menu_entries(false, false);
+fn settings_opens_the_window_that_now_exists() {
+    // Settings render in the main window rather than one of their own — a new
+    // window label needs granting in the capabilities file, where a wrong
+    // identifier is dropped silently instead of failing the build. So this
+    // entry shows the main window, and is live because there is now something
+    // to show.
+    let entries = menu_entries(false);
 
-    assert!(!find(&entries, "settings").enabled);
+    assert!(find(&entries, "settings").enabled);
 }
 
 #[test]
 fn every_disabled_entry_says_why() {
     // A greyed-out row with no explanation reads as a bug rather than as a
     // feature that has not arrived.
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
 
     for entry in entries.iter().filter(|e| !e.enabled) {
         assert!(
@@ -116,7 +121,7 @@ fn every_disabled_entry_says_why() {
 fn no_available_entry_claims_to_be_coming_soon() {
     // The converse, so a label and its state cannot drift apart when Wave 5
     // enables one of these.
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
 
     for entry in entries.iter().filter(|e| e.enabled) {
         assert!(
@@ -129,21 +134,25 @@ fn no_available_entry_claims_to_be_coming_soon() {
 }
 
 #[test]
-fn pause_reminders_shows_its_current_state() {
+fn pause_reminders_is_disabled_until_reminders_exist() {
+    // It used to be a live tick writing a flag nothing read, so pausing did
+    // nothing at all and looked as though it had worked. Reminders themselves
+    // land in Wave 4 beside the standup; until then this row says so instead
+    // of holding a setting with no consumer.
+    let entries = menu_entries(false);
+    let entry = find(&entries, "pause-reminders");
+
+    assert!(!entry.enabled);
     assert_eq!(
-        find(&menu_entries(false, false), "pause-reminders").checked,
-        Some(false)
-    );
-    assert_eq!(
-        find(&menu_entries(true, false), "pause-reminders").checked,
-        Some(true)
+        entry.checked, None,
+        "a tick would still claim a state nothing maintains"
     );
 }
 
 #[test]
 fn unlock_all_boards_is_present() {
     // PR 16 built the escape hatch and named this as its surface.
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
 
     let unlock = find(&entries, "unlock-boards");
     assert!(unlock.enabled);
@@ -152,20 +161,14 @@ fn unlock_all_boards_is_present() {
 
 #[test]
 fn start_with_windows_reflects_the_stored_setting() {
-    assert_eq!(
-        find(&menu_entries(false, false), "autostart").checked,
-        Some(false)
-    );
-    assert_eq!(
-        find(&menu_entries(false, true), "autostart").checked,
-        Some(true)
-    );
+    assert_eq!(find(&menu_entries(false), "autostart").checked, Some(false));
+    assert_eq!(find(&menu_entries(true), "autostart").checked, Some(true));
 }
 
 #[test]
 fn plain_entries_are_not_checkable() {
     // A tick on "Quit" would suggest a state it does not have.
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
 
     assert_eq!(find(&entries, "quit").checked, None);
     assert_eq!(find(&entries, "open-boards").checked, None);
@@ -175,7 +178,7 @@ fn plain_entries_are_not_checkable() {
 fn every_id_is_unique() {
     // Two rows sharing an id means one of them silently runs the other's
     // action.
-    let entries = menu_entries(false, false);
+    let entries = menu_entries(false);
     let mut seen = ids(&entries);
     seen.sort_unstable();
     let count = seen.len();

@@ -3,6 +3,7 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { BoardShell } from "@/components/BoardShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BoardMenu } from "@/features/boards/components/BoardMenu";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { PriorityBoard } from "@/features/boards/PriorityBoard";
 import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
 import { MonthlyBoard } from "@/features/boards/MonthlyBoard";
@@ -50,10 +51,13 @@ const TITLES: Record<BoardKind, string> = {
  * no content. Every kind now maps to a real component; adding a fifth board
  * will not compile until it is filled in.
  */
-function boardContent(kind: BoardKind) {
+function boardContent(kind: BoardKind, priorityThreshold: number | undefined) {
   switch (kind) {
     case "priority":
-      return <PriorityBoard />;
+      // Undefined until the settings load, which lets PriorityBoard keep its
+      // own default rather than this window guessing one and re-querying when
+      // the real value arrives.
+      return <PriorityBoard threshold={priorityThreshold} />;
     case "weekly-tasks":
       return <WeeklyBoard />;
     case "weekly-progress":
@@ -76,6 +80,10 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
   const [menuOpen, setMenuOpen] = useState(false);
   /** Set by the header + and cleared once the name field is finished with. */
   const [addingSection, setAddingSection] = useState(false);
+  // A board window reads settings too: the Priority board's threshold is a
+  // setting, and every board window is its own process-level store.
+  const settings = useSettingsStore((state) => state.settings);
+  const loadSettings = useSettingsStore((state) => state.load);
   const [sectionName, setSectionName] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Height to restore when expanding. Kept in a ref so collapsing twice in a
@@ -86,6 +94,10 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
   // read the sections back and render them; declaring one is a board-level
   // action, so its button lives up here with the board's other controls.
   const addSection = useSectionStore((state) => state.addSection);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
   useEffect(() => {
     let ignore = false;
@@ -308,7 +320,9 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
         />
       )}
 
-      <ErrorBoundary label={TITLES[kind]}>{boardContent(kind)}</ErrorBoundary>
+      <ErrorBoundary label={TITLES[kind]}>
+        {boardContent(kind, settings?.priorityThreshold)}
+      </ErrorBoundary>
 
       {menuOpen && board && (
         <BoardMenu

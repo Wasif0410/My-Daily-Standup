@@ -20,6 +20,7 @@ import type {
   Week,
 } from "@/types/task";
 import type { BoardSection } from "@/types/section";
+import type { Settings, SettingsPatch } from "@/types/settings";
 
 /**
  * A failed command.
@@ -356,4 +357,30 @@ export function renameSection(id: string, title: string): Promise<BoardSection> 
  */
 export function deleteSection(id: string): Promise<void> {
   return call<void>("section_delete", { id });
+}
+
+// --- settings ----------------------------------------------------------------
+
+/**
+ * The one row of application settings.
+ *
+ * Always fetched, never assumed. The Priority board's threshold and the
+ * week-start day both change what is on screen, so a frontend default rendered
+ * while this is in flight would show a board the user never configured.
+ */
+export function getSettings(): Promise<Settings> {
+  return call<Settings>("settings_get", {});
+}
+
+/**
+ * Applies a partial change and returns the settings as they were actually
+ * stored.
+ *
+ * The return value is the point. Rust validates `priorityThreshold` and can
+ * reject it outright, and `launchAtLogin` is applied to the OS autostart
+ * plugin, which can fail on its own — so what comes back is not always what
+ * went in, and only what comes back is true.
+ */
+export function updateSettings(patch: SettingsPatch): Promise<Settings> {
+  return call<Settings>("settings_update", { patch });
 }

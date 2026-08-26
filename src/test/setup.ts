@@ -6,11 +6,12 @@ import { afterEach, vi } from "vitest";
 // command mock it explicitly; this default keeps unrelated renders from
 // throwing on the bridge call.
 //
-// The section commands answer with their own shapes rather than the blanket
-// "": a component that merely renders while subscribing to `section_list`
-// would be handed a string where it expects an array, which passes nothing and
-// only shows up as a crash in CI. Every section command is answered here, not
-// in the individual test files, for the same reason.
+// The section and settings commands answer with their own shapes rather than
+// the blanket "": a component that merely renders while subscribing to
+// `section_list` or `settings_get` would be handed a string where it expects
+// an array or an object, which passes nothing and only shows up as a crash in
+// CI. Every such command is answered here, not in the individual test files,
+// for the same reason.
 vi.mock("@tauri-apps/api/core", () => {
   const section = {
     id: "test-section",
@@ -19,11 +20,22 @@ vi.mock("@tauri-apps/api/core", () => {
     position: 0,
   };
 
+  // A full `Settings`, matching the Rust defaults. A subscriber reads
+  // `settings.priorityThreshold` on its first render, and `""` has no such
+  // field.
+  const settings = {
+    priorityThreshold: 5,
+    weekStartsOn: "monday",
+    launchAtLogin: false,
+  };
+
   const defaults: Record<string, unknown> = {
     section_list: [],
     section_create: section,
     section_rename: section,
     section_delete: undefined,
+    settings_get: settings,
+    settings_update: settings,
   };
 
   return {

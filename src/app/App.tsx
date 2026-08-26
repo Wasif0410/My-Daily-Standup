@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
 import { openBoard, unlockAllBoards } from "@/lib/ipc";
+import { Settings } from "@/features/settings/Settings";
 import { BOARD_KINDS } from "@/types/board";
 
 /**
@@ -62,6 +63,11 @@ export function App() {
           every board is locked there is nothing left to click — this window is
           never locked, and the shortcut works with no window at all. PR 17
           adds the same action to the tray. */}
+      {/* Settings live here rather than in a window of their own: a new
+          window label has to be added to the capabilities file, where a wrong
+          identifier is dropped silently instead of failing the build. */}
+      <Settings />
+
       <div className="escape-hatch">
         <button type="button" onClick={() => void unlockAllBoards()}>
           Unlock all boards

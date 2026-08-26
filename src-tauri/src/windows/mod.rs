@@ -12,7 +12,7 @@ pub mod quick_add;
 
 pub use behaviors::{apply_to_state, apply_to_window, unlock_all, Behavior};
 pub use board_windows::{close_board, open_board, restore_boards, save_geometry};
-pub use close_policy::hides_on_close;
+pub use close_policy::{hides_on_close, MAIN_LABEL};
 pub use dispatch::on_main_thread;
 pub use quick_add::{open_quick_add, QUICK_ADD_LABEL};
 #[cfg(test)]
