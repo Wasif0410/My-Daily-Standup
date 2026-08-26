@@ -4,6 +4,7 @@ import {
   groupByProject,
   UNSORTED_AREA,
   UNSORTED_PROJECT,
+  withDeclaredGroups,
 } from "@/features/boards/grouping";
 import type { Task } from "@/types/task";
 
@@ -164,5 +165,91 @@ describe("groupByProject", () => {
     ]);
 
     expect(groups.map((g) => g.label)).toEqual(["Zebra", "Admin"]);
+  });
+});
+
+describe("withDeclaredGroups", () => {
+  it("leaves the derived groups alone when nothing is declared", () => {
+    const derived = groupByArea([task({ id: "a", area: "Health", priority: 6 })]);
+
+    expect(withDeclaredGroups(derived, [])).toEqual(derived);
+  });
+
+  it("keeps a declared group that has no tasks", () => {
+    // A derived group vanishes the moment its last task leaves. A declared one
+    // was made on purpose and has to survive being empty, or naming a group
+    // before filling it would do nothing at all.
+    const groups = withDeclaredGroups([], ["Job Search"]);
+
+    expect(groups).toEqual([{ label: "Job Search", tasks: [] }]);
+  });
+
+  it("does not duplicate a group the tasks already made", () => {
+    const derived = groupByArea([task({ id: "a", area: "Health", priority: 6 })]);
+    const groups = withDeclaredGroups(derived, ["Health"]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.tasks.map((t) => t.id)).toEqual(["a"]);
+  });
+
+  it("matches a declared name case-insensitively and ignoring surrounding space", () => {
+    // The heading a user types and the `area` on their tasks are the same
+    // name; an empty "HEALTH" sitting above a full "Health" is one group
+    // rendered twice.
+    const derived = groupByArea([task({ id: "a", area: "Health", priority: 6 })]);
+
+    expect(withDeclaredGroups(derived, ["  hEaLtH  "])).toHaveLength(1);
+  });
+
+  it("keeps the tasks' own casing when a declared name matches", () => {
+    const derived = groupByArea([task({ id: "a", area: "Job search", priority: 6 })]);
+    const groups = withDeclaredGroups(derived, ["JOB SEARCH"]);
+
+    expect(groups.map((g) => g.label)).toEqual(["Job search"]);
+  });
+
+  it("puts empty declared groups above the groups that have tasks", () => {
+    // A group you just created appearing below a long board reads as broken:
+    // the press looks like it did nothing.
+    const derived = groupByArea([task({ id: "a", area: "Health", priority: 10 })]);
+    const groups = withDeclaredGroups(derived, ["Job Search"]);
+
+    expect(groups.map((g) => g.label)).toEqual(["Job Search", "Health"]);
+  });
+
+  it("keeps declared groups in the order they were given", () => {
+    // The store hands these over sorted by the position Rust assigned, and
+    // re-sorting here would mean two places disagreeing about that order.
+    const groups = withDeclaredGroups([], ["Health", "Admin", "Job Search"]);
+
+    expect(groups.map((g) => g.label)).toEqual(["Health", "Admin", "Job Search"]);
+  });
+
+  it("leaves the derived groups in their own priority order", () => {
+    const derived = groupByArea([
+      task({ id: "a", area: "Admin", priority: 4 }),
+      task({ id: "b", area: "Zebra", priority: 9 }),
+    ]);
+    const groups = withDeclaredGroups(derived, ["Job Search"]);
+
+    expect(groups.map((g) => g.label)).toEqual(["Job Search", "Zebra", "Admin"]);
+  });
+
+  it("trims a declared name rather than rendering the padding", () => {
+    const groups = withDeclaredGroups([], ["  Job Search  "]);
+
+    expect(groups[0]?.label).toBe("Job Search");
+  });
+
+  it("ignores a declared name that is blank", () => {
+    // A heading with no text is not a heading, the same rule the derived
+    // groups already apply to a blank `area`.
+    expect(withDeclaredGroups([], ["   ", ""])).toEqual([]);
+  });
+
+  it("renders a name declared twice only once", () => {
+    const groups = withDeclaredGroups([], ["Health", "health"]);
+
+    expect(groups.map((g) => g.label)).toEqual(["Health"]);
   });
 });

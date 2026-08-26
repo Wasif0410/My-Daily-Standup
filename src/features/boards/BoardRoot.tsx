@@ -7,7 +7,7 @@ import { PriorityBoard } from "@/features/boards/PriorityBoard";
 import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
 import { MonthlyBoard } from "@/features/boards/MonthlyBoard";
 import { WeeklyProgressBoard } from "@/features/boards/WeeklyProgressBoard";
-import { BoardSections } from "@/features/sections/BoardSections";
+import { useSectionStore } from "@/stores/sectionStore";
 import {
   closeBoard,
   listBoards,
@@ -25,6 +25,16 @@ const GEOMETRY_DEBOUNCE_MS = 500;
 /** Height of the header alone, in logical pixels. A collapsed board shrinks
  *  to this so it really is a title bar rather than a mostly-empty window. */
 const COLLAPSED_HEIGHT = 34;
+
+/**
+ * The boards whose content is a list of named task groups.
+ *
+ * A section is a heading tasks are filed under — an `area` on the Priority
+ * board, a `project` on the Weekly one. The two progress boards render neither,
+ * so a + that declared a group there would create a heading with nowhere to
+ * appear.
+ */
+const GROUPED_BOARDS: BoardKind[] = ["priority", "weekly-tasks"];
 
 const TITLES: Record<BoardKind, string> = {
   priority: "Priority Tasks",
@@ -66,10 +76,16 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
   const [menuOpen, setMenuOpen] = useState(false);
   /** Set by the header + and cleared once the name field is finished with. */
   const [addingSection, setAddingSection] = useState(false);
+  const [sectionName, setSectionName] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Height to restore when expanding. Kept in a ref so collapsing twice in a
    *  row cannot overwrite it with the collapsed height. */
   const expandedHeight = useRef<number | null>(null);
+
+  // The one store this component touches, and only to write. The boards below
+  // read the sections back and render them; declaring one is a board-level
+  // action, so its button lives up here with the board's other controls.
+  const addSection = useSectionStore((state) => state.addSection);
 
   useEffect(() => {
     let ignore = false;
@@ -196,6 +212,12 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
    * always-on-top/desktop-level exclusion can change the value on the way
    * through, and guessing would flash the wrong state before correcting it.
    */
+  /** Closes the name field and drops whatever was half-typed into it. */
+  function finishNamingSection() {
+    setSectionName("");
+    setAddingSection(false);
+  }
+
   function changeBehavior(behavior: BoardBehavior) {
     void (async () => {
       try {
@@ -223,17 +245,20 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
       onClose={() => void closeBoard(kind)}
       headerActions={
         <>
-          {/* Beside the gear, with the board's other controls. Adding a
+          {/* Beside the gear, with the board's other controls. Declaring a
               section is a board-level action, and the header is where this
-              board's actions already live. */}
-          <button
-            type="button"
-            className="board-action"
-            aria-label="Add a section"
-            onClick={() => setAddingSection(true)}
-          >
-            +
-          </button>
+              board's actions already live. Adding a *task* is not: that + sits
+              in the heading of the group it files into. */}
+          {GROUPED_BOARDS.includes(kind) && (
+            <button
+              type="button"
+              className="board-action"
+              aria-label="Add a section"
+              onClick={() => setAddingSection(true)}
+            >
+              +
+            </button>
+          )}
           <button
             type="button"
             className="board-action"
@@ -251,16 +276,37 @@ export function BoardRoot({ kind }: { kind: BoardKind }) {
           {failure.message}
         </p>
       )}
-      {/* Above the tasks, and in its own boundary. Sections are notes the user
-          wrote by hand; a failure in the generated task content below must not
-          take them off the screen, and vice versa. */}
-      <ErrorBoundary label={`${TITLES[kind]} sections`}>
-        <BoardSections
-          kind={kind}
-          adding={addingSection}
-          onDoneAdding={() => setAddingSection(false)}
+      {/* Above the groups, because the + that opens it is above them too — a
+          field that appeared at the bottom of a scrolled board would leave no
+          visible sign that the press did anything. It is dressed as a heading
+          rather than as a form field, because a heading is what it is about to
+          become. */}
+      {addingSection && (
+        <input
+          className="board-section-new"
+          aria-label="New section name"
+          placeholder="Add section"
+          autoFocus
+          value={sectionName}
+          onChange={(event) => setSectionName(event.target.value)}
+          onBlur={finishNamingSection}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              const title = sectionName.trim();
+              // A group with no name cannot be found again, and every task
+              // filed under it would be filed under nothing.
+              if (!title) return;
+
+              void addSection(kind, title);
+              finishNamingSection();
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              finishNamingSection();
+            }
+          }}
         />
-      </ErrorBoundary>
+      )}
 
       <ErrorBoundary label={TITLES[kind]}>{boardContent(kind)}</ErrorBoundary>
 

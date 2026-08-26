@@ -132,7 +132,7 @@ body.board-window {
 
 .board-body {
   flex: 1;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
   overflow-y: auto;
   overscroll-behavior: contain;
   /* Task rows shed their duration below a certain width. A container query
@@ -162,9 +162,7 @@ body.board-window {
 /* ---- Sections ---------------------------------------------------------- */
 
 .board-section + .board-section {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-6);
 }
 
 /* A group heading — "Job Search", "Health". These were --text-dim at label
@@ -175,15 +173,149 @@ body.board-window {
    colour on a board this narrow is spent on the four window identities and on
    status, and a heading is neither. */
 .board-section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-1);
+  /* Takes the free width so the count is pushed to the board's edge. Without
+     this it is only as wide as its own words, which left the figure floating
+     mid-row instead of lining up in a column down the right. */
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   font-size: var(--font-size-heading);
   font-weight: 600;
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The heading and whatever acts on the group, on one line. The heading keeps
+   its own bottom margin when it stands alone elsewhere, so the row takes it
+   over rather than leaving the button hanging above the baseline. */
+/* The heading row carries its own divider rather than the gap between two
+   groups carrying it. A rule under the words reads as "this heading owns what
+   follows"; a rule between groups reads as a boundary, which at this density
+   looked like the end of the board. */
+.board-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* A heading needs air under it before its first row, or the rule reads as
+     underlining the task rather than closing the title. */
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Sized in ch so it holds its column as the board font scales, and never
+   pushes the heading around as the arrow changes shape. */
+.board-section-chevron {
+  flex: none;
+  width: 1.2ch;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.board-section-chevron:hover {
+  color: var(--text-primary);
+}
+
+.board-section-chevron:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+/* Right-aligned and tabular so seven group counts line up rather than jitter
+   as the digits change width. */
+.board-section-count {
+  flex: none;
+  min-width: 2ch;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* Adding stays out of the way until the pointer is on the group it belongs to,
+   the same rule the window controls follow. Held in the layout, so revealing
+   it never shifts the heading beside it. */
+.board-section-action {
+  flex: none;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.board-section:hover .board-section-action,
+.board-section-action:focus-visible {
+  opacity: 1;
+}
+
+.board-section-action:hover {
+  color: var(--text-primary);
+}
+
+/* Entry reads as text, not as a box. A bordered input inside a group inside a
+   board is three nested rectangles in 340px. The task field sits on the
+   heading line and so is sized like a task; the new-group field is a heading
+   being typed and is dressed as one. */
+.board-section-add,
+.board-section-new {
+  width: 100%;
+  min-width: 0;
+  padding: 1px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-small);
+}
+
+.board-section-add::placeholder,
+.board-section-new::placeholder {
+  color: var(--text-dim);
+}
+
+.board-section-add:focus {
+  outline: none;
+  border-bottom-color: var(--board-accent);
+}
+
+/* No underline on the new-group field: a bar under it made it read as a second
+   search box above the tasks. The caret and the placeholder say it is live. */
+.board-section-new,
+.board-section-new:focus {
+  margin-bottom: var(--space-2);
+  outline: none;
+  border-bottom-color: transparent;
+  font-size: var(--font-size-heading);
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.board-section-new::placeholder {
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-label);
 }
 
 .board-empty {
@@ -329,12 +461,17 @@ body.board-window {
   color: var(--status-blocked);
 }
 
+/* Rows carry real vertical padding rather than sitting shoulder to shoulder.
+   A sticky note is read at a glance from across a desk, and eight lines at
+   4px apart is a block of text rather than a list. Compact mode is the escape
+   hatch for anyone who wants the old density back — it shrinks the whole
+   space scale, so this gets tighter with it. */
 .task-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) 0;
-  line-height: var(--line-height-tight);
+  padding: var(--space-2) 0;
+  line-height: var(--line-height-body);
 }
 
 /* Completed work stays on the board, dimmed. Removing it would turn a record
@@ -962,166 +1099,150 @@ body.board-window {
   color: var(--board-accent);
 }
 
-/* ---- Sections ----------------------------------------------------------
-   User-made groups of free notes, sitting above a board's tasks. They borrow
-   the day-panel treatment rather than inventing a second one: a board should
-   read as one surface, not as two features stacked on each other. */
-
-.section-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.section-card {
-  padding: var(--space-2);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-}
-
-.section-card-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-/* Same treatment as a task group's heading, for the same reason: this is the
-   structure of the board and has to be findable, without being louder than
-   the notes underneath it. */
-.section-heading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font-size: var(--font-size-heading);
-  font-weight: 600;
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--text-secondary);
+/* A heading the user declared is editable in place; one the tasks produced is
+   not. The only cue is the caret and a lift on hover — a group heading is
+   structure, and dressing it as a control would make the board look like a
+   form. */
+.board-section-title[data-renameable] {
   cursor: text;
 }
 
-.section-heading:focus-visible {
+.board-section-title[data-renameable]:hover {
+  color: var(--text-primary);
+}
+
+.board-section-title[data-renameable]:focus-visible {
   outline: 2px solid var(--board-accent);
   outline-offset: 2px;
   border-radius: var(--radius-control);
 }
 
-.section-items {
-  margin: var(--space-1) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.section-item {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding: 1px 0;
-  font-size: var(--font-size-small);
-  color: var(--text-primary);
-}
-
-/* The bullet is drawn rather than typed. A literal "-" sits on the text
-   baseline and drifts as the font scales; a marker sized in the same units
-   stays put. */
-.section-item::before {
-  content: "";
-  flex: none;
-  width: 3px;
-  height: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--board-accent);
-  opacity: 0.7;
-}
-
-.section-item-text {
+/* Dressed as the heading it is replacing rather than as a form field, so a
+   rename does not make the row jump. */
+.board-section-rename {
   flex: 1;
   min-width: 0;
-  cursor: text;
-  overflow-wrap: anywhere;
-}
-
-/* Delete stays out of the way until the pointer is on the row it belongs to.
-   Held in the layout, so revealing it never reflows the note beside it. */
-.section-action {
-  flex: none;
-  padding: 0 var(--space-1);
+  padding: 0;
   border: 0;
   background: none;
-  color: var(--text-dim);
+  color: var(--text-secondary);
   font: inherit;
-  line-height: 1;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.section-item:hover .section-action,
-.section-card-header:hover .section-action,
-.section-action:focus-visible {
-  opacity: 1;
-}
-
-.section-action:hover {
-  color: var(--status-blocked);
-}
-
-/* Entry fields read as text, not as boxes. A bordered input inside a panel
-   inside a board is three nested rectangles in 340px. */
-.section-entry,
-.section-item-input,
-.section-heading-input,
-.section-new-input {
-  width: 100%;
-  padding: 1px 0;
-  border: 0;
-  border-bottom: 1px solid transparent;
-  background: none;
-  color: var(--text-primary);
-  font: inherit;
-  font-size: var(--font-size-small);
-}
-
-.section-entry::placeholder,
-.section-new-input::placeholder {
-  color: var(--text-dim);
-}
-
-.section-entry:focus,
-.section-new-input:focus,
-.section-item-input:focus,
-.section-heading-input:focus {
-  outline: none;
-  border-bottom-color: var(--board-accent);
-}
-
-/* Both of these are a section heading being typed, so they are dressed as one
-   rather than as a form field. A naming box that looks like the quick-add bar
-   above it reads as a second search box, and the thing it is about to become
-   is a heading. */
-.section-heading-input,
-.section-new-input {
   font-size: var(--font-size-heading);
   font-weight: 600;
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
+}
+
+.board-section-rename:focus {
+  outline: none;
+}
+
+/* ---- Priority picker ---------------------------------------------------
+   The badge doubles as the control. Priority is the field the boards sort by,
+   so changing it moves the row and often the group — the gesture people reach
+   for most should not need a right-click to find. */
+
+.priority-field {
+  position: relative;
+  flex: none;
+}
+
+/* Anchored to the row and lifted above it, for the same reason as the duration
+   popover: a board is short, and a panel flowing into .board-body's overflow
+   would be clipped. */
+.priority-popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + var(--space-1));
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
+}
+
+/* Two rows of five rather than one of ten: a 340px board cannot hold ten
+   tap targets across without shrinking them below a comfortable size. */
+.priority-levels {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-1);
+}
+
+.priority-level {
+  min-width: 2em;
+  padding: var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
   color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
-/* No underline on the new-section field: the bar is what made it read as a
-   search box. The caret and the placeholder are enough to say it is live. */
-.section-new-input,
-.section-new-input:focus {
-  border-bottom-color: transparent;
+/* Graded by the same tiers the badge uses, so the picker previews what the
+   row will look like rather than presenting ten identical buttons. */
+.priority-level[data-tier="high"] {
+  color: var(--priority-high);
 }
 
-.section-new-input::placeholder {
+.priority-level[data-tier="medium"] {
+  color: var(--priority-medium);
+}
+
+.priority-level[data-tier="low"] {
+  color: var(--priority-low);
+}
+
+.priority-level:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.priority-level:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+}
+
+/* Where you already are. Bordered rather than filled, so the tier colour still
+   reads through it. */
+.priority-level[aria-current="true"] {
+  border-color: var(--board-accent);
+}
+
+.priority-clear {
+  padding: var(--space-1);
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  background: none;
   color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-label);
+  font: inherit;
+  font-size: var(--font-size-label);
+  cursor: pointer;
+}
+
+.priority-clear:hover {
+  color: var(--text-primary);
+}
+
+/* A badge that is a control still reads as a badge, not a button. */
+button.priority-badge {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+button.priority-badge:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+  border-radius: var(--radius-control);
 }

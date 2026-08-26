@@ -17,18 +17,13 @@ vi.mock("@tauri-apps/api/core", () => {
     boardKind: "priority",
     title: "Section",
     position: 0,
-    items: [],
   };
-  const item = { id: "test-item", sectionId: "test-section", text: "", position: 0 };
 
   const defaults: Record<string, unknown> = {
     section_list: [],
     section_create: section,
     section_rename: section,
     section_delete: undefined,
-    section_item_add: item,
-    section_item_update: item,
-    section_item_delete: undefined,
   };
 
   return {

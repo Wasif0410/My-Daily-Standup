@@ -13,7 +13,15 @@ interface TaskContextMenuProps {
   onSetPriority: (priority: number | null) => void;
   onMoveToDate: (date: string) => void;
   onPromote: () => void;
-  onMoveToNextWeek: () => void;
+  /**
+   * Omitted by a board that does not know which week it is showing.
+   *
+   * "Next week" is only meaningful relative to a current one, and the Priority
+   * board is a standing list rather than a period. The item is left out rather
+   * than wired to nothing — a menu entry that does nothing is worse than an
+   * absent one.
+   */
+  onMoveToNextWeek?: (() => void) | undefined;
   onSetBlocker: (blocker: string | null) => void;
   onAddComment: (comment: string) => void;
   onArchive: () => void;
@@ -134,7 +142,11 @@ export function TaskContextMenu({
           <MenuItem onSelect={() => openPrompt("date", task.scheduledDate ?? "")}>
             Move to another day…
           </MenuItem>
-          <MenuItem onSelect={() => act(onMoveToNextWeek)}>Move to next week</MenuItem>
+          {onMoveToNextWeek && (
+            <MenuItem onSelect={() => act(onMoveToNextWeek)}>
+              Move to next week
+            </MenuItem>
+          )}
           {task.horizon === "daily" && (
             <MenuItem onSelect={() => act(onPromote)}>Promote to weekly</MenuItem>
           )}

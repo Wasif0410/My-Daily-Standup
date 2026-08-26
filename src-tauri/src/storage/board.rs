@@ -9,6 +9,32 @@ use serde::{Deserialize, Serialize};
 
 use super::StorageError;
 
+/// Which `tasks` column a board's section headings are written to.
+///
+/// A section has no storage of its own beyond its name: the group *is* the
+/// value written on the tasks. Priority groups work by life area, Weekly Tasks
+/// by project, so the same rename has to reach a different column depending on
+/// which board it came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SectionField {
+    Area,
+    Project,
+}
+
+impl SectionField {
+    /// The column name, for building the statements that rewrite a group.
+    ///
+    /// Only ever interpolated into SQL the repository itself writes. It is a
+    /// `&'static str` chosen by this match and never anything derived from
+    /// input, which is what keeps that interpolation safe.
+    pub fn column(self) -> &'static str {
+        match self {
+            Self::Area => "area",
+            Self::Project => "project",
+        }
+    }
+}
+
 /// Which board a window shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -47,6 +73,26 @@ impl BoardKind {
         Self::WeeklyProgress,
         Self::MonthlyProgress,
     ];
+
+    /// The task column a section on this board names, or `None` for a board
+    /// whose groups are not the user's to name.
+    ///
+    /// Weekly Progress groups by day and Monthly Progress by commitment.
+    /// Nobody can invent an eighth day of the week, and a commitment is a task
+    /// with its own dates and progress rather than a heading, so a section on
+    /// either board would be a name with nothing it could ever be written on.
+    ///
+    /// It lives here, beside `title` and `window_label`, because this file is
+    /// the one place that enumerates boards. A fifth board has to answer this
+    /// question in the same match as the rest, instead of leaving a second
+    /// list somewhere else to fall out of step.
+    pub fn section_field(self) -> Option<SectionField> {
+        match self {
+            Self::Priority => Some(SectionField::Area),
+            Self::WeeklyTasks => Some(SectionField::Project),
+            Self::WeeklyProgress | Self::MonthlyProgress => None,
+        }
+    }
 
     /// The window label Tauri knows this board by.
     pub fn window_label(self) -> String {

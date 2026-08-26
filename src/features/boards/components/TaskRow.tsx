@@ -8,6 +8,13 @@ interface TaskRowProps {
   onComplete: (completed: boolean) => void;
   onEdit: (title: string) => void;
   onSetTimeSpent: (minutes: number | null) => void;
+  /**
+   * Makes the priority badge a control rather than a label.
+   *
+   * Optional because the boards that only report progress must not let anyone
+   * edit from them.
+   */
+  onSetPriority?: ((priority: number | null) => void) | undefined;
   onMove?: (() => void) | undefined;
   onDelete?: (() => void) | undefined;
   /** Asks the board to open a context menu at the given client coordinates. */
@@ -37,6 +44,7 @@ export function TaskRow({
   onComplete,
   onEdit,
   onSetTimeSpent,
+  onSetPriority,
   onMove,
   onDelete,
   onOpenMenu,
@@ -128,7 +136,7 @@ export function TaskRow({
         onOpenMenu({ x: event.clientX, y: event.clientY });
       }}
     >
-      <PriorityBadge priority={task.priority} />
+      <PriorityBadge priority={task.priority} onChange={onSetPriority} />
 
       <input
         type="checkbox"

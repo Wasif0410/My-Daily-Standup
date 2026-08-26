@@ -25,10 +25,10 @@ mod tests;
 #[cfg(test)]
 mod ui_state_tests;
 
-pub use board::{BoardKind, BoardRepo, BoardTheme, BoardWindow};
+pub use board::{BoardKind, BoardRepo, BoardTheme, BoardWindow, SectionField};
 pub use db::Db;
 pub use migrations::{run_migrations, schema_version, LATEST_VERSION};
-pub use section::{BoardSection, SectionItem, SectionRepo, MAX_ITEM_CHARS, MAX_TITLE_CHARS};
+pub use section::{BoardSection, SectionRepo, MAX_TITLE_CHARS};
 pub use task::{NewTask, Task, TaskHorizon, TaskPatch, TaskSource, TaskStatus};
 pub use task_repo::TaskRepo;
 pub use ui_state::UiStateRepo;
@@ -55,9 +55,6 @@ pub enum StorageError {
 
     #[error("no section with id {id}")]
     SectionNotFound { id: String },
-
-    #[error("no section item with id {id}")]
-    ItemNotFound { id: String },
 
     /// Input the user could correct, caught before it reaches SQLite.
     ///

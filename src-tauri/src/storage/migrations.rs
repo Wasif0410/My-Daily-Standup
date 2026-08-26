@@ -20,10 +20,14 @@ const MIGRATIONS: &[(u32, &str)] = &[
     (4, include_str!("../../migrations/004_ui_state.sql")),
     (5, include_str!("../../migrations/005_board_appearance.sql")),
     (6, include_str!("../../migrations/006_board_sections.sql")),
+    (
+        7,
+        include_str!("../../migrations/007_sections_are_task_groups.sql"),
+    ),
 ];
 
 /// The schema version a fully migrated database reports.
-pub const LATEST_VERSION: u32 = 6;
+pub const LATEST_VERSION: u32 = 7;
 
 /// Applies every migration newer than the database's current `user_version`.
 ///
@@ -80,6 +84,76 @@ mod tests {
         assert_eq!(
             LATEST_VERSION, highest,
             "LATEST_VERSION must track the final entry in MIGRATIONS"
+        );
+    }
+
+    /// Brings a fresh connection up to `version` and stops there, so a
+    /// migration can be tested against the schema it will actually meet on a
+    /// user's machine rather than against a database that never held data.
+    fn apply_up_to(conn: &Connection, version: u32) {
+        for &(number, sql) in MIGRATIONS {
+            if number > version {
+                break;
+            }
+
+            conn.execute_batch(&format!(
+                "BEGIN;
+                 {sql}
+                 PRAGMA user_version = {number};
+                 COMMIT;"
+            ))
+            .unwrap_or_else(|error| panic!("migration {number} failed: {error}"));
+        }
+    }
+
+    #[test]
+    fn upgrading_from_version_six_clears_out_what_sections_used_to_be() {
+        // 007 is the one destructive migration in the set, and a fresh install
+        // never exercises it: the rows it removes can only exist on a database
+        // that ran 006 while sections were free-text notes. This is that
+        // database.
+        let conn = Connection::open_in_memory().expect("open in-memory database");
+        apply_up_to(&conn, 6);
+
+        conn.execute(
+            "INSERT INTO board_windows (kind, width, height, updated_at) \
+             VALUES ('monthly-progress', 340, 460, '2026-01-01T00:00:00Z')",
+            [],
+        )
+        .expect("seed a board");
+        conn.execute(
+            "INSERT INTO board_sections (id, board_kind, title, position, created_at) \
+             VALUES ('s1', 'monthly-progress', 'Themes', 0, '2026-01-01T00:00:00Z')",
+            [],
+        )
+        .expect("seed a section");
+        conn.execute(
+            "INSERT INTO board_section_items (id, section_id, text, position, created_at) \
+             VALUES ('i1', 's1', 'Ship the tray', 0, '2026-01-01T00:00:00Z')",
+            [],
+        )
+        .expect("seed an item");
+
+        run_migrations(&conn).expect("upgrade to the latest version");
+
+        assert_eq!(schema_version(&conn).unwrap(), LATEST_VERSION);
+        let items_table: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master \
+                 WHERE type = 'table' AND name = 'board_section_items'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(items_table, 0, "the items table should be gone");
+
+        let stranded: i64 = conn
+            .query_row("SELECT COUNT(*) FROM board_sections", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(
+            stranded, 0,
+            "a section on a board that groups by commitment names no column, \
+             so it must not survive as a heading nothing can fill"
         );
     }
 

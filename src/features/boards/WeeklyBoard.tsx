@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { QuickAdd } from "@/features/boards/components/QuickAdd";
+import { AddTaskHere } from "@/features/boards/components/AddTaskHere";
 import { TaskContextMenu } from "@/features/boards/components/TaskContextMenu";
 import { TaskGroup } from "@/features/boards/components/TaskGroup";
 import { TaskRow } from "@/features/boards/components/TaskRow";
-import { groupByProject } from "@/features/boards/grouping";
+import {
+  groupByProject,
+  UNSORTED_PROJECT,
+  headingKey,
+  withDeclaredGroups,
+} from "@/features/boards/grouping";
 import { currentWeek, toCommandError } from "@/lib/ipc";
+import { formatWeek } from "@/features/boards/weekLabel";
+import { useCollapsedGroups } from "@/features/boards/useCollapsedGroups";
+import { useSectionStore } from "@/stores/sectionStore";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
 import type { CommandError, Task, Week } from "@/types/task";
 
@@ -45,6 +53,11 @@ function shift(date: string, days: number): string {
  * being shown, which row's context menu is open, and every store action the
  * menu dispatches. `TaskRow`, `TaskGroup`, and `TaskContextMenu` stay free of
  * the store so PRs 14 and 15 can reuse them against different queries.
+ *
+ * Its headings come from two places at once: the projects the tasks carry, and
+ * the groups the user declared through the board header. A declared group has
+ * to show while still empty — that is the whole point of having declared it —
+ * so {@link withDeclaredGroups} folds the two lists into one.
  */
 export function WeeklyBoard() {
   const [week, setWeek] = useState<Week | null>(null);
@@ -69,6 +82,13 @@ export function WeeklyBoard() {
   const archive = useTaskStore((state) => state.archive);
   const remove = useTaskStore((state) => state.remove);
 
+  const sections = useSectionStore((state) => state.sections);
+  const sectionError = useSectionStore((state) => state.error);
+  const loadSections = useSectionStore((state) => state.load);
+  const { isCollapsed, toggle: toggleGroup } = useCollapsedGroups("weekly-tasks");
+  const renameSection = useSectionStore((state) => state.renameSection);
+  const removeSection = useSectionStore((state) => state.removeSection);
+
   useEffect(() => {
     let ignore = false;
 
@@ -91,15 +111,56 @@ export function WeeklyBoard() {
     void load({ kind: "period", start: week.start, end: week.end });
   }, [load, week]);
 
+  useEffect(() => {
+    void loadSections("weekly-tasks");
+  }, [loadSections]);
+
   const groups = useMemo(() => {
     // Archived work is cancelled, not deleted: the row survives in the
     // database and the board simply stops showing it.
     const live = Object.values(tasks).filter((task) => task.status !== "cancelled");
-    return groupByProject(sortTasks(live));
-  }, [tasks]);
+    return withDeclaredGroups(
+      groupByProject(sortTasks(live)),
+      sections.map((section) => section.title),
+    );
+  }, [tasks, sections]);
+
+  /**
+   * The section row behind a heading, when the user declared it.
+   *
+   * A heading that came only from the tasks has no row, so it offers no rename
+   * and no delete: "Unsorted" is not a name anyone chose, and deleting it would
+   * mean unfiling every task that merely lacks one.
+   */
+  function declaredFor(label: string) {
+    return sections.find((section) => headingKey(section.title) === headingKey(label));
+  }
 
   const menuTask = menu ? tasks[menu.taskId] : undefined;
-  const error = weekError ?? storeError;
+  const error = weekError ?? storeError ?? sectionError;
+
+  /**
+   * Creates a task filed under the heading it was typed into, in this week.
+   *
+   * The heading is the filing. The board-wide quick-add this replaced could
+   * not say which project a task belonged to, so everything it made landed
+   * under "No project" and had to be moved afterwards.
+   */
+  function addToGroup(label: string, title: string) {
+    if (!week) return;
+
+    void add({
+      title,
+      // "No project" is the board's word for no project at all, not a project
+      // by that name.
+      project: label === UNSORTED_PROJECT ? null : label,
+      horizon: "weekly",
+      status: "planned",
+      sourceType: "manual",
+      periodStart: week.start,
+      periodEnd: week.end,
+    });
+  }
 
   function rowActions(task: Task) {
     return {
@@ -109,6 +170,10 @@ export function WeeklyBoard() {
       onEdit: (title: string) => void editTitle(task.id, title),
       onSetTimeSpent: (minutes: number | null) =>
         void recordTimeSpent(task.id, minutes),
+      // Priority is the field the board sorts by, so changing it moves the
+      // row and often the group with it. That is exactly why it is on the
+      // badge rather than only in the menu.
+      onSetPriority: (priority: number | null) => void setPriority(task.id, priority),
       onDelete: () => void remove(task.id),
       onOpenMenu: (at: { x: number; y: number }) =>
         setMenu({ taskId: task.id, x: at.x, y: at.y }),
@@ -123,29 +188,7 @@ export function WeeklyBoard() {
         </p>
       )}
 
-      {week && (
-        <p className="board-week">
-          {week.label}{" "}
-          <span className="board-week-dates">
-            {week.start} → {week.end}
-          </span>
-        </p>
-      )}
-
-      <QuickAdd
-        placeholder="Add to this week…"
-        onAdd={(title) => {
-          if (!week) return;
-          void add({
-            title,
-            horizon: "weekly",
-            status: "planned",
-            sourceType: "manual",
-            periodStart: week.start,
-            periodEnd: week.end,
-          });
-        }}
-      />
+      {week && <p className="board-week">{formatWeek(week)}</p>}
 
       {groups.length === 0 ? (
         <p className="board-empty">Nothing planned this week.</p>
@@ -155,6 +198,37 @@ export function WeeklyBoard() {
             key={group.label}
             label={group.label}
             tasks={group.tasks}
+            collapsed={isCollapsed(group.label)}
+            onToggle={(shut) => toggleGroup(group.label, shut)}
+            onRename={
+              declaredFor(group.label)
+                ? (title) => {
+                    const declared = declaredFor(group.label);
+                    if (declared) void renameSection(declared.id, title);
+                  }
+                : undefined
+            }
+            action={
+              <>
+                <AddTaskHere
+                  label={group.label}
+                  onAdd={(title) => addToGroup(group.label, title)}
+                />
+                {declaredFor(group.label) && (
+                  <button
+                    type="button"
+                    className="board-section-action"
+                    aria-label={`Delete ${group.label}`}
+                    onClick={() => {
+                      const declared = declaredFor(group.label);
+                      if (declared) void removeSection(declared.id);
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </>
+            }
             renderTask={(task) => (
               <TaskRow
                 key={task.id}

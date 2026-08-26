@@ -71,3 +71,62 @@ export function groupByArea(tasks: Task[]): TaskGrouping[] {
 export function groupByProject(tasks: Task[]): TaskGrouping[] {
   return groupBy(tasks, (task) => task.project, UNSORTED_PROJECT);
 }
+
+/**
+ * The key two names are compared on: a heading is the same heading in any case.
+ *
+ * Exported because the boards match a group back to the section row that
+ * declared it, and a second normaliser there could disagree with this one —
+ * which would show a delete button on the wrong heading.
+ */
+export function headingKey(label: string): string {
+  return label.trim().toLowerCase();
+}
+
+/**
+ * Folds a board's declared groups into the ones its tasks produced.
+ *
+ * A group has two possible origins and they have to end up as one list. Most
+ * headings are derived — they exist because some task carries that `area` or
+ * `project`. A declared one was typed by the user before anything was filed
+ * under it, and it has to survive being empty: a derived group vanishes the
+ * moment its last task leaves, so without this, naming a group and then
+ * looking for it would find nothing.
+ *
+ * A declared name that matches a derived one is the *same* group, not a second
+ * one. The match is trimmed and case-insensitive because "JOB SEARCH" typed
+ * into a heading field and "Job search" sitting on a task are one heading, and
+ * rendering both would show the board's own structure as duplicated. The
+ * derived label wins: the tasks are what the group is, and their spelling is
+ * the one the rest of the app round-trips through `tasks.area`.
+ *
+ * Empty declared groups go on top. Derived groups keep the top-priority order
+ * they already have, but a group with no tasks has no priority to be ordered
+ * by, and putting it last would drop a heading the user made *seconds ago*
+ * below a screenful of work — which reads as the button having done nothing.
+ * Among themselves they hold the order they arrived in, which is the position
+ * Rust assigned; re-sorting here would be a second opinion about that order.
+ */
+export function withDeclaredGroups(
+  groups: TaskGrouping[],
+  declared: string[],
+): TaskGrouping[] {
+  const taken = new Set(groups.map((group) => headingKey(group.label)));
+  const empty: TaskGrouping[] = [];
+
+  for (const name of declared) {
+    const label = name.trim();
+    // A heading with no text is not a heading — the same rule `groupBy`
+    // applies to a blank `area`.
+    if (!label) continue;
+
+    const key = headingKey(label);
+    // `taken` grows as it goes, so a name declared twice renders once.
+    if (taken.has(key)) continue;
+
+    taken.add(key);
+    empty.push({ label, tasks: [] });
+  }
+
+  return [...empty, ...groups];
+}

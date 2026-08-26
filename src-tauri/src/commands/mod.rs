@@ -16,8 +16,8 @@ use std::sync::Mutex;
 use serde::Serialize;
 
 use crate::storage::{
-    BoardKind, BoardRepo, BoardSection, BoardWindow, Db, NewTask, SectionItem, SectionRepo,
-    StorageError, Task, TaskHorizon, TaskPatch, TaskRepo, UiStateRepo, DATABASE_FILENAME,
+    BoardKind, BoardRepo, BoardSection, BoardWindow, Db, NewTask, SectionRepo, StorageError, Task,
+    TaskHorizon, TaskPatch, TaskRepo, UiStateRepo, DATABASE_FILENAME,
 };
 
 /// How an error is reported across the IPC boundary.
@@ -48,9 +48,9 @@ pub enum ErrorKind {
 impl From<StorageError> for CommandError {
     fn from(error: StorageError) -> Self {
         let kind = match error {
-            StorageError::TaskNotFound { .. }
-            | StorageError::SectionNotFound { .. }
-            | StorageError::ItemNotFound { .. } => ErrorKind::NotFound,
+            StorageError::TaskNotFound { .. } | StorageError::SectionNotFound { .. } => {
+                ErrorKind::NotFound
+            }
             StorageError::InvalidDate { .. } | StorageError::Validation { .. } => {
                 ErrorKind::InvalidInput
             }
@@ -284,7 +284,7 @@ impl AppState {
 }
 
 impl AppState {
-    /// Every section on one board, with its items.
+    /// Every group declared on one board.
     pub fn sections(&self, board_kind: BoardKind) -> Result<Vec<BoardSection>, CommandError> {
         let guard = self.db.lock().map_err(poisoned)?;
         self.sections
@@ -310,36 +310,11 @@ impl AppState {
             .map_err(CommandError::from)
     }
 
-    /// Deletes a section and every item in it.
+    /// Removes a group's heading and unfiles its tasks. Never deletes a task.
     pub fn delete_section(&self, id: &str) -> Result<(), CommandError> {
         let guard = self.db.lock().map_err(poisoned)?;
         self.sections
             .delete(guard.conn(), id)
-            .map_err(CommandError::from)
-    }
-
-    pub fn add_section_item(
-        &self,
-        section_id: &str,
-        text: &str,
-    ) -> Result<SectionItem, CommandError> {
-        let guard = self.db.lock().map_err(poisoned)?;
-        self.sections
-            .add_item(guard.conn(), section_id, text)
-            .map_err(CommandError::from)
-    }
-
-    pub fn update_section_item(&self, id: &str, text: &str) -> Result<SectionItem, CommandError> {
-        let guard = self.db.lock().map_err(poisoned)?;
-        self.sections
-            .update_item(guard.conn(), id, text)
-            .map_err(CommandError::from)
-    }
-
-    pub fn delete_section_item(&self, id: &str) -> Result<(), CommandError> {
-        let guard = self.db.lock().map_err(poisoned)?;
-        self.sections
-            .delete_item(guard.conn(), id)
             .map_err(CommandError::from)
     }
 }
