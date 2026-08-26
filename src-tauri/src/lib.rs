@@ -6,6 +6,7 @@
 
 pub mod commands;
 pub mod domain;
+pub mod inference;
 pub mod storage;
 pub mod tray;
 pub mod windows;
@@ -13,6 +14,7 @@ pub mod windows;
 use tauri::Manager;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
+use commands::inference::InferenceState;
 use commands::AppState;
 
 /// The escape hatch from a fully locked, click-through desktop (spec §6.7).
@@ -65,6 +67,19 @@ pub fn run() {
             // per-user separation.
             let app_data_dir = app.path().app_data_dir()?;
             let state = AppState::new(&app_data_dir)?;
+
+            // Before anything else touches the model: if the last run died
+            // without stopping its child, that child is still holding several
+            // gigabytes of VRAM and nothing is talking to it. The user's only
+            // symptom would be that the next load fails for want of memory.
+            //
+            // Reported and swallowed rather than fatal — a leaked server is a
+            // waste, but refusing to start the app over it is worse.
+            if let Some(pid) = commands::inference::reap_orphaned_server(&state) {
+                eprintln!("ended an inference server left behind by a crash (pid {pid})");
+            }
+
+            app.manage(InferenceState::new(app_data_dir.clone()));
             app.manage(state);
 
             // A missing shortcut is a degraded escape hatch, not a broken
@@ -157,7 +172,24 @@ pub fn run() {
             commands::sections::section_delete,
             commands::settings::settings_get,
             commands::settings::settings_update,
+            commands::inference::chat_status,
+            commands::inference::chat_start,
+            commands::inference::chat_send,
+            commands::inference::chat_stop,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        // Built and run in two steps rather than `.run(context)` so the exit
+        // event can be observed. The model is the one thing this app owns that
+        // outlives its own process if nobody ends it: quitting from the tray
+        // while a server is up would otherwise leave several gigabytes of VRAM
+        // held by an orphan until the machine is rebooted.
+        //
+        // `RunEvent::Exit` rather than a window close, because the tray is the
+        // app's real home (§6.8) and closing the last window does not quit.
+        .run(|app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                app.state::<InferenceState>().shutdown();
+            }
+        });
 }

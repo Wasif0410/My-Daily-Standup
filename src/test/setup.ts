@@ -29,6 +29,19 @@ vi.mock("@tauri-apps/api/core", () => {
     launchAtLogin: false,
   };
 
+  // A stopped `ChatStatus` and a full `ChatReply`, for the same reason. A
+  // component subscribing to `chat_status` reads `status.running` on its first
+  // render, and `""` has no such field — the panel would then decide what to
+  // show from `undefined`.
+  const chatStatus = { running: false, model: null, port: null };
+
+  const chatReply = {
+    content: "",
+    promptTokens: 0,
+    completionTokens: 0,
+    elapsedMs: 0,
+  };
+
   const defaults: Record<string, unknown> = {
     section_list: [],
     section_create: section,
@@ -36,6 +49,10 @@ vi.mock("@tauri-apps/api/core", () => {
     section_delete: undefined,
     settings_get: settings,
     settings_update: settings,
+    chat_status: chatStatus,
+    chat_start: chatStatus,
+    chat_send: chatReply,
+    chat_stop: chatStatus,
   };
 
   return {

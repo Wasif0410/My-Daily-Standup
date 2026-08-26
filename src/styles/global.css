@@ -275,3 +275,103 @@ body {
   font-size: 0.85rem;
   color: #f7768e;
 }
+
+/* ---- Local model chat --------------------------------------------------
+   The first AI surface: one question, one answer, and the numbers behind it.
+   Styled as a sibling of the settings panel because it sits in the same main
+   window and is the same kind of thing — a small control surface, not a
+   board. */
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
+}
+
+/* The model name and the stop button read as one line about the running
+   process, so they share a row. */
+.chat-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.chat-compose {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-compose input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+}
+
+.chat-panel button {
+  align-self: flex-start;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 6px;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chat-panel button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* A disabled control here means a wait is in progress, not that something is
+   forbidden — it has to look inert rather than broken. */
+.chat-panel button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Says what the surface is doing and how long it will take. Both waits are
+   stated in words: a load is seconds, and silence through it is
+   indistinguishable from a hung window. */
+.chat-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  opacity: 0.7;
+}
+
+.chat-reply {
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 4%);
+}
+
+/* The model's own line breaks are preserved: a reply is prose it chose the
+   shape of, and reflowing it loses lists. */
+.chat-reply-content {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+/* Monospaced so the counts line up between one reply and the next — reading
+   this surface means comparing runs. */
+.chat-stats {
+  margin: 0.5rem 0 0;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.72rem;
+  opacity: 0.6;
+}
+
+.chat-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #f7768e;
+}
