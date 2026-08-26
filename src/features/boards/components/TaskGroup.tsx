@@ -135,10 +135,15 @@ export function TaskGroup({
             {label}
           </h2>
         )}
-        {/* A closed group still reports its size. The whole point of closing
-            one is to stop reading it, which only works if the figure survives. */}
-        <span className="board-section-count">{tasks.length}</span>
         {action}
+        {/* Last, so it lands hard against the board's edge and the figures
+            form a column. Placed before the action it would sit wherever the
+            heading's words happened to end, which reads as floating in the
+            middle of the row.
+
+            A closed group still reports its size: the whole point of closing
+            one is to stop reading it, which only works if the figure stays. */}
+        <span className="board-section-count">{tasks.length}</span>
       </div>
       {!collapsed && (
         <ul className="task-list-plain" id={listId} aria-labelledby={headingId}>

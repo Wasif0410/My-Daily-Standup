@@ -132,7 +132,7 @@ body.board-window {
 
 .board-body {
   flex: 1;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
   overflow-y: auto;
   overscroll-behavior: contain;
   /* Task rows shed their duration below a certain width. A container query
@@ -162,7 +162,7 @@ body.board-window {
 /* ---- Sections ---------------------------------------------------------- */
 
 .board-section + .board-section {
-  margin-top: var(--space-3);
+  margin-top: var(--space-6);
 }
 
 /* A group heading — "Job Search", "Health". These were --text-dim at label
@@ -173,15 +173,20 @@ body.board-window {
    colour on a board this narrow is spent on the four window identities and on
    status, and a heading is neither. */
 .board-section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-1);
+  /* Takes the free width so the count is pushed to the board's edge. Without
+     this it is only as wide as its own words, which left the figure floating
+     mid-row instead of lining up in a column down the right. */
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   font-size: var(--font-size-heading);
   font-weight: 600;
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The heading and whatever acts on the group, on one line. The heading keeps
@@ -195,8 +200,10 @@ body.board-window {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0 0 var(--space-1);
-  padding-bottom: var(--space-1);
+  /* A heading needs air under it before its first row, or the rule reads as
+     underlining the task rather than closing the title. */
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -236,10 +243,6 @@ body.board-window {
   font-size: var(--font-size-label);
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
-}
-
-.board-section-header .board-section-title {
-  margin: 0;
 }
 
 /* Adding stays out of the way until the pointer is on the group it belongs to,
@@ -458,12 +461,17 @@ body.board-window {
   color: var(--status-blocked);
 }
 
+/* Rows carry real vertical padding rather than sitting shoulder to shoulder.
+   A sticky note is read at a glance from across a desk, and eight lines at
+   4px apart is a block of text rather than a list. Compact mode is the escape
+   hatch for anyone who wants the old density back — it shrinks the whole
+   space scale, so this gets tighter with it. */
 .task-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) 0;
-  line-height: var(--line-height-tight);
+  padding: var(--space-2) 0;
+  line-height: var(--line-height-body);
 }
 
 /* Completed work stays on the board, dimmed. Removing it would turn a record

@@ -225,3 +225,22 @@ describe("TaskGroup collapse", () => {
     expect(screen.getByRole("button", { name: "Expand Health" })).toBeInTheDocument();
   });
 });
+
+describe("TaskGroup header layout", () => {
+  it("puts the count last, so it lines up down the board's right edge", () => {
+    render(
+      <TaskGroup
+        label="Health"
+        tasks={[task()]}
+        action={<button type="button">Add</button>}
+        renderTask={() => null}
+      />,
+    );
+
+    const header = screen.getByRole("heading", { name: "Health" }).parentElement;
+    // Not merely "present": a count that renders before the action sits
+    // wherever the heading's words happen to end, which reads as floating in
+    // the middle of the row rather than as a column of figures.
+    expect(header?.lastElementChild?.textContent).toBe("1");
+  });
+});
