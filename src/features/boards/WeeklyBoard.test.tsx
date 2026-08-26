@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WeeklyBoard } from "@/features/boards/WeeklyBoard";
+import { useSectionStore } from "@/stores/sectionStore";
 import { useTaskStore } from "@/stores/taskStore";
+import type { BoardSection } from "@/types/section";
 import type { Task } from "@/types/task";
 
 vi.mock("@/lib/taskEvents", () => ({
@@ -62,12 +64,21 @@ function task(overrides: Partial<Task> = {}): Task {
   };
 }
 
+function section(title: string, position = 0): BoardSection {
+  return { id: `s-${position}`, boardKind: "weekly-tasks", title, position };
+}
+
 /** Answers each command by name, so ordering between them does not matter. */
-function respond(tasks: Task[] = [], overrides: Record<string, unknown> = {}) {
+function respond(
+  tasks: Task[] = [],
+  sections: BoardSection[] = [],
+  overrides: Record<string, unknown> = {},
+) {
   mockInvoke.mockImplementation((command: string) => {
     if (command in overrides) return Promise.resolve(overrides[command]);
     if (command === "week_current") return Promise.resolve(WEEK);
     if (command === "task_list_for_period") return Promise.resolve(tasks);
+    if (command === "section_list") return Promise.resolve(sections);
     return Promise.resolve(tasks[0] ?? null);
   });
 }
@@ -75,6 +86,7 @@ function respond(tasks: Task[] = [], overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   mockInvoke.mockReset();
   useTaskStore.setState({ tasks: {}, filter: null, loading: false, error: null });
+  useSectionStore.setState({ sections: [], loading: false, error: null });
 });
 
 describe("WeeklyBoard", () => {
@@ -144,20 +156,128 @@ describe("WeeklyBoard", () => {
     expect(screen.queryByText("archived one")).toBeNull();
   });
 
-  it("adds a task into the current week", async () => {
+  it("carries no standing quick-add bar", async () => {
+    // A board-wide field cannot say which project the task belongs to, so
+    // everything it made landed under "No project" and had to be filed by
+    // hand afterwards. The per-group + replaced it.
+    respond([task()]);
+
+    render(<WeeklyBoard />);
+    await screen.findByText("submit applications");
+
+    expect(screen.queryByLabelText("Add a task")).not.toBeInTheDocument();
+  });
+
+  it("loads the groups declared for this board", async () => {
+    respond();
+
+    render(<WeeklyBoard />);
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("section_list", {
+        boardKind: "weekly-tasks",
+      });
+    });
+  });
+
+  it("shows a declared group that has no tasks yet", async () => {
+    respond([], [section("Job Search")]);
+
+    render(<WeeklyBoard />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Job Search" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render a declared group the tasks already made", async () => {
+    respond([task({ id: "a", project: "Travel", priority: 7 })], [section("travel")]);
+
+    render(<WeeklyBoard />);
+    await screen.findByRole("heading", { name: /travel/i });
+
+    expect(screen.getAllByRole("heading", { name: /travel/i })).toHaveLength(1);
+  });
+
+  it("adds a task into its group and the current week", async () => {
     const user = userEvent.setup();
-    respond([], {
+    respond([task({ id: "a", project: "Job Search", priority: 9 })], [], {
       task_create: task({ id: "new", title: "email two contacts" }),
     });
     render(<WeeklyBoard />);
-    await screen.findByLabelText("Add a task");
+    await screen.findByRole("heading", { name: "Job Search" });
 
-    await user.type(screen.getByLabelText("Add a task"), "email two contacts{Enter}");
+    await user.click(screen.getByRole("button", { name: "Add a task to Job Search" }));
+    await user.type(
+      screen.getByLabelText("Add to Job Search"),
+      "email two contacts{Enter}",
+    );
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith("task_create", {
         input: {
           title: "email two contacts",
+          project: "Job Search",
+          horizon: "weekly",
+          status: "planned",
+          sourceType: "manual",
+          periodStart: "2026-08-17",
+          periodEnd: "2026-08-23",
+        },
+      });
+    });
+  });
+
+  it("leaves the project unset when adding under the no-project heading", async () => {
+    // "No project" is the board's word for no project at all, not a project
+    // called "No project".
+    const user = userEvent.setup();
+    respond([task({ id: "a", project: null, priority: 9 })], [], {
+      task_create: task({ id: "new", title: "pay the invoice", project: null }),
+    });
+    render(<WeeklyBoard />);
+    await screen.findByRole("heading", { name: "No project" });
+
+    await user.click(screen.getByRole("button", { name: "Add a task to No project" }));
+    await user.type(
+      screen.getByLabelText("Add to No project"),
+      "pay the invoice{Enter}",
+    );
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("task_create", {
+        input: {
+          title: "pay the invoice",
+          project: null,
+          horizon: "weekly",
+          status: "planned",
+          sourceType: "manual",
+          periodStart: "2026-08-17",
+          periodEnd: "2026-08-23",
+        },
+      });
+    });
+  });
+
+  it("adds into a declared group that has no tasks yet", async () => {
+    const user = userEvent.setup();
+    respond([], [section("Job Search")], {
+      task_create: task({ id: "new", title: "rewrite the resume" }),
+    });
+    render(<WeeklyBoard />);
+    await screen.findByRole("heading", { name: "Job Search" });
+
+    await user.click(screen.getByRole("button", { name: "Add a task to Job Search" }));
+    await user.type(
+      screen.getByLabelText("Add to Job Search"),
+      "rewrite the resume{Enter}",
+    );
+
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("task_create", {
+        input: {
+          title: "rewrite the resume",
+          project: "Job Search",
           horizon: "weekly",
           status: "planned",
           sourceType: "manual",
@@ -290,7 +410,7 @@ describe("WeeklyBoard", () => {
     const user = userEvent.setup();
     // The update has to answer with the completed task: the store replaces its
     // optimistic guess with whatever the backend actually stored.
-    respond([task()], { task_update: task({ status: "completed" }) });
+    respond([task()], [], { task_update: task({ status: "completed" }) });
     render(<WeeklyBoard />);
     await screen.findByText("submit applications");
 

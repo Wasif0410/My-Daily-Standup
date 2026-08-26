@@ -19,7 +19,7 @@ import type {
   Month,
   Week,
 } from "@/types/task";
-import type { BoardSection, SectionItem } from "@/types/section";
+import type { BoardSection } from "@/types/section";
 
 /**
  * A failed command.
@@ -317,17 +317,18 @@ export function closeQuickAdd(): Promise<void> {
 // --- sections ----------------------------------------------------------------
 
 /**
- * The sections of one board, in display order.
+ * The task groups of one board, in display order.
  *
- * Each section arrives with its items already nested, so a board renders from
- * one round-trip rather than one per section.
+ * Headings only. The tasks filed under each are fetched by the task commands,
+ * so a board that shows both makes two round-trips rather than nesting one
+ * list inside the other.
  */
 export function listSections(kind: BoardKind): Promise<BoardSection[]> {
   return call<BoardSection[]>("section_list", { boardKind: kind });
 }
 
 /**
- * Adds a section to a board.
+ * Adds a task group to a board.
  *
  * The id and the position are assigned by Rust — a caller choosing either
  * could collide with a section that already exists.
@@ -336,24 +337,23 @@ export function createSection(kind: BoardKind, title: string): Promise<BoardSect
   return call<BoardSection>("section_create", { boardKind: kind, title });
 }
 
-/** Returns the stored section, whose position may differ from the caller's copy. */
+/**
+ * Renames a task group, carrying its tasks with it.
+ *
+ * Rust rewrites `tasks.area` / `tasks.project` in the same transaction, so a
+ * caller's loaded task list is stale the moment this resolves.
+ */
 export function renameSection(id: string, title: string): Promise<BoardSection> {
   return call<BoardSection>("section_rename", { id, title });
 }
 
-/** Deletes a section and, with it, every item inside it. */
+/**
+ * Deletes a task group.
+ *
+ * Rust also rewrites the `tasks.area` / `tasks.project` that filed tasks under
+ * this heading, so — as with {@link renameSection} — a loaded task list is
+ * stale the moment this resolves.
+ */
 export function deleteSection(id: string): Promise<void> {
   return call<void>("section_delete", { id });
-}
-
-export function addSectionItem(sectionId: string, text: string): Promise<SectionItem> {
-  return call<SectionItem>("section_item_add", { sectionId, text });
-}
-
-export function updateSectionItem(id: string, text: string): Promise<SectionItem> {
-  return call<SectionItem>("section_item_update", { id, text });
-}
-
-export function deleteSectionItem(id: string): Promise<void> {
-  return call<void>("section_item_delete", { id });
 }

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { TaskGroup } from "@/features/boards/components/TaskGroup";
 import type { Task } from "@/types/task";
 
@@ -77,5 +78,77 @@ describe("TaskGroup", () => {
     );
 
     expect(screen.getByRole("list", { name: "Health" })).toBeInTheDocument();
+  });
+});
+
+describe("TaskGroup rename", () => {
+  it("leaves the heading as a heading when no rename is offered", () => {
+    render(<TaskGroup label="Health" tasks={[]} renderTask={() => null} />);
+
+    // A derived group has no section row behind it, so there is nothing to
+    // rename and the heading must not pretend otherwise.
+    expect(screen.getByRole("heading", { name: "Health" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Rename Health")).not.toBeInTheDocument();
+  });
+
+  it("renames a declared group from its heading", async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn();
+    render(
+      <TaskGroup
+        label="Health"
+        tasks={[]}
+        onRename={onRename}
+        renderTask={() => null}
+      />,
+    );
+
+    await user.click(screen.getByRole("heading", { name: "Health" }));
+    const editor = screen.getByLabelText("Rename Health");
+    await user.clear(editor);
+    await user.type(editor, "Wellbeing");
+    await user.tab();
+
+    expect(onRename).toHaveBeenCalledWith("Wellbeing");
+  });
+
+  it("abandons a rename on Escape", async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn();
+    render(
+      <TaskGroup
+        label="Health"
+        tasks={[]}
+        onRename={onRename}
+        renderTask={() => null}
+      />,
+    );
+
+    await user.click(screen.getByRole("heading", { name: "Health" }));
+    await user.type(screen.getByLabelText("Rename Health"), " stuff{Escape}");
+
+    expect(onRename).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Health" })).toBeInTheDocument();
+  });
+
+  it("refuses to rename a group to nothing", async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn();
+    render(
+      <TaskGroup
+        label="Health"
+        tasks={[]}
+        onRename={onRename}
+        renderTask={() => null}
+      />,
+    );
+
+    await user.click(screen.getByRole("heading", { name: "Health" }));
+    await user.clear(screen.getByLabelText("Rename Health"));
+    await user.tab();
+
+    // An unnamed group cannot be found again, and the rename would blank the
+    // area on every task filed under it.
+    expect(onRename).not.toHaveBeenCalled();
   });
 });
