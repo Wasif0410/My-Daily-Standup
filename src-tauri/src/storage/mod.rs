@@ -31,7 +31,7 @@ mod ui_state_tests;
 pub use board::{BoardKind, BoardRepo, BoardTheme, BoardWindow, SectionField};
 pub use db::Db;
 pub use migrations::{run_migrations, schema_version, LATEST_VERSION};
-pub use section::{BoardSection, SectionRepo, MAX_TITLE_CHARS};
+pub use section::{group_key, BoardSection, SectionRepo, MAX_TITLE_CHARS};
 pub use settings::{
     Settings, SettingsPatch, SettingsRepo, ValidatedPatch, MAX_PRIORITY_THRESHOLD,
     MIN_PRIORITY_THRESHOLD, WEEK_START_DAYS,

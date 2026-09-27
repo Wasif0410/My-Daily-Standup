@@ -196,6 +196,7 @@ pub async fn chat_start(
 /// [`chat_start`] and can show that it is loading.
 #[tauri::command]
 pub async fn chat_send(
+    state: State<'_, AppState>,
     inference: State<'_, InferenceState>,
     message: String,
 ) -> Result<ChatReply, CommandError> {
@@ -213,20 +214,58 @@ pub async fn chat_send(
         });
     };
 
+    // Built before the request and before the client, so the database lock is
+    // taken and released entirely inside this statement. Holding a std::sync
+    // guard across an `.await` is how an async command deadlocks itself.
+    //
+    // This is what stops the model answering about your boards from memory it
+    // does not have: without it the system prompt is a fixed string, the model
+    // is told nothing about your tasks, and it invents plausible ones.
+    let system = state.session_prompt()?;
+
     // The client is built from the port rather than borrowed from the state,
     // so the mutex is not held across the request. A generation can run for a
     // minute, and `chat_status` must stay answerable throughout.
     let client = ChatClient::new(port);
 
     let started = Instant::now();
-    let completion = client
-        .complete(crate::inference::client::SYSTEM_PROMPT, &message)
-        .await?;
+    let completion = client.complete(&system, &message).await?;
+
+    // The prompt offers the model one way to ask for more: reply with
+    // NEEDS_CONTEXT and a task id. Without this, it obeys and the raw protocol
+    // line lands in the chat window looking like a crash — which is exactly
+    // what happened the first time this ran.
+    //
+    // Exactly one hop, never a loop. Each round trip is a full prefill plus
+    // generation, and a model that could keep asking would turn a one-second
+    // answer into a minute of them. If the second reply asks again, that
+    // request is ignored and the answer is returned as-is.
+    let Some(wanted) = crate::inference::context::needs_context_id(&completion.content) else {
+        return Ok(ChatReply {
+            content: completion.content,
+            prompt_tokens: completion.prompt_tokens,
+            completion_tokens: completion.completion_tokens,
+            elapsed_ms: started.elapsed().as_millis() as u64,
+        });
+    };
+
+    // A model naming a task that does not exist gets told so rather than
+    // silently receiving nothing — an empty append would leave it answering
+    // the original question with no idea its request was refused.
+    let detail = match state.task_detail(&wanted) {
+        Ok(detail) => detail,
+        Err(_) => format!("TASK DETAIL — no task with id {wanted}\n"),
+    };
+
+    let expanded = format!("{system}\n\n{detail}");
+    let second = client.complete(&expanded, &message).await?;
 
     Ok(ChatReply {
-        content: completion.content,
-        prompt_tokens: completion.prompt_tokens,
-        completion_tokens: completion.completion_tokens,
+        content: second.content,
+        // Both round trips, because the cost the user is being shown is the
+        // cost of the answer they got, not of the half of it they never saw.
+        prompt_tokens: completion.prompt_tokens + second.prompt_tokens,
+        completion_tokens: completion.completion_tokens + second.completion_tokens,
         elapsed_ms: started.elapsed().as_millis() as u64,
     })
 }

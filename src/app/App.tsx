@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
 import { openBoard, unlockAllBoards } from "@/lib/ipc";
 import { Chat } from "@/features/chat/Chat";
+import { Context } from "@/features/chat/Context";
 import { Settings } from "@/features/settings/Settings";
 import { BOARD_KINDS } from "@/types/board";
 
@@ -69,6 +70,11 @@ export function App() {
           It exists to prove the model starts, answers, and gives its memory
           back — everything in Wave 4 rests on that. */}
       <Chat />
+
+      {/* What the model is about to be told, before it is told. A bad prompt
+          and a bad answer look identical from the outside; this is how they
+          are told apart. */}
+      <Context />
 
       {/* Settings live here rather than in a window of their own: a new
           window label has to be added to the capabilities file, where a wrong

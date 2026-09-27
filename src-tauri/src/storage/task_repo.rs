@@ -290,6 +290,31 @@ impl TaskRepo {
         )
     }
 
+    /// Every task still in play: not completed, not cancelled.
+    ///
+    /// The one read the commitment map is built from (spec §9.2). It is a
+    /// whole-table scan on purpose: the map groups by `area` and `project`,
+    /// spans every horizon, and has to notice a task that belongs to no group
+    /// at all, so no `WHERE` narrower than "still active" can express it
+    /// without the builder having to issue one query per heading and then
+    /// discover the ungrouped remainder by subtraction.
+    ///
+    /// Filtering here rather than in the builder because "active" is a
+    /// property of the row, and a builder that read finished work only to
+    /// throw it away would be paying for a year of completed tasks on every
+    /// standup.
+    pub fn list_active(&self, conn: &Connection) -> Result<Vec<Task>, StorageError> {
+        self.query(
+            conn,
+            &format!(
+                "SELECT {COLUMNS} FROM tasks \
+                 WHERE status NOT IN ('completed', 'cancelled') \
+                 ORDER BY priority DESC NULLS LAST, created_at"
+            ),
+            rusqlite::params![],
+        )
+    }
+
     /// Direct children of a task. Does not recurse.
     pub fn children_of(
         &self,
