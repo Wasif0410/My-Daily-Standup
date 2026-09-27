@@ -266,6 +266,47 @@ fn the_ranked_context_never_exceeds_its_token_budget() {
 }
 
 #[test]
+fn the_budget_holds_at_every_size_not_just_a_lucky_one() {
+    // The rendered tier joins its lines with newlines, and a newline costs
+    // tokens too. Pricing each line on its own and forgetting the separators
+    // overflows by a few tokens — only for some budgets and some boards, which
+    // is why a single budget passed most of the time and failed now and then.
+    // Sweeping the budget makes the check deterministic.
+    let (db, repo) = setup();
+    for index in 0..60 {
+        task(
+            &db,
+            &format!("c{}", "x".repeat(index % 7)),
+            TaskHorizon::Monthly,
+            |i| {
+                i.priority = Some(5);
+            },
+        );
+    }
+
+    for context_budget in 40..=600 {
+        let ctx = build_context(
+            &repo,
+            db.conn(),
+            SessionKind::DailyStandup,
+            TokenBudget {
+                map: 1_500,
+                context: context_budget,
+            },
+            today(),
+            Weekday::Mon,
+        )
+        .unwrap();
+
+        assert!(
+            ctx.context_tokens <= context_budget,
+            "tier 2 spent {} of a {context_budget}-token budget",
+            ctx.context_tokens,
+        );
+    }
+}
+
+#[test]
 fn the_ranked_context_never_exceeds_its_item_cap() {
     let (db, repo) = setup();
     for index in 0..MAX_CONTEXT_ITEMS * 3 {

@@ -577,9 +577,14 @@ fn status_label(status: TaskStatus) -> &'static str {
 /// order, so skipping ahead would put a low-ranked section in a map that had
 /// just refused a higher-ranked one — which is precisely the inversion the
 /// ranking exists to prevent.
+///
+/// Every section is priced together with the blank line in front of it,
+/// because that is how [`CommitmentMap::render`] joins them. Pricing the
+/// sections alone left the separators free, and the rendered map then ran
+/// over its budget by about a token per section.
 fn fit_within(sections: Vec<MapSection>, budget: usize) -> (Vec<MapSection>, usize) {
     let total = sections.len();
-    let reserve = estimate_tokens(&truncation_notice(total));
+    let reserve = estimate_tokens(&format!("\n\n{}", truncation_notice(total)));
     let mut spent = estimate_tokens(HEADER) + reserve;
 
     let mut lines = 0;
@@ -590,7 +595,7 @@ fn fit_within(sections: Vec<MapSection>, budget: usize) -> (Vec<MapSection>, usi
             break;
         }
 
-        let cost = estimate_tokens(&section.render());
+        let cost = estimate_tokens(&format!("\n\n{}", section.render()));
         if spent + cost > budget {
             break;
         }

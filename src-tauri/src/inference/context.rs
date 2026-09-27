@@ -507,9 +507,14 @@ fn detail_lines(task: &Task) -> Vec<String> {
 /// The truncation notice is charged against the budget before anything else,
 /// so admitting that items were dropped can never itself be the thing that
 /// overflows.
+///
+/// Every line is priced together with the newline in front of it, because
+/// that is how [`SessionContext::render_context`] joins them. Pricing the
+/// lines alone left the separators free, and the rendered tier then ran a few
+/// tokens over for some boards.
 fn fit_within(candidates: Vec<ContextItem>, budget: usize) -> (Vec<ContextItem>, usize) {
     let total = candidates.len();
-    let reserve = estimate_tokens(&truncation_notice(total));
+    let reserve = estimate_tokens(&format!("\n{}", truncation_notice(total)));
     let mut spent = estimate_tokens("RANKED CONTEXT") + reserve;
 
     let mut kept = Vec::new();
@@ -518,7 +523,7 @@ fn fit_within(candidates: Vec<ContextItem>, budget: usize) -> (Vec<ContextItem>,
             break;
         }
 
-        let cost = estimate_tokens(&item.render());
+        let cost = estimate_tokens(&format!("\n{}", item.render()));
         if spent + cost > budget {
             break;
         }
