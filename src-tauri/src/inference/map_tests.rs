@@ -269,6 +269,30 @@ fn the_map_never_exceeds_its_token_budget() {
 }
 
 #[test]
+fn the_map_budget_holds_at_every_size_not_just_a_lucky_one() {
+    // Sections are joined by a blank line, and those newlines cost tokens.
+    // One budget can happen to leave enough slack to hide that; a sweep
+    // cannot.
+    let (db, repo) = setup();
+    for index in 0..30 {
+        let area = format!("A{}", "x".repeat(index % 5));
+        monthly_in(&db, &format!("c{index}"), &area, 5);
+    }
+
+    // Below about 25 tokens not even the header and the truncation notice fit,
+    // so there is nothing for the budget to hold.
+    for budget in 30..=400 {
+        let map = build_map(&repo, db.conn(), budget).unwrap();
+
+        assert!(
+            map.estimated_tokens <= budget,
+            "the map spent {} of a {budget}-token budget",
+            map.estimated_tokens
+        );
+    }
+}
+
+#[test]
 fn the_map_never_exceeds_its_section_count_cap() {
     let (db, repo) = setup();
     for index in 0..MAX_SECTIONS * 3 {
