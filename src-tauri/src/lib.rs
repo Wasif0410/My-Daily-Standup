@@ -176,6 +176,7 @@ pub fn run() {
             commands::inference::chat_start,
             commands::inference::chat_send,
             commands::inference::chat_stop,
+            commands::context::context_preview,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

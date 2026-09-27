@@ -34,7 +34,11 @@ pub const SERVER_BINARY: &str = "llama-server.exe";
 pub const SERVER_BINARY: &str = "llama-server";
 
 /// The context window, in tokens. Matches the measured working invocation.
-const CONTEXT_SIZE: u32 = 8192;
+///
+/// Public because it is also the ceiling the context builder has to fit
+/// (spec §9.2). A budget computed against a different number than the server
+/// is launched with would be a budget that does not bind, so both read this.
+pub const CONTEXT_SIZE: u32 = 8192;
 
 /// Every layer offloaded to the GPU. 99 rather than a real layer count because
 /// llama.cpp clamps it, and the real count changes with the model.

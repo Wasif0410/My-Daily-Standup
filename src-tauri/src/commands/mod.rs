@@ -6,6 +6,7 @@
 //! without constructing a Tauri runtime.
 
 pub mod boards;
+pub mod context;
 pub mod inference;
 pub mod sections;
 pub mod settings;
@@ -415,6 +416,123 @@ impl AppState {
         let day = starts_on.or(configured.as_deref());
 
         crate::domain::current_week(crate::domain::parse_weekday(day))
+    }
+}
+
+impl AppState {
+    /// Builds today's standup context and renders it, without loading a model.
+    ///
+    /// The budget comes from [`crate::inference::process::CONTEXT_SIZE`] — the
+    /// size the server is actually launched with — rather than from a constant
+    /// of its own. Two numbers here would eventually disagree, and the way
+    /// that failure presents is a prompt silently truncated from the front by
+    /// `llama-server`, which is invisible everywhere except in the quality of
+    /// the answer.
+    ///
+    /// The week-start day is read from settings so the "this week's
+    /// milestones" tier means the same week the boards are showing. A settings
+    /// read that fails falls back to the default rather than propagating,
+    /// matching [`Self::current_week`]: a broken row must not make the standup
+    /// unopenable.
+    /// The daily standup's context, assembled from the task database.
+    ///
+    /// Shared by the preview panel and by `chat_send`, deliberately: if the two
+    /// built it separately they could drift, and the preview's whole purpose is
+    /// to show what the model is actually given. A panel that displayed a
+    /// prompt the model never received would be worse than no panel.
+    fn daily_session(&self) -> Result<crate::inference::context::SessionContext, CommandError> {
+        use crate::inference::context;
+
+        let starts_on = crate::domain::parse_weekday(
+            self.settings()
+                .ok()
+                .map(|settings| settings.week_starts_on)
+                .as_deref(),
+        );
+
+        let budget = context::TokenBudget::for_context_size(
+            crate::inference::process::CONTEXT_SIZE as usize,
+        );
+
+        self.with_conn(|repo, conn| {
+            context::build_context(
+                repo,
+                conn,
+                context::SessionKind::DailyStandup,
+                budget,
+                chrono::Local::now().date_naive(),
+                starts_on,
+            )
+        })
+    }
+
+    /// One task in full, rendered for the model.
+    ///
+    /// Tier 3 of the context builder. Reached only when the model asks for it
+    /// by id, so it stays out of every prompt that does not need it — which is
+    /// the whole reason the tiers exist.
+    pub fn task_detail(&self, id: &str) -> Result<String, CommandError> {
+        self.with_conn(|repo, conn| crate::inference::context::fetch_task_subtree(repo, conn, id))
+            .map(|subtree| subtree.render())
+    }
+
+    /// The rendered prompt the model is given, boards and all.
+    ///
+    /// A template that will not render is reported as invalid input rather than
+    /// as an internal fault: the prompt files are editable by design, so the
+    /// likeliest cause is a typo in one, and the user can fix that.
+    pub fn session_prompt(&self) -> Result<String, CommandError> {
+        crate::inference::prompt::render_session(&self.daily_session()?).map_err(|error| {
+            CommandError {
+                kind: ErrorKind::InvalidInput,
+                message: error.to_string(),
+            }
+        })
+    }
+
+    pub fn context_preview(
+        &self,
+    ) -> Result<crate::commands::context::ContextPreview, CommandError> {
+        use crate::inference::{context, prompt};
+
+        let starts_on = crate::domain::parse_weekday(
+            self.settings()
+                .ok()
+                .map(|settings| settings.week_starts_on)
+                .as_deref(),
+        );
+
+        let budget = context::TokenBudget::for_context_size(
+            crate::inference::process::CONTEXT_SIZE as usize,
+        );
+
+        let session = self.with_conn(|repo, conn| {
+            context::build_context(
+                repo,
+                conn,
+                context::SessionKind::DailyStandup,
+                budget,
+                chrono::Local::now().date_naive(),
+                starts_on,
+            )
+        })?;
+
+        let map = session.map.render();
+        let rendered = prompt::render_session(&session).map_err(|error| CommandError {
+            // A template that will not render is a bug in a file the user may
+            // have edited, so it is reported as their input rather than as an
+            // internal fault they can do nothing about.
+            kind: ErrorKind::InvalidInput,
+            message: error.to_string(),
+        })?;
+
+        Ok(crate::commands::context::ContextPreview {
+            map_tokens: session.map_tokens as u32,
+            context_tokens: session.context_tokens as u32,
+            total_tokens: crate::inference::estimate_tokens(&rendered) as u32,
+            map,
+            prompt: rendered,
+        })
     }
 }
 

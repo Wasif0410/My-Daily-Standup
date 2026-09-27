@@ -376,9 +376,87 @@ body {
   color: #f7768e;
 }
 
+/* ---- Model context preview ---------------------------------------------
+   A diagnostic, not a feature. The tiered builder makes decisions that are
+   invisible from the answer alone — which sections survived the budget, what
+   was dropped — and a bad prompt and a bad answer look identical from outside. */
+
+.context-preview {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
+}
+
+.context-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.context-preview-header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* The figures are the point of the tiering, so they are not behind a toggle. */
+.context-tokens {
+  display: flex;
+  gap: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.context-tokens div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.context-tokens dt {
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.context-tokens dd {
+  margin: 0;
+  font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+}
+
+/* Preformatted and scrollable: the indentation carries the meaning, and the
+   map can be long. Wrapping or collapsing it would destroy the structure the
+   model is being shown. */
+.context-map {
+  max-height: 20rem;
+  margin: 0;
+  padding: 0.6rem;
+  overflow: auto;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 25%);
+  font-family: "Cascadia Code", Consolas, ui-monospace, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.context-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.context-error {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #f7768e;
+}
+
 /* The dev shell centres its contents, which is fine for a heading and wrong
-   for a form or a conversation. Panels are left-aligned and take the column
-   width instead of shrinking to their widest line. */
+   for everything that carries structure. The map's meaning IS its indentation:
+   a section's milestones sit under it, and centring every line destroys the
+   only thing that made it a tree. */
+.context-preview,
 .settings-panel,
 .chat-panel {
   align-self: stretch;
@@ -387,10 +465,14 @@ body {
   text-align: left;
 }
 
+.context-map {
+  text-align: left;
+}
+
 /* The shell centres vertically at full height, which is right for a nearly
-   empty dev shell and wrong the moment it holds a chat and a settings form.
-   Once the content is taller than the window, centring pushes the top
-   off-screen and there is nothing to scroll. */
+   empty dev shell and wrong the moment it holds a chat, a context map and a
+   settings form. Once the content is taller than the window, centring pushes
+   the top off-screen and there is nothing to scroll. */
 .shell {
   height: auto;
   min-height: 100%;

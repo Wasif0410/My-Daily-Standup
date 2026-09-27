@@ -19,6 +19,7 @@ import type {
   Month,
   Week,
 } from "@/types/task";
+import type { ContextPreview } from "@/types/context";
 import type { BoardSection } from "@/types/section";
 import type { ChatReply, ChatStatus } from "@/types/chat";
 import type { Settings, SettingsPatch } from "@/types/settings";
@@ -427,4 +428,17 @@ export function chatSend(message: string): Promise<ChatReply> {
 /** Unloads the model, freeing the memory it held. */
 export function chatStop(): Promise<ChatStatus> {
   return call<ChatStatus>("chat_stop", {});
+}
+
+// --- model context ---------------------------------------------------------
+
+/**
+ * What the model would be told right now, assembled from the task database.
+ *
+ * Read-only and built on demand. The prompt is composed in Rust — the frontend
+ * never builds one, for the same reason it never derives a week: §3.6 keeps
+ * that judgment deterministic and in a single place.
+ */
+export function contextPreview(): Promise<ContextPreview> {
+  return call<ContextPreview>("context_preview", {});
 }

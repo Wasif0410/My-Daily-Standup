@@ -425,3 +425,124 @@ fn settings_serialise_to_camel_case_for_the_frontend() {
         "snake_case must not leak across the boundary"
     );
 }
+
+#[test]
+fn the_context_preview_renders_both_tiers_without_a_model() {
+    let state = state();
+    let mut commitment = NewTask::new(
+        "applications this month",
+        TaskHorizon::Monthly,
+        TaskSource::Manual,
+    );
+    commitment.area = Some("Job Search".to_string());
+    commitment.priority = Some(9);
+    state.create_task(commitment).unwrap();
+
+    let preview = state.context_preview().unwrap();
+
+    assert!(preview.map.contains("COMMITMENT MAP"), "{}", preview.map);
+    assert!(preview.map.contains("Job Search"), "{}", preview.map);
+    assert!(
+        preview.prompt.contains("COMMITMENT MAP"),
+        "the prompt must carry the map it previewed:\n{}",
+        preview.prompt
+    );
+    assert!(preview.map_tokens > 0);
+    assert!(
+        preview.total_tokens >= preview.map_tokens + preview.context_tokens,
+        "the total must account for the template's own prose as well as the tiers"
+    );
+}
+
+#[test]
+fn the_context_preview_fits_the_context_window_the_server_is_launched_with() {
+    let state = state();
+    for index in 0..400 {
+        let mut task = NewTask::new(
+            format!("a commitment with a reasonably long title {index}"),
+            TaskHorizon::Monthly,
+            TaskSource::Manual,
+        );
+        task.area = Some(format!("Area {}", index % 40));
+        task.priority = Some(index as i64 % 10);
+        state.create_task(task).unwrap();
+    }
+
+    let preview = state.context_preview().unwrap();
+
+    let ceiling = crate::inference::process::CONTEXT_SIZE;
+    assert!(
+        preview.total_tokens <= ceiling,
+        "the prompt cost {} tokens against the server's own {ceiling}-token window",
+        preview.total_tokens
+    );
+}
+
+#[test]
+fn the_context_preview_serialises_to_the_field_names_the_frontend_reads() {
+    let state = state();
+
+    let json = serde_json::to_value(state.context_preview().unwrap()).unwrap();
+
+    for field in ["map", "prompt", "mapTokens", "contextTokens", "totalTokens"] {
+        assert!(json.get(field).is_some(), "{field} must be on the wire");
+    }
+    assert!(
+        json.get("map_tokens").is_none(),
+        "snake_case must not leak across the boundary"
+    );
+}
+
+#[test]
+fn the_chat_prompt_carries_the_users_actual_tasks() {
+    // The bug this pins: `chat_send` shipped using a fixed system string, so
+    // the model was told nothing about the boards and answered from
+    // imagination — asked what to work on, it proposed a client meeting and a
+    // project timeline that exist nowhere in the database.
+    //
+    // The prompt is what closes that, so the prompt is what is asserted.
+    let state = state();
+    state
+        .create_task({
+            let mut task = NewTask::new(
+                "Renew the parking permit",
+                TaskHorizon::Weekly,
+                TaskSource::Manual,
+            );
+            task.area = Some("Temporary".to_string());
+            task.priority = Some(6);
+            task
+        })
+        .unwrap();
+
+    let prompt = state.session_prompt().unwrap();
+
+    assert!(
+        prompt.contains("Renew the parking permit"),
+        "the model must be given the task, not asked to guess it:\n{prompt}"
+    );
+    assert!(
+        prompt.contains("Temporary"),
+        "and the section it is filed under:\n{prompt}"
+    );
+    assert!(
+        prompt.contains("p6"),
+        "and its priority, which is what the model is being asked to rank by:\n{prompt}"
+    );
+}
+
+#[test]
+fn the_preview_shows_the_same_prompt_the_model_is_sent() {
+    // The panel exists to make the prompt inspectable. If it rendered its own
+    // copy, the two could drift and the panel would be showing something the
+    // model never received — worse than showing nothing, because it would be
+    // believed.
+    let state = state();
+    state.create_task(daily("book the dentist")).unwrap();
+
+    assert_eq!(
+        state.context_preview().unwrap().prompt,
+        state.session_prompt().unwrap(),
+        "the preview and the chat must render from one source"
+    );
+}
