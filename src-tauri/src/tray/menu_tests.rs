@@ -186,3 +186,21 @@ fn every_id_is_unique() {
 
     assert_eq!(seen.len(), count, "duplicate tray menu id");
 }
+
+#[test]
+fn the_main_window_can_be_reopened_from_the_tray() {
+    // Closing the main window hides it (§26), so without an entry that says so
+    // in plain words the window is simply gone: "Settings" happens to reopen
+    // it, but nobody reads "Settings" as "show the app again". This is the
+    // first entry for the same reason — it is the one a user reaches for when
+    // they have lost the window.
+    let entries = menu_entries(false);
+
+    let open = find(&entries, "open-window");
+    assert!(open.enabled, "reopening the app must never be disabled");
+    assert_eq!(
+        entries.first().map(|entry| entry.id),
+        Some("open-window"),
+        "it has to be the first thing in the menu"
+    );
+}
