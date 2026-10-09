@@ -70,6 +70,11 @@ impl MenuEntry {
 ///   Without a control here the dependency would ship dead.
 pub fn menu_entries(autostart: bool) -> Vec<MenuEntry> {
     vec![
+        // First, because it is what someone reaches for when they have lost
+        // the window. Closing the main window hides it (§26) rather than
+        // quitting, so without this entry the app looks gone: "Settings"
+        // happens to reopen it, but nobody reads "Settings" as "show the app".
+        MenuEntry::ready("open-window", "Open My Daily Standup"),
         MenuEntry::ready("open-boards", "Open Boards"),
         // Wave 5. Each starts a model session, and none of them exists yet.
         MenuEntry::pending("daily-standup", "Start Daily Standup"),

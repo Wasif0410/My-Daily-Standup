@@ -105,7 +105,11 @@ fn handle(app: &AppHandle, id: &str) -> Result<(), CommandError> {
             }
             Ok(())
         }
-        "settings" => {
+        // Both show the main window: settings render inside it, and losing
+        // the window is the thing "open" is for. One arm would have done, but
+        // two ids reading as one action is clearer in the menu than a single
+        // entry trying to mean both.
+        "open-window" | "settings" => {
             // Shown and focused rather than created: closing the main window
             // hides it (§26), so it is still there — and building a second one
             // with the same label is what leaves a dead, blank surface.
