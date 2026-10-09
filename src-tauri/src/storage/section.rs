@@ -241,8 +241,28 @@ impl SectionRepo {
 /// own case rules matches exactly rather than loosely. That is the same
 /// comparison the boards themselves group by, so at worst it agrees with what
 /// is already on screen.
+///
+/// The Rust-side twin of this clause is [`group_key`], and the two are written
+/// to agree character for character.
 fn group_matches(column: &str) -> String {
     format!("{column} IS NOT NULL AND lower(trim({column})) = lower(trim(:group))")
+}
+
+/// The value two group names are compared by.
+///
+/// The in-memory twin of [`group_matches`], and the reason it exists is that
+/// the commitment map (spec §9.2) groups tasks under headings in Rust rather
+/// than in SQL. A second normalisation written at that call site could
+/// disagree with this one, and a disagreement here does not look like a bug —
+/// it looks like a heading the user named going missing from the map while
+/// still showing on the board.
+///
+/// `to_ascii_lowercase`, not `to_lowercase`, deliberately. SQLite's `lower`
+/// folds ASCII only. Matching Unicode case here would make Rust merge two
+/// groups that SQL keeps apart, so the looser of the two comparisons wins by
+/// being the one both sides use.
+pub fn group_key(value: &str) -> String {
+    value.trim().to_ascii_lowercase()
 }
 
 /// Trims a title and rejects it if nothing useful survives, or if it is longer
