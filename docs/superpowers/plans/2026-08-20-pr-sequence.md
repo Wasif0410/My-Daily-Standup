@@ -37,18 +37,30 @@ One installer, one binary. The profile is detected at runtime and overridable in
 | Profile | Minimum machine | LLM (Q4_K_M) | Whisper | Context | Session footprint |
 |---|---|---|---|---|---|
 | **Lightweight** | 8 GB RAM, no dGPU | Qwen3-1.7B (~1.1 GB) | tiny | 2k | ~2 GB RAM |
-| **Balanced** | 16 GB RAM, iGPU or entry dGPU | Qwen3-4B (~2.5 GB) | base | 4k | ~3.7 GB RAM |
-| **High Quality** | **16 GB RAM + ≥8 GB VRAM** | Qwen3-8B (~5.0 GB) | small | 8k | ~6 GB VRAM + ~1 GB RAM |
+| **Balanced** | 16 GB RAM, iGPU or **any dGPU under ~10 GB VRAM** | Qwen3-4B (~2.5 GB) | base | 4k, 8k where VRAM allows | ~3.7 GB RAM / ~3.1 GB VRAM at 8k with `q8_0` KV |
+| **High Quality** | **16 GB RAM + ≥10–12 GB VRAM** | Qwen3-8B (~5.0 GB) | small | 8k | ~6 GB VRAM + ~1 GB RAM |
 
 **VRAM is the gate for High Quality, not system RAM.** When the model is fully offloaded, weights and KV cache live in VRAM; system RAM holds only the app plus memory-mapped GGUF pages, which are reclaimable page cache rather than committed memory. 16 GB of system RAM is sufficient.
 
-**Always-on tier footprint (every profile):** Tauri shell + 5 board windows + SQLite ≈ **under 1 GB**, with zero model memory. This is the number that has to stay true for §26 to hold.
+**The 8B gate was raised from ≥8 GB to ≥10–12 GB, and that is a correction rather than a caution.** The original number was written as though the model were the only thing on the card. It isn't: this app keeps five or six GPU-composited WebView2 windows open by design — that is the entire point of §26's always-on tier — and every one of them holds a compositor surface in VRAM. Measured on the dev machine (RTX 3070 Ti, 8,192 MiB): **1,486 MiB already gone with the app not even running**, 1,502 MiB with the app running and no model loaded. An 8 GB card therefore offers ~6.5 GB free, not 8, which puts a ~6 GB session exactly on the boundary with no margin for the product's own windows. Sitting at that boundary does not degrade gracefully — Windows WDDM starts evicting allocations to system RAM, and what the user sees is not a slower model but the app hanging. A card needs 10–12 GB before the 8B tier has room to be wrong in.
+
+**Always-on tier footprint (every profile):** Tauri shell + 5 board windows + SQLite ≈ **under 1 GB of RAM**, with zero model memory. This is the number that has to stay true for §26 to hold.
+
+**Always-on tier VRAM footprint:** ≈ **1.5 GB before any model loads** — the desktop compositor plus the app's own WebView2 surfaces. The RAM figure above has always been stated; the VRAM figure never was, and it is the one that decides whether a model fits. Subtract it before comparing a model's footprint to a card's capacity.
+
+**On an 8 GB card the measured alternative is Qwen3-4B, not a smaller quant of 8B.** Qwen3-4B Q4_K_M at 8k context with a `q8_0` KV cache measures **~3.1 GB**, leaving ~3.5 GB free on an 8 GB card — room for the boards, a Whisper model if wanted, and a driver having a bad day. Qwen's own release notes put Qwen3-4B on par with Qwen2.5-7B, so this is not the quality cliff the parameter count suggests.
+
+**KV-cache quantisation and context size are cheaper levers than model size.** `--cache-type-k q8_0 --cache-type-v q8_0` halves cache memory for a negligible quality cost, and halving the context window saves roughly what dropping from 8B to 7B would — while keeping the larger model's actual reasoning. Reach for cache type and context first; change the model last.
+
+**There is no Qwen3 7B or 6B.** The dense line is 0.6B, 1.7B, 4B, 8B, 14B, 32B. "Just use a 7B" means changing model family, with a different tokenizer, template, and thinking behaviour, so it is not the small adjustment it sounds like.
 
 **Prefill dominates latency, so context size matters more than model size.** At ~250 tok/s CPU prefill, a 3k prompt costs ~12s and an 8k prompt costs ~32s. The tiered context map (PR 25) is what keeps CPU-only machines usable, not just what improves answer quality.
 
-**On an 8 GB VRAM card, run Whisper on CPU.** The LLM plus KV cache takes ~6 GB of the 8 GB; Whisper base transcribes 10s of audio on CPU in 1–2s anyway, and the headroom is better spent on context.
+**On an 8 GB VRAM card, run Whisper on CPU.** The ~1.5 GB the app's own windows hold plus a 3–6 GB session leaves nothing worth giving a second model; Whisper base transcribes 10s of audio on CPU in 1–2s anyway, and the headroom is better spent on context.
 
 **Never trust WMI for VRAM.** `Win32_VideoController.AdapterRAM` is a 32-bit field and reports 4,095 MB for any card with 4 GB or more — verified on an RTX 3070 Ti that actually has 8,192 MB. Use DXGI's `DXGI_ADAPTER_DESC.DedicatedVideoMemory`, falling back to `nvidia-smi`.
+
+**Measure free VRAM, not total.** `DedicatedVideoMemory` reports what the card has, which is not what a model may have. With ~1.5 GB already committed before the app starts, and a variable amount held by whatever else the user is running, a profile chosen from the total is a guess dressed as a measurement. Query the free figure (`nvidia-smi --query-gpu=memory.free`, or DXGI's budget via `IDXGIAdapter3::QueryVideoMemoryInfo`) at the moment of selection. That single change is what turns the profile table above from a set of fixed thresholds into something self-correcting on a machine the table's author never saw.
 
 **Backends are a build-time choice, not a runtime one.** llama.cpp compiles separately for CPU, CUDA, Vulkan, and ROCm. Bundle **CPU + Vulkan** (one GPU backend covering NVIDIA, AMD, and Intel); offer CUDA as an optional download for NVIDIA users. CUDA is ~10–30% faster but its runtime DLLs add hundreds of megabytes to the installer.
 
@@ -146,7 +158,7 @@ A PR is not ready for your review until all of these hold:
 
 | Tag | After PR | What you can do |
 |---|---|---|
-| `v0.1.0` | 18 | A full non-AI desktop planner: persistent sticky boards, an expandable Monday-to-Sunday week, priorities, named sections, and per-task time tracking |
+| `v0.1.0` | 18 — **held** | A full non-AI desktop planner: persistent sticky boards, an expandable Monday-to-Sunday week, priorities, named sections, and per-task time tracking. **The tag was not cut.** Everything it describes shipped and works; the decision to hold it is deliberate and the tag can be applied to any later commit. |
 | `v0.2.0` | 28 | Run a typed local-LLM standup that reads your own boards and proposes a daily plan you approve |
 | `v0.3.0` | 32 | Run the whole standup by voice — MVP feature-complete |
 | `v0.4.0` | 35 | Close the loop with evening, weekly, and monthly reviews built on real numbers |
@@ -165,17 +177,58 @@ PR numbers are **identities, not positions.** A PR keeps the number it was given
 | 0 | Foundation | 1–3 | Done |
 | 1 | Data layer | 4–7 | Done |
 | 2 | Sticky-note boards | 8–15, 15a–15c | Done |
-| 3 | Desktop shell | 16, 17, 17a, 18 | 18 is next |
-| 4 | Local LLM text standup | 23–28 | |
+| 3 | Desktop shell | 16, 17, 17a, 18 | Done |
+| 4 | Local LLM text standup | 39, 23–28 | 39 done, 25 is next |
 | 5 | Voice | 29–32 | |
 | 6 | Reviews | 33–35 | |
 | 7 | Obsidian read integration | 19–22 | |
 | 8 | Obsidian writeback | 36–38 | |
 | 9 | Cross-platform & community | post-1.0 | Not yet planned |
 
+*This table answers what comes next. The Build order table below answers what actually happened, and the two do not match.*
+
 **Why Obsidian moved to the end.** Every AI capability now ships before any vault code does. The standup was originally sequenced behind the vault because the vault was assumed to be where the model's context came from. It isn't any more — Waves 2 and 3 grew commitments, priorities, sections, rollover counts, and logged durations, which is a richer and more structured picture of the user's week than a folder of markdown ever was. Waiting on the vault would have meant holding the whole AI product hostage to an integration that turns out to be an enrichment rather than a foundation.
 
 The lettered PRs (15a–15c, 17a) are work that shipped on `main` without having been predicted here. They are recorded in their wave for the sake of an honest history; they take letters rather than numbers so that no existing identity shifts.
+
+**PR 39 is numbered, not lettered, and it opens Wave 4 rather than closing it.** It was unpredicted too, but it does not sit under any existing PR the way 15a–15c sit under 15, so there was nothing to letter it onto. It took 39 because 39 was the next free number and numbers here are identities — a PR that runs first is not thereby PR 22a, and 39 appearing above 23 in the wave is the table doing its job, not a sorting mistake.
+
+---
+
+## Build order
+
+*This table answers what actually happened, in merge order off `main`. Read the Execution order table above to know what comes next; read this one to know what came before.*
+
+Neither the PR numbers nor the wave headings can carry this, because a PR is filed by what it changes and merged by when it was ready, and those are different orderings. Rather than distort either, the file states both.
+
+| GitHub PR | Merged | Plan id | What |
+|---|---|---|---|
+| #9  | 2026-08-21 | PR 7  | Progress & rollover engine |
+| #10 | 2026-08-22 | PR 8  | Task store with optimistic updates |
+| #11 | 2026-08-22 | PR 9  | Sticky-note window manager |
+| #13 | 2026-08-22 | PR 10 | Board shell & design tokens |
+| #14 | 2026-08-22 | PR 11 | Recording how long tasks took |
+| #15 | 2026-08-23 | PR 12 | Priority Tasks board |
+| #16 | 2026-08-23 | PR 13 | Weekly Tasks board |
+| #17 | 2026-08-23 | PR 14 | Weekly Progress board |
+| #18 | 2026-08-23 | PR 15 | Monthly Progress board |
+| #19 | 2026-08-23 | PR 16 | Per-board window behaviours |
+| #20 | 2026-08-23 | PR 17 | System tray & quick add |
+| #21 | 2026-08-24 | PR 17a | Reopening a closed board no longer blanks it |
+| #22 | 2026-08-25 | PR 17a | Open/close reliable from every route |
+| #23 | 2026-08-25 | PR 15a | Text scaling, day panels, completion percentage |
+| #24 | 2026-08-25 | PR 15b | Sections (first version: free-text notes) |
+| #25 | 2026-08-25 | PR 15b | Section adding moved to the board header |
+| #26 | 2026-08-25 | PR 15b/15c | Sections become task groups; priority from the badge |
+| #27 | 2026-08-26 | — | Docs: Obsidian moved to the final waves |
+| #28 | 2026-08-26 | PR 18 | Settings that something actually reads |
+| #29 | 2026-08-26 | PR 39 | Local model session & test chat |
+
+**GitHub #12 is omitted:** it was docs-only and closed no plan PR. #27 is docs-only too and is listed, because it is the merge that resequenced the waves and a reader tracing why Wave 7 holds Obsidian needs to see where that happened. The rule is inclusion by consequence, not by whether code changed.
+
+**PR 15a–15c are filed under PR 15 by subject and shipped after 16, 17 and 17a.** Reading the file top to bottom, they appear inside Wave 2, four entries before work that was already on `main` when they started — and that gap is causal rather than clerical. The per-board font-size control arrived in PR 16, and it is what exposed that PR 10's size tokens were written in `rem` and could not see it: there was no way to discover a setting was unreachable until a setting existed. Living with the boards through PR 17 is what turned the reading of them into the obvious next problem, which is where the day panels and the completion percentage came from. Filing them by subject keeps Wave 2 coherent — they change the boards and nothing else. This table keeps the history honest. Both are needed, and either one alone tells a reader something false.
+
+**The mapping is not one-to-one in either direction.** One plan PR can be several GitHub PRs: PR 15b took three passes (#24, #25, #26) and PR 17a took two (#21, #22), because the shape of the fix was only clear after the first attempt was in use. And one GitHub PR can close parts of two plan PRs — **#26 did both**, finishing 15b's task groups and landing 15c's editable badge in the same change, since the badge only became worth editing once the groups it sorts inside were real. A plan id in the column above is therefore a claim about subject matter, not a promise of a clean boundary.
 
 ---
 
@@ -207,7 +260,7 @@ Then enable branch protection per the settings above.
 
 # Wave 0 — Foundation (PR 1–3)
 
-### - [ ] PR 1 — Project docs & governance
+### - [x] PR 1 — Project docs & governance
 **Branch:** `docs/pr-01-repo-docs`
 **Depends on:** PR 0
 **What this gives the app:** Writes down what is being built and the rules for building it, so the design lives in the repo rather than in one person's head.
@@ -221,7 +274,7 @@ Establishes the paperwork so every later PR has a home to update.
 
 ---
 
-### - [ ] PR 2 — Tauri 2 + React + TypeScript scaffold
+### - [x] PR 2 — Tauri 2 + React + TypeScript scaffold
 **Branch:** `feat/pr-02-tauri-scaffold`
 **Depends on:** PR 1
 **What this gives the app:** Turns the project into something you can actually double-click and see. A window opens with the app's name in it.
@@ -239,7 +292,7 @@ The app compiles, launches, and shows a window. Nothing else.
 
 ---
 
-### - [ ] PR 3 — CI pipeline & test harness
+### - [x] PR 3 — CI pipeline & test harness
 **Branch:** `ci/pr-03-pipeline`
 **Depends on:** PR 2
 **What this gives the app:** Puts a robot in charge of checking every change. From here on, a mistake gets caught automatically before it can reach `main`.
@@ -257,7 +310,7 @@ Every later PR's green checkmark comes from here, so this lands before any real 
 
 # Wave 1 — Data layer (PR 4–7)
 
-### - [ ] PR 4 — SQLite setup & migration runner
+### - [x] PR 4 — SQLite setup & migration runner
 **Branch:** `feat/pr-04-sqlite-migrations`
 **Depends on:** PR 3
 **What this gives the app:** Gives the app a memory. Somewhere to keep your tasks that survives closing the app, restarting the machine, or crashing.
@@ -277,7 +330,7 @@ DB lives at the Tauri app data dir (`app_handle.path().app_data_dir()`), file `s
 
 ---
 
-### - [ ] PR 5 — Task repository
+### - [x] PR 5 — Task repository
 **Branch:** `feat/pr-05-task-repository`
 **Depends on:** PR 4
 **What this gives the app:** Teaches the app to actually use that memory — add a task, read it back, change it, delete it.
@@ -304,7 +357,7 @@ IDs are UUIDv4 strings, generated in Rust — never supplied by the frontend or 
 
 ---
 
-### - [ ] PR 6 — Tauri command layer & shared types
+### - [x] PR 6 — Tauri command layer & shared types
 **Branch:** `feat/pr-06-command-layer`
 **Depends on:** PR 5
 **What this gives the app:** Connects the Rust engine to the screen. Until now the two halves could not talk about real data; after this they can.
@@ -325,7 +378,7 @@ Commands: `task_create`, `task_get`, `task_update`, `task_delete`, `task_list_by
 
 ---
 
-### - [ ] PR 7 — Progress & rollover engine
+### - [x] PR 7 — Progress & rollover engine
 **Branch:** `feat/pr-07-progress-engine`
 **Depends on:** PR 6
 **What this gives the app:** Teaches the app arithmetic: how far along a goal is, and how many times you have pushed a task to tomorrow.
@@ -354,7 +407,7 @@ fn period_stats(tasks: &[Task]) -> PeriodStats  // planned, completed, rate, car
 
 # Wave 2 — Sticky-note boards (PR 8–15, 15a–15c)
 
-### - [ ] PR 8 — Frontend store & data hooks
+### - [x] PR 8 — Frontend store & data hooks
 **Branch:** `feat/pr-08-store`
 **Depends on:** PR 7
 **What this gives the app:** Makes the interface feel instant. Ticking a checkbox updates immediately instead of waiting on the database.
@@ -370,7 +423,7 @@ Optimistic updates: mutate local state immediately, call IPC, roll back and surf
 
 ---
 
-### - [ ] PR 9 — Sticky window manager
+### - [x] PR 9 — Sticky window manager
 **Branch:** `feat/pr-09-window-manager`
 **Depends on:** PR 8
 **What this gives the app:** Real sticky notes appear on your desktop as separate windows, and they remember where you left them.
@@ -388,7 +441,7 @@ Each board is a separate `WebviewWindow` created with `decorations: false`, `tra
 
 ---
 
-### - [ ] PR 10 — Board shell component & theme
+### - [x] PR 10 — Board shell component & theme
 **Branch:** `feat/pr-10-board-shell`
 **Depends on:** PR 9
 **What this gives the app:** Gives the boards their look — dark, minimal, controls that stay hidden until you hover.
@@ -406,7 +459,7 @@ CSS custom properties for accent, opacity, and font size so PR 15 can drive them
 
 ---
 
-### - [ ] PR 11 — Recording how long tasks took
+### - [x] PR 11 — Recording how long tasks took
 **Branch:** `feat/pr-11-time-logging`
 **Depends on:** PR 10
 **What this gives the app:** A place to record how long each task actually took, so the week can be totalled at the end of it.
@@ -612,7 +665,7 @@ PR 12 made the badge readable and left it read-only, which put the most frequent
 
 ---
 
-# Wave 3 — Desktop shell (PR 16, 17, 17a, 18)
+# Wave 3 — Desktop shell (PR 16, 17, 17a, 18) — complete
 
 ### - [x] PR 16 — Window behaviors
 **Branch:** `feat/pr-16-window-behaviors`
@@ -668,53 +721,122 @@ An `ErrorBoundary` wraps the board root so a render failure inside one board sho
 
 ---
 
-### - [ ] PR 18 — Settings & reminders → **tag `v0.1.0`**
-**Branch:** `feat/pr-18-settings-reminders`
+### - [x] PR 18 — Settings that something actually reads
+**Branch:** `feat/pr-18-settings` · **GitHub #28**
 **Depends on:** PR 17a
-**What this gives the app:** Settings you can change and reminders that nudge you morning and evening. **This is the first version genuinely worth using every day.**
+**What this gives the app:** The knobs that already existed start turning.
 
-**Creates:** `src-tauri/src/storage/settings.rs`, `migrations/008_settings.sql`, `src/features/settings/SettingsWindow.tsx`, `settings/sections/{General,StickyNotes,Planning}.tsx`, `src-tauri/src/reminders.rs`.
+**Shipped narrower than written, and the title changed to say so.** Three things were already built to be configurable and had nowhere to store the answer: `PriorityBoard` took a `threshold` prop nothing ever passed, so it was permanently 5; `week_current` accepted a `starts_on` argument every caller passed `None` for, so the week always began on Monday; launch-at-login was reachable only from the tray. This PR is the missing half of those, not a new feature.
+
+**Reminders were cut** and moved to Wave 4 beside the standup. A reminder's job is to trigger a standup, and the standup did not exist. `tauri-plugin-notification` moved with them, as did §18's two reminder-time settings. The tray's *Pause Reminders* — a live checkable toggle writing a `ui_state` flag no code read, looking exactly like a working feature — is now disabled and says why, and its key and handler arm were deleted rather than left inert.
+
+**No `v0.1.0` tag.** Held deliberately.
+
+**The governing rule, worth carrying into every later settings PR: ship only a setting something reads.** §18 lists dozens of candidates. This shipped three, because three had consumers. Pause Reminders is what the alternative looks like.
+
+**Creates:** `src-tauri/src/storage/settings.rs`, `settings_tests.rs`, `migrations/008_settings.sql`, `src-tauri/src/commands/settings.rs`, `src/features/settings/{Settings,SettingsPanel}.tsx`, `src/stores/settingsStore.ts`, `src/types/settings.ts`.
+
+**Settings render in the main window, not one of their own.** A new window label must be granted in `capabilities/default.json`, where a wrong identifier is dropped silently rather than failing the build — this project has already lost time to that. The main window was a development shell with nothing real to do. The tray's Settings entry shows and focuses it rather than building anything, because closing that window only hides it and rebuilding a window with a live label is what leaves a dead, blank surface.
+
+**A single-row table with typed columns, not key/value.** `ui_state` already exists for loose presentation strings; the point of this table is that the database enforces the constraints and owns the defaults. The two are kept apart because their lifecycles differ: resetting settings must not forget which day you had expanded, and clearing presentation state must not reset your week-start day.
+
+**`launch_at_login` reaches the OS or the save fails.** Order is validate → plugin → store, so a patch that will be refused for its threshold cannot register a login entry on its way to being refused. It is re-asserted whenever *present* rather than only when it *differs*: skipping the call assumes the row and the OS already agree, which is the assumption this PR exists to remove — if they have drifted, the one save made to fix it would be the save that does nothing.
+
+**A timestamp-ordering bug found while verifying, worth remembering.** Migration 008 first seeded `updated_at` with SQLite's `strftime('%f')` — three fractional digits — while Rust writes six. These are TEXT columns compared lexicographically, and `...16.123Z` sorts *above* `...16.123456Z` because `'Z'` is `0x5A` and `'4'` is `0x34`, so a later write compared as earlier. Migration 001 states that text "sorts correctly in this format"; that holds only while every writer agrees on the format. The seed is padded to six digits. **Any future SQL that writes a timestamp Rust also writes must match this format.**
 
 **The schema is at 007.** Waves 2 and 3 spent more migrations than this plan predicted — `004_ui_state`, `005_board_appearance`, and PR 15b's `006_board_sections` and `007_sections_are_task_groups` — so this PR's migration is **008**, not the `003` written here originally, and every later migration number in this file has been moved up to match. Migration numbers are positions in a sequence, unlike PR numbers; a duplicate is a runtime failure, not a documentation nit.
 
-Settings sections per §18 — only General, Sticky Notes, and Planning here; Obsidian/AI/Voice sections are added by the PRs that introduce those subsystems.
+**What shipped:** the priority threshold (0–10), the week-start day, and launch-at-login. Nothing else. An out-of-range threshold is refused rather than clamped — a silently changed number is worse than a refused one, because the user typed something specific.
 
-Reminders: morning and evening notification at configurable times via `tauri-plugin-notification`, with Pause Reminders honored. Clicking a reminder opens the app — it does **not** auto-start a model.
+**DoD:** Settings persist across restart, and each one visibly changes behaviour: raising the threshold empties the Priority board of lower-priority work, and changing the week-start day shifts both weekly boards. **Met.** Rust 246 → 273 tests, frontend 432 → 452.
+**Test:** Rust tests on get/set with defaults, on rejection of an out-of-range threshold and an unknown week-start day, and on the validate-then-plugin-then-store ordering; Vitest on the panel and the store.
 
-**DoD:** Settings persist across restart. A reminder fires at the configured time. **This is a shippable non-AI desktop planner.**
-**Test:** Rust tests on settings get/set with defaults and on reminder scheduling arithmetic; Vitest on the settings forms.
-
-**After merge:** `git tag v0.1.0 && git push --tags`, and cut a GitHub release with the built `.msi`.
+**After merge:** no tag. `v0.1.0` is held — see Milestones. Everything the tag would have marked is on `main` and working; cutting it is a decision that can be made later, against any commit.
 
 ---
 
-# Wave 4 — Local LLM text standup (PR 23–28)
+# Wave 4 — Local LLM text standup (PR 39, 23–28)
 
 The standup runs on the app's own data. There is no vault at this point in the sequence and the wave does not need one — Waves 1 through 3 built monthly commitments, weekly milestones, named sections, priorities, due dates, rollover counts, and logged durations, all in SQLite and all more structured than the markdown the model was originally going to be handed.
 
+### - [x] PR 39 — Local model session & test chat
+**Branch:** `feat/local-model-chat` · shipped as GitHub PR #29
+**Depends on:** PR 18
+**What this gives the app:** A model that starts when you press start, answers one message, and stops — the smallest thing that proves the whole inference tier is real rather than planned.
+
+> **Why 39 and why first.** PR numbers here are identities, not positions: 39 was simply the next free number when this was written, and the Execution order table is what places it at the head of Wave 4. It is not a renumbering of anything and nothing after it moved.
+>
+> It merged the same day as PR 18 and immediately after it (#28 then #29 — see Build order), so the dependency below is both its place in the sequence and what actually happened.
+
+This was not in the sequence. The plan had PR 23 discovering hardware and PR 24 owning process lifecycle before a single token was generated, which meant every number in the Hardware Profiles table stayed a guess for two more PRs. Standing a bare `llama-server` up first replaced those guesses with measurements, and the measurements disagreed with the table. The three findings below are the actual deliverable of this PR; the Chat panel is how they were obtained.
+
+**Creates:** `src-tauri/src/inference/{mod,process,client}.rs`, `src-tauri/src/commands/inference.rs`, a Chat panel in the main window.
+
+`process.rs` spawns `llama-server` as a child process on a **random free localhost port**, allocated by binding `127.0.0.1:0` and reading back what the OS assigned rather than probing a range for one that looks free. It then health-polls `/health` until the model reports loaded. `client.rs` talks to `/v1/chat/completions`. Shutdown is idempotent: stopping a session that is already stopped is a no-op, not an error.
+
+`chat_start` and `chat_send` are **`async`**, because both block for seconds — a synchronous command handler would freeze the UI thread for the entire model load.
+
+**`reqwest` with `default-features = false, features = ["json"]`.** No TLS is compiled in and proxies are disabled: this client talks to a loopback address the app itself chose, and a HTTP client that *can* reach the internet in a process that must not is a capability with no upside. It was already in `Cargo.lock` via Tauri, so the dependency count did not move.
+
+**Measured on the dev machine (RTX 3070 Ti):** the model loads in a few seconds and answers in ~1.0s at 78 tok/s. VRAM across a full cycle: **1,486 → 4,484 → 1,484 MiB** — idle, loaded, and released. The tier really does give the memory back, which is the §26 promise PR 24 will have to keep under harder conditions.
+
+**Deliberately not included:** conversation history, board context, streaming, a model registry, an idle timeout. Paths to the model and the runtime are hard-coded to the app data dir. Those are PR 23's and PR 24's jobs and this PR does not pre-empt them; what it removes from them is uncertainty, not scope.
+
+#### Finding: Qwen3 is a hybrid thinking model, and this document never said so
+
+This is the finding that invalidates assumptions elsewhere in the plan. Qwen3 reasons before it answers, and llama.cpp surfaces that split in the response: the chain-of-thought goes to `choices[0].message.reasoning_content`, and **`content` stays empty until reasoning ends.** Same prompt, same model, same machine:
+
+| Reasoning mode | Time | Output | `finish_reason` |
+|---|---|---|---|
+| On (the default) | 13.9s | **`content` empty** | `"length"` — the entire token budget went on thinking |
+| `chat_template_kwargs: {"enable_thinking": false}` | **1.0s** | 81 tokens at 78 tok/s | `"stop"` |
+
+A 14× latency difference and, in the default configuration, **no answer at all**. Nothing in this plan's prompt, validation, or streaming design was written knowing that, so the mode has to be a deliberate per-call decision from here on rather than something inherited from whatever the template does by default. The consequences are recorded in PR 23, PR 26, and PR 27 rather than only here, because that is where they will bite.
+
+#### Finding: `llama-server.exe` is not a sidecar-shaped thing
+
+Recorded in full under PR 24, where the vendoring work lives. In short: the exe is a 9 KB launcher and the engine is ~30 DLLs beside it.
+
+#### Finding: orphan reaping shipped here, not in PR 24
+
+Also recorded under PR 24, which no longer claims to introduce it. The PID is written to `ui_state` under `inference.pid` **before** the health wait, cleared on clean stop and on failed start, and reaped at launch.
+
+**DoD:** Start the model from the Chat panel, send one message, get one reply, stop the model, and watch `nvidia-smi` return to its idle figure. Starting twice or stopping twice does neither harm nor error.
+**Test:** Rust — port allocation returns a bound-and-released port; shutdown is idempotent; the reaping helper's `tasklist` invocation is pinned by two tests (see the risks table).
+
+---
+
 ### - [ ] PR 23 — Model registry, hardware detection & download
 **Branch:** `feat/pr-23-model-registry`
-**Depends on:** PR 18
+**Depends on:** PR 39
 **What this gives the app:** The app works out what your computer can handle and downloads a language model that fits it.
 
-**Creates:** `src-tauri/src/inference/mod.rs`, `inference/registry.rs`, `inference/hardware.rs`, `inference/benchmark.rs`, `inference/download.rs`, `models/catalog.json`, `src/features/settings/sections/AI.tsx`.
+**Creates:** `src-tauri/src/inference/registry.rs`, `inference/hardware.rs`, `inference/benchmark.rs`, `inference/download.rs`, `models/catalog.json`, `src/features/settings/sections/AI.tsx`. **Modifies:** `src-tauri/src/inference/mod.rs` (created by PR 39).
 
 Detects CPU cores, total RAM, and GPU/VRAM, then recommends a profile from the Hardware Profiles table above.
 
 **VRAM detection must use DXGI's `DXGI_ADAPTER_DESC.DedicatedVideoMemory`, with `nvidia-smi` as a fallback. Do not use WMI** — `Win32_VideoController.AdapterRAM` is a 32-bit field and reports 4,095 MB for an 8 GB RTX 3070 Ti. Write the regression test against that exact case.
 
+**Detect free VRAM, not total, and select the profile from the free figure.** `DedicatedVideoMemory` answers "what does this card have", and the question that decides whether a session fits is "what is left". PR 39 measured 1,486 MiB already committed on the dev machine with the app not even running, and 1,502 MiB with the app running and no model — the desktop compositor plus the product's own WebView2 board windows, which §26 requires to stay open. An 8 GB card is a 6.5 GB card in practice. Read the free figure at selection time (`nvidia-smi --query-gpu=memory.free`, or `IDXGIAdapter3::QueryVideoMemoryInfo` for the DXGI path) and keep the total only as a label to show the user. This is what makes profile selection correct itself on hardware the Hardware Profiles table's author never saw, instead of applying a threshold that was written on one machine.
+
 Catalog lists GGUF models with size, license, min RAM, and min VRAM — a Qwen3 model is the suggested default (Apache 2.0), but the app must support **any** configured GGUF, never hard-code one.
 
 **Backend acquisition:** CPU and Vulkan llama.cpp backends ship with the installer; CUDA is an optional post-install download offered only when an NVIDIA GPU is detected. Backend binaries follow the same checksum-verified download path as models.
 
+**A "backend binary" is a directory, not a file.** `llama-server.exe` is a 9 KB launcher that loads ~30 DLLs sitting beside it, one of which (`ggml-vulkan.dll`) is 52 MB on its own — **95 MB across 52 files unpacked** for the Vulkan build. Every part of this PR that says "binary" means that whole directory: the checksum covers the archive, the download lands as a unit, and a partially-extracted directory must be discarded rather than repaired. PR 24 carries the packaging consequences.
+
+**The size split this plan never stated: engine ~95 MB ships in the installer, model ~2,382 MB is downloaded.** The model is 25× the engine. That ratio is the entire justification for this PR existing — if the numbers were reversed there would be no download manager, no resume, no catalog, and the installer would simply carry everything. State it in `models/catalog.json`'s documentation so the next person to propose "just bundle a default model" can see the arithmetic.
+
 **Empirical profile selection:** after detection, run a **20-token benchmark** against the recommended model and pick the final profile from measured tokens/sec rather than from spec-sheet heuristics. Heuristics mispredict constantly across laptop thermal profiles and driver versions; a five-second measurement does not. Cache the result so it runs once, not per session.
+
+**The benchmark must run with reasoning disabled** — `chat_template_kwargs: {"enable_thinking": false}`. Qwen3 thinks before it answers (PR 39), and a benchmark left on the default measures how long the model deliberates rather than how fast the machine generates. PR 39's own numbers show the trap: 13.9s with reasoning on and no answer at all, 1.0s at 78 tok/s with it off. A 20-token budget with reasoning on will be spent entirely inside `reasoning_content` and return `finish_reason: "length"`, which a naive harness would record as either a timeout or zero tokens/sec. Assert the flag in the benchmark's own test.
 
 Downloads with progress, resume, and **SHA-256 verification before the file is accepted**. Models land in the app data dir, never in the repo. `.gitignore` already excludes `/models`.
 
 **Interfaces produced:** `detect_hardware() -> HardwareProfile`, `benchmark(model, backend) -> TokensPerSecond`, `recommend_models(&HardwareProfile) -> Vec<ModelSpec>`, `download_model(spec, progress_cb) -> Result<PathBuf>`, `download_backend(kind) -> Result<PathBuf>`, `installed_models() -> Vec<InstalledModel>`.
 
-**DoD:** Hardware detected correctly on the dev machine (Ryzen 5 9600X / 32 GB / RTX 3070 Ti 8 GB → High Quality). A model downloads, verifies, and a corrupted download is rejected and deleted. The benchmark produces a stable tokens/sec figure across runs.
-**Test:** Rust tests with a local HTTP fixture server — checksum mismatch rejected, interrupted download resumes, disk-full path handled. A VRAM-detection test asserting an 8 GB card reports 8 GB and not 4,095 MB. A profile-selection test asserting a machine with 16 GB RAM and 8 GB VRAM qualifies for High Quality.
+**DoD:** Hardware detected correctly on the dev machine (Ryzen 5 9600X / 32 GB / RTX 3070 Ti 8 GB → **Balanced**, because ~6.5 GB free does not clear the raised 8B gate). A model downloads, verifies, and a corrupted download is rejected and deleted. The benchmark produces a stable tokens/sec figure across runs, with reasoning off.
+**Test:** Rust tests with a local HTTP fixture server — checksum mismatch rejected, interrupted download resumes, disk-full path handled. A VRAM-detection test asserting an 8 GB card reports 8 GB and not 4,095 MB. A free-versus-total test asserting the selector reads the free figure, so a card reporting 8 GB total with 1.5 GB already committed is treated as 6.5 GB. A profile-selection test asserting that card does **not** qualify for High Quality and that a 12 GB card does. A benchmark test asserting `enable_thinking: false` is sent and that an empty `content` with `finish_reason: "length"` is reported as a failed benchmark rather than as 0 tok/s.
 
 ---
 
@@ -725,25 +847,44 @@ Downloads with progress, resume, and **SHA-256 verification before the file is a
 
 **The single most important PR in the project.** §26 says the boards are always available but inference is always on demand — this is where that becomes true or doesn't.
 
-**Creates:** `src-tauri/src/inference/llama.rs`, `inference/process.rs`, `inference/health.rs`, `src-tauri/binaries/README.md` (how to vendor the sidecar binary).
+**Creates:** `src-tauri/src/inference/llama.rs`, `inference/health.rs`, `src-tauri/binaries/README.md` (how to vendor the sidecar). **Modifies:** `inference/process.rs`, `commands/inference.rs` (both from PR 39).
 
-Spawns `llama-server` as a Tauri sidecar on a **random free localhost port**, bound to `127.0.0.1` only, with `--host 127.0.0.1`. Waits for a health check before reporting ready. Terminates on session end, on idle timeout (default 5 min, configurable per §7.4), and on app quit. Detects and reaps orphaned processes from a previous crash by recording the PID in SQLite at spawn.
+**PR 39 already shipped the spine of this.** Spawning `llama-server` on a random free localhost port, health-polling before reporting ready, idempotent shutdown, and orphan reaping are on `main` and this PR extends them rather than writing them. What remains is everything that makes the lifecycle survive a bad machine rather than a good one: the idle timeout, GPU-offload fallback, the layer computation, and the error UI.
 
-**Backend selection and GPU offload:** picks the backend binary chosen in PR 23 and computes `--n-gpu-layers` from detected VRAM minus a safety margin, rather than hard-coding a layer count. If the GPU-offloaded spawn fails — driver mismatch, VRAM exhausted, another process holding memory — **fall back to the CPU backend automatically and tell the user what happened.** A failed offload must degrade to slow, never to broken.
+**Orphan reaping is done — do not rebuild it.** PR 39 writes the PID to `ui_state` under `inference.pid` **before** the health wait rather than after it, because the crash being guarded against is likeliest *during* load, when memory pressure peaks and the driver is most likely to take the process down. A PID recorded only after a successful start would miss exactly the case it exists for. The key is cleared on clean stop and on failed start, and reaped at launch.
 
-**Interfaces produced:**
+**Still owed by this PR:**
+
+| Owed | Why it is not done |
+|---|---|
+| **Idle timeout** (default 5 min, configurable per §7.4) | PR 39's session ends when the user presses stop. Nothing yet ends it when the user simply walks away, which is the §26 promise. |
+| **GPU-offload fallback to CPU** | PR 39 assumes the offload works. On a driver mismatch, exhausted VRAM, or another process holding memory it must degrade to slow, never to broken — and say so. |
+| **`--n-gpu-layers` computed from detected VRAM** | Hard-coded in PR 39. Compute it from PR 23's *free* VRAM figure minus a safety margin, not from the card's total. |
+| **§17.1 model-fails-to-start error UI** | PR 39 surfaces a start failure as a bare error string in the Chat panel. |
+
+Terminates on session end, on idle timeout, and on app quit.
+
+**Backend selection and GPU offload:** picks the backend directory chosen in PR 23 and computes `--n-gpu-layers` from **free** VRAM minus a safety margin, rather than hard-coding a layer count or reading the card's total. If the GPU-offloaded spawn fails — driver mismatch, VRAM exhausted, another process holding memory — **fall back to the CPU backend automatically and tell the user what happened.** A failed offload must degrade to slow, never to broken.
+
+**Vendoring is the hard part of this PR, and the plan had it as a footnote.** `llama-server.exe` is a **9 KB launcher**. The engine is ~30 DLLs sitting next to it, including a 52 MB `ggml-vulkan.dll` — **95 MB unpacked across 52 files** for the Vulkan build. Tauri's sidecar mechanism expects one self-contained executable named with the target triple suffix (`llama-server-x86_64-pc-windows-msvc.exe`), and renaming a launcher does not bring its DLLs along. So the whole directory must be shipped as a resource with the launcher pointed at from inside it, not registered as a sidecar and hoped for.
+
+What makes that workable is verified rather than assumed: **Windows resolves those DLLs from the exe's own directory, not from the working directory.** The app may therefore spawn `llama-server` from anywhere — the working directory does not have to be set to the engine folder — provided the directory itself is intact and co-located. A build step that flattens it, or an installer that drops files it judges redundant, breaks the engine in a way that only shows up at first inference.
+
+This is the single most likely thing to break the installer CI job, and it will break it silently: the build succeeds, the `.msi` is produced, and the failure appears when someone runs a session. `binaries/README.md` documents the fetch-and-extract step; add an installer test that asserts the file **count** and the presence of `ggml-vulkan.dll` in the bundled output, not merely that the exe exists — the exe existing is precisely the misleading signal, since it is the 9 KB part.
+
+**Interfaces produced** (`start`/`shutdown`/`reap_orphans` extend PR 39's implementations rather than introducing them):
 ```rust
 async fn start(model: &InstalledModel, cfg: &InferenceConfig) -> Result<LlamaSession>
 async fn LlamaSession::complete(&self, prompt: &str) -> Result<String>
 async fn LlamaSession::stream(&self, prompt: &str) -> impl Stream<Item = Result<String>>
 async fn LlamaSession::shutdown(self) -> Result<()>
-fn reap_orphans() -> Result<usize>
+fn reap_orphans() -> Result<usize>   // shipped in PR 39
 ```
 
 Also covers §17.1: if the model fails to start, show a clear error with diagnostic detail, offer a retry with a smaller model, leave all existing tasks intact, and keep manual sticky-note functionality fully working.
 
-**DoD:** Start a session → `llama-server` visible in Task Manager with memory allocated. Shut down → **process gone and both RAM and VRAM released, verified in Task Manager and `nvidia-smi`.** Kill the app mid-session → the orphan is reaped on next launch. Port is never a fixed number. A deliberately corrupted model path produces the error UI, not a hang or a crash. Forcing an impossible `--n-gpu-layers` falls back to CPU with a visible message.
-**Test:** Rust integration tests — spawn/shutdown round-trip, idle timeout fires, shutdown is idempotent, orphan reaping, GPU-offload failure falls back to CPU. Gate the tests that need a real model behind an env var so CI stays fast.
+**DoD:** Start a session → `llama-server` visible in Task Manager with memory allocated. Shut down → **process gone and both RAM and VRAM released, verified in Task Manager and `nvidia-smi`** (PR 39 measured 1,486 → 4,484 → 1,484 MiB across a cycle; this must still hold under the idle-timeout path, not only the manual stop). Kill the app mid-session → the orphan is **still** reaped on next launch, PR 39's behavior unregressed. Port is never a fixed number. A session left alone shuts down at the configured idle timeout. A deliberately corrupted model path produces the §17.1 error UI, not a hang or a crash. Forcing an impossible `--n-gpu-layers` falls back to CPU with a visible message. The bundled engine directory survives `tauri build` with every DLL present.
+**Test:** Rust integration tests — idle timeout fires, GPU-offload failure falls back to CPU, `--n-gpu-layers` is derived from the free-VRAM figure and not the total, spawn/shutdown and reaping regression tests inherited from PR 39 still pass. A packaging test over the built bundle asserting the engine directory's file count and `ggml-vulkan.dll`. Gate the tests that need a real model behind an env var so CI stays fast.
 
 ---
 
@@ -805,16 +946,22 @@ fn render_prompt(template, &SessionContext) -> String
 **Depends on:** PR 25
 **What this gives the app:** An actual standup conversation you can type. The app asks the questions, in order, and keeps control of the conversation.
 
-**Creates:** `src-tauri/src/session/mod.rs`, `session/state_machine.rs`, `src/features/standup/StandupWindow.tsx`, `standup/components/{MessageList,Composer,StageIndicator,ContextPanel}.tsx`.
+**Creates:** `src-tauri/src/session/mod.rs`, `session/state_machine.rs`, `src-tauri/src/reminders.rs`, `src/features/standup/StandupWindow.tsx`, `standup/components/{MessageList,Composer,StageIndicator,ContextPanel}.tsx`.
+
+**Reminders land here, having been cut from PR 18.** They were cut because a reminder's only job is to trigger a standup, and the standup did not exist — a notification pointing at a "(coming soon)" menu entry is exactly what this project refuses to ship. This is the first PR where there is something for a reminder to open, so it is where they belong: `tauri-plugin-notification`, §18's two reminder-time settings added to the settings table, and the tray's *Pause Reminders* re-enabled from the disabled "(coming soon)" state PR 18 left it in. Clicking a reminder opens the standup window; it does **not** auto-start a model, because §26's promise is that inference begins only when the user asks.
 
 Stages are driven by **Rust**, not the model: Context → Previous progress → Current priorities → Blockers → Capacity → Proposed commitments → Approval → Save & close. The model generates the language for each stage; it cannot skip, reorder, or invent stages.
 
 UI shows streaming responses, a stage indicator, the retrieved context with the board each item came from, and the §7.5 loading sequence ("Starting local assistant… Loading language model… Ready."). Showing the context is not decoration: a user who can see the six tasks the model was handed can tell the difference between a bad suggestion and a bad retrieval. Typed input only in this PR — voice arrives in Wave 5.
 
+**Reasoning mode is chosen per stage, deliberately, and never inherited.** Qwen3 thinks before answering and llama.cpp's default leaves that on (PR 39). Since Rust owns the stages, Rust owns the flag: each stage declares whether it is worth 10+ seconds of deliberation. Reading back what happened yesterday is not; weighing capacity against a proposed set of commitments might be. Make it a field on the stage definition, so the answer is visible in one table rather than distributed through prompt templates, and so a stage added later cannot acquire the default by omission.
+
+**The streaming UI must know `reasoning_content` exists.** A thinking model streams its chain-of-thought into a field this plan's design never mentions, and `content` stays empty until that finishes. Streamed naively, the user watches a spinner for ten to fourteen seconds and then receives the whole answer at once — which is worse than not streaming, because the interface promised progress and delivered none. Either render the reasoning stream as a visibly-labelled, collapsible "thinking" region, or disable reasoning for that stage. What is not acceptable is streaming a channel the UI silently drops.
+
 **Interfaces produced:** `start_session(kind) -> SessionId`, `send_message(session, text)`, `advance_stage(session)`, `end_session(session)` (which shuts down inference).
 
-**DoD:** A full typed standup runs end to end and the model process terminates when the window closes.
-**Test:** Rust tests on stage transitions incl. illegal transitions rejected; Vitest on the chat UI with a mocked stream.
+**DoD:** A full typed standup runs end to end and the model process terminates when the window closes. Every stage's reasoning setting is explicit. A stage with reasoning on shows the user something while the model is thinking rather than an unexplained pause.
+**Test:** Rust tests on stage transitions incl. illegal transitions rejected, and one asserting every stage declares a reasoning mode rather than defaulting; Vitest on the chat UI with a mocked stream, including a stream that emits only `reasoning_content` for its first N chunks and asserting the UI is not blank throughout.
 
 ---
 
@@ -831,12 +978,18 @@ The model returns the §11.5 JSON shape. Rust deserializes it with strict serde 
 
 **Every other adversarial check stands in full** — titles, horizon, `parentTaskId`, duplicates, path traversal. Those are the checks that hold regardless of where the model's context came from, and none of them is weakened by the vault's absence.
 
+**This PR is where the thinking-model finding is most dangerous, because it fails as silence rather than as bad JSON.** Every check described above assumes the model emits strict JSON into `content`. Qwen3 emits its reasoning into `reasoning_content` first and can exhaust `max_tokens` before writing a single character of the answer — PR 39 measured exactly that: 13.9s, empty `content`, `finish_reason: "length"`. Three things follow, and none of them is optional:
+
+- **Run structured-output requests with reasoning off** (`chat_template_kwargs: {"enable_thinking": false}`). The value of this call is a conforming envelope, not a considered one, and the token budget is better spent on fields than on deliberation.
+- **An empty `content` is a failure, not an empty result.** A validator that deserializes `""` into "zero proposals" reports a successful standup that proposed nothing, which is indistinguishable to the user from the model deciding they have nothing to do. Check `finish_reason` too: `"length"` with empty content means truncated-while-thinking and must be surfaced as that, not as a parse error, because the fix is a different one.
+- **The repair round-trip must not be spent re-thinking.** There is exactly one retry, and if reasoning is left on the model may spend all of it deliberating and return empty a second time — burning the only repair on nothing. Force reasoning off on the repair call regardless of what the first call used.
+
 Invalid output triggers **one** repair round-trip with the validation errors appended to the prompt; a second failure surfaces an error rather than guessing.
 
 Approval UI: every proposed task can be individually approved, edited, or rejected. Nothing is written to SQLite until approval. Approved tasks become real tasks and the boards refresh.
 
-**DoD:** A standup produces a plan you approve, and those tasks appear on the boards. **Deliberately malformed model JSON never reaches the database.**
-**Test:** Rust tests feeding adversarial payloads — missing fields, wrong types, path traversal (`../../etc/passwd`), a parent ID that doesn't exist, a duplicate proposal, 10,000-character titles. Each must be rejected. Plus one test asserting a proposal carrying a `sourceFile` is accepted and that the value is never resolved to a filesystem path — the Wave 7 PR that adds the vault checks inherits this test file and turns that case into a rejection.
+**DoD:** A standup produces a plan you approve, and those tasks appear on the boards. **Deliberately malformed model JSON never reaches the database.** A response whose `content` is empty is reported to the user as a failed generation, never as a plan with nothing in it.
+**Test:** Rust tests feeding adversarial payloads — missing fields, wrong types, path traversal (`../../etc/passwd`), a parent ID that doesn't exist, a duplicate proposal, 10,000-character titles. Each must be rejected. Plus: a response with empty `content` and a populated `reasoning_content` is a validation failure, not zero proposals; a response with empty `content` and `finish_reason: "length"` reports truncated-while-thinking specifically; and the repair call is asserted to send `enable_thinking: false`. Plus one test asserting a proposal carrying a `sourceFile` is accepted and that the value is never resolved to a filesystem path — the Wave 7 PR that adds the vault checks inherits this test file and turns that case into a rejection.
 
 ---
 
@@ -904,7 +1057,7 @@ This works with a weak model because it is only JSON output — not a protocol t
 
 Runs whisper.cpp on the captured buffer, resampling to 16kHz mono. Whisper model selection (tiny/base/small) follows the hardware profile from PR 23. Loaded on session start, unloaded on session end alongside the LLM.
 
-**On cards with ≤8 GB VRAM, run Whisper on CPU.** The LLM plus KV cache already takes ~6 GB of 8 GB at the High Quality profile, and Whisper base transcribes 10s of audio on CPU in 1–2s. Make this the automatic default when detected VRAM headroom is under 2 GB.
+**On cards with ≤8 GB VRAM, run Whisper on CPU.** Such a card has ~6.5 GB free once the app's own board windows are accounted for, and the LLM plus KV cache claims most of it; Whisper base transcribes 10s of audio on CPU in 1–2s. Make this the automatic default when **free** VRAM headroom after the LLM is under 2 GB — headroom measured, per PR 23, rather than inferred from the card's total.
 
 **Fallback is mandatory:** if transcription fails or no mic exists, the composer stays fully usable for typing. §17.2 — voice enhances the product, it must never be required.
 
@@ -1177,9 +1330,12 @@ Write this wave's PR sequence after the RC, not before.
 |---|---|---|
 | Sidecar binaries bloat the repo | PR 23, 30, 31 | Never commit binaries. Vendor at build time via a script; document in `binaries/README.md`. |
 | Windows Smart App Control blocks unsigned sidecars | PR 23, 30, 31 | **Confirmed real on 2026-08-20:** Smart App Control blocked `rustdoc.exe`, `rustfmt.exe`, and cargo build scripts on the dev machine, failing release builds outright. It judges on *reputation*, not signatures, so freshly-built zero-reputation binaries are exactly what it rejects — the same profile as a bundled `llama.cpp`, `whisper.cpp`, or Sherpa-ONNX sidecar. It ships enabled by default on many Windows 11 installs and has **no allowlist**; disabling it is irreversible without a system reset, so "turn off your security feature" is not an acceptable install step. Treat code-signing the sidecars as a shipping requirement, not a nice-to-have, and detect-and-explain the failure rather than letting a session hang. |
-| Model process leaks memory between sessions | PR 24 | Task Manager **and `nvidia-smi`** check is part of PR 24's DoD, repeated at every later voice/session PR. |
+| Model process leaks memory between sessions | PR 24, 39 | Task Manager **and `nvidia-smi`** check is part of PR 24's DoD, repeated at every later voice/session PR. PR 39 measured a clean cycle (1,486 → 4,484 → 1,484 MiB); the check is that it stays clean under the idle-timeout and crash paths, not only the manual stop. |
+| Orphan reaping dies silently | PR 24, 39 | **Already bitten.** PR 39's first reaping implementation passed `/NOTITLEINFO` to `tasklist`. **That flag does not exist** — `tasklist` prints its usage text and exits 1, the helper reads the failure as "no such process" and returns `None`, and reaping is dead. There is no symptom: nothing logs, nothing fails, and everything looks correct right up until a crash strands a model holding several GB of VRAM and the next launch declines to notice. Two tests now pin the invocation. The general lesson is that a helper whose failure mode is `None` needs a test that distinguishes "the tool said no" from "the tool did not run", because a shell-out that never succeeded is indistinguishable from a clean machine. |
+| The sidecar is a directory, not a binary | PR 24, 23 | `llama-server.exe` is a 9 KB launcher over ~30 DLLs, 95 MB across 52 files. Tauri sidecars expect one self-contained file. Ship the directory as a resource and assert the bundled **file count** plus `ggml-vulkan.dll` in the installer job — asserting the exe exists is the misleading check, because the exe is the 9 KB part. Windows resolves the DLLs from the exe's own directory, so spawning from any working directory is fine as long as the directory is intact. |
+| A thinking model returns nothing and it reads as success | PR 23, 26, 27 | Qwen3 routes chain-of-thought to `reasoning_content` and leaves `content` empty until it finishes, and can spend the whole token budget there — measured at 13.9s with no answer versus 1.0s with `enable_thinking: false`. Choose the mode explicitly per call, treat empty `content` as a failure rather than an empty result, and never let a benchmark or a repair round-trip run with reasoning on. |
 | Excluded folders leak into a prompt | PR 19, 20, 21, 25 | Exclusion is one function (`is_indexable`) called by every Obsidian path, and the map's vault tier is built from indexed notes only, so an excluded folder is absent by construction rather than filtered after the fact. Wave 7 adds the decoy-content test — an excluded folder filled with distinctive strings, asserted absent from the rendered prompt — and restores the excluded-path refusal in `needs_context`. **This risk does not exist before Wave 7**, which is the one genuine safety benefit of the resequencing: the AI subsystem is fully exercised before it is ever pointed at private files. |
-| VRAM misdetected, wrong profile chosen | PR 23 | Use DXGI/`nvidia-smi`, never WMI `AdapterRAM`. Regression test pinned to the 8 GB-reports-as-4,095 MB case, plus an empirical benchmark that overrides the heuristic. |
+| VRAM misdetected, wrong profile chosen | PR 23 | Use DXGI/`nvidia-smi`, never WMI `AdapterRAM`. Regression test pinned to the 8 GB-reports-as-4,095 MB case, plus an empirical benchmark that overrides the heuristic. **Measure free VRAM, not total** — the app's own board windows hold ~1.5 GB before any model loads, so an 8 GB card is a 6.5 GB card, and a threshold applied to the total picks a profile that will not fit. |
 | Context expansion spirals into latency | PR 28 | Hard cap of 2 rounds and 3 items per round, enforced in Rust, not requested of the model. |
 | Context map grows past its budget | PR 25 | Capped by token count *and* node count; overflow drops the lowest-ranked sections first, with a test. The cap has to hold for a large task tree in Wave 4 and again for a large vault in Wave 7 — same budget, two populations. |
 | Window management fights the OS | PR 9, 16, 17a | Keep behaviors in `behaviors.rs` behind a trait so platform quirks stay isolated in Wave 9. **Already bitten once:** PR 17a found board creation off the main thread producing blank windows, and a close path that handled three of four dismissal routes. Route every open and close through one dispatcher. |
