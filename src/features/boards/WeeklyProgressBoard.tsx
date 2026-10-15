@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DaySection } from "@/features/boards/components/DaySection";
 import { TaskRow } from "@/features/boards/components/TaskRow";
 import { bucketByDay } from "@/features/boards/daySummary";
-import { WeekNav } from "@/features/boards/components/WeekNav";
+import { WeekNav, type DayMark } from "@/features/boards/components/WeekNav";
 import { currentWeek, getUiState, setUiState, toCommandError } from "@/lib/ipc";
 import { onTaskChanged } from "@/lib/taskEvents";
 import { useTaskStore } from "@/stores/taskStore";
@@ -121,6 +121,17 @@ export function WeeklyProgressBoard() {
     [week, tasks],
   );
 
+  // The strip's dots: a day with tasks is "open" until every one is done.
+  const marks = useMemo(() => {
+    const found: Record<string, DayMark> = {};
+    for (const day of days) {
+      if (day.totals.total > 0) {
+        found[day.date] = day.totals.completed >= day.totals.total ? "done" : "open";
+      }
+    }
+    return found;
+  }, [days]);
+
   function toggle(date: string, open: boolean) {
     const next = new Set(expanded ?? []);
     if (open) next.add(date);
@@ -146,7 +157,25 @@ export function WeeklyProgressBoard() {
         </p>
       )}
 
-      {week && <WeekNav week={week} offset={offset} onOffset={setOffset} />}
+      {week && (
+        <WeekNav
+          week={week}
+          offset={offset}
+          onOffset={setOffset}
+          marks={marks}
+          onDay={(date) => {
+            toggle(date, true);
+            // After the day has opened, bring it into view: on a short board
+            // the day picked in the strip may be below the fold.
+            requestAnimationFrame(() => {
+              document
+                .getElementById(`day-${date}`)
+                ?.closest(".day-section")
+                ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            });
+          }}
+        />
+      )}
 
       {days.map((day) => (
         <DaySection

@@ -941,38 +941,46 @@ body.board-window {
 /* The week a board is showing. Always visible: a week board without its week
    is ambiguous the moment you look away from it. */
 /* ---- Week header -------------------------------------------------------
-   Which week, in words, then its dates; the paging controls grouped on the
-   right as one small segmented control, so they read as one tool and not
-   three stray glyphs. */
+   The week as a card in the board's colour: a heading in words, the dates,
+   and a strip of the seven days the way a calendar shows "this week". It is
+   the one tinted card on a week board, so it reads as the board's anchor
+   rather than as another group of tasks. */
 
 .week-nav {
+  margin: 0 0 var(--space-6);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--board-accent) 24%, transparent);
+  border-radius: calc(var(--radius-card) + 2px);
+  background: color-mix(in srgb, var(--board-accent) 9%, var(--surface-raised));
+}
+
+.week-nav-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: 0 0 var(--space-4);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-  border-radius: var(--radius-card);
-  background: var(--surface-raised);
 }
 
 .week-nav-label {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: calc(var(--space-1) * 0.5);
+  gap: calc(var(--space-1) * 0.75);
+  padding-left: var(--space-1);
 }
 
 .week-nav-relative {
-  font-size: var(--font-size-small);
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: var(--line-height-tight);
   color: var(--text-primary);
 }
 
-/* Away from the current week, the label takes the board's colour: a quiet
-   reminder that this is not now, without a banner saying so. */
-.week-nav-relative[data-current="false"] {
+/* Away from the current week, the heading takes the board's colour: a
+   quiet reminder that this is not now, without a banner saying so. */
+.week-nav[data-current="false"] .week-nav-relative {
   color: var(--board-accent);
 }
 
@@ -990,17 +998,20 @@ body.board-window {
 .week-nav-number {
   padding: 0.05em 0.5em;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-  color: var(--text-dim);
+  background: color-mix(in srgb, var(--board-accent) 16%, transparent);
+  color: var(--board-accent);
+  font-weight: 600;
 }
 
+/* Previous, Today, next as one segmented control, so they read as one tool
+   and not three stray glyphs. */
 .week-nav-controls {
   display: flex;
   flex: none;
   gap: 2px;
   padding: 2px;
   border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
 }
 
 .week-nav-step,
@@ -1024,7 +1035,7 @@ body.board-window {
 }
 
 .week-nav-today {
-  padding: 0 0.55em;
+  padding: 0 0.6em;
   font-size: var(--font-size-label);
   font-weight: 600;
 }
@@ -1036,7 +1047,13 @@ body.board-window {
 }
 
 .week-nav-today:not(:disabled) {
-  color: var(--board-accent);
+  background: var(--board-accent);
+  color: var(--surface-base);
+}
+
+.week-nav-today:not(:disabled):hover {
+  background: color-mix(in srgb, var(--board-accent) 85%, white);
+  color: var(--surface-base);
 }
 
 .week-nav-today:disabled {
@@ -1048,6 +1065,109 @@ body.board-window {
 .week-nav-today:focus-visible {
   outline: 2px solid var(--board-accent);
   outline-offset: 1px;
+}
+
+/* ---- Day strip ---------------------------------------------------------- */
+
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--board-accent) 16%, transparent);
+  list-style: none;
+}
+
+.week-strip-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space-1) * 0.75);
+  width: 100%;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: default;
+  transition: background var(--transition-fast);
+}
+
+button.week-strip-day {
+  cursor: pointer;
+}
+
+button.week-strip-day:hover {
+  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+button.week-strip-day:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: -1px;
+}
+
+.week-strip-name {
+  font-size: calc(var(--board-font-size) * 0.8);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.week-strip-date {
+  display: grid;
+  place-items: center;
+  width: calc(var(--board-font-size) * 2);
+  height: calc(var(--board-font-size) * 2);
+  border-radius: 50%;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+/* Days already gone recede; the week ahead stays bright. */
+.week-strip-day[data-past="true"] .week-strip-date {
+  color: var(--text-secondary);
+}
+
+.week-strip-day[data-weekend="true"] .week-strip-name {
+  color: color-mix(in srgb, var(--text-dim) 70%, transparent);
+}
+
+/* Today: a filled circle in the board's colour, the first thing the eye
+   finds in the card. */
+.week-strip-day[data-today="true"] .week-strip-name {
+  color: var(--board-accent);
+}
+
+.week-strip-day[data-today="true"] .week-strip-date {
+  background: var(--board-accent);
+  color: var(--surface-base);
+  box-shadow: 0 0 0 calc(var(--board-font-size) * 0.22)
+    color-mix(in srgb, var(--board-accent) 22%, transparent);
+}
+
+/* The dot under a day: grey while work is left, green once it is all done,
+   nothing on a day with no tasks. Solid in both cases: a ring this small
+   reads as the letter "o". Space is held either way, so the
+   dates never jump. */
+.week-strip-mark {
+  width: calc(var(--board-font-size) * 0.42);
+  height: calc(var(--board-font-size) * 0.42);
+  border-radius: 50%;
+}
+
+.week-strip-mark[data-mark="open"] {
+  background: var(--text-dim);
+}
+
+.week-strip-mark[data-mark="done"] {
+  background: var(--status-complete);
 }
 
 /* Sits directly under the title, as the title's second line, with no rule

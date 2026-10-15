@@ -69,6 +69,15 @@ function task(overrides: Partial<Task> = {}): Task {
 }
 
 /** Answers each command by name; `saved` is the stored expansion, if any. */
+/**
+ * A day panel's toggle, by day name. The week strip above has a button per
+ * day too ("Monday 17, all done"), so a bare /Monday/ would match both; a
+ * panel's name is the day followed by its summary, never by a bare date.
+ */
+function panel(day: string): RegExp {
+  return new RegExp(`^${day}(?! [0-9]+(,|$))`);
+}
+
 function respond(
   tasks: Task[] = [],
   saved: string | null = null,
@@ -108,7 +117,7 @@ describe("WeeklyProgressBoard", () => {
       "Sunday",
     ]) {
       expect(
-        await screen.findByRole("button", { name: new RegExp(name) }),
+        await screen.findByRole("button", { name: panel(name) }),
       ).toBeInTheDocument();
     }
   });
@@ -157,9 +166,9 @@ describe("WeeklyProgressBoard", () => {
 
     render(<WeeklyProgressBoard />);
 
-    const tuesday = await screen.findByRole("button", { name: /Tuesday/ });
+    const tuesday = await screen.findByRole("button", { name: panel("Tuesday") });
     expect(tuesday).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: /Monday/ })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: panel("Monday") })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
@@ -169,9 +178,9 @@ describe("WeeklyProgressBoard", () => {
     respond([], null, "2026-08-20");
 
     const { container } = render(<WeeklyProgressBoard />);
-    await screen.findByRole("button", { name: /Thursday/ });
+    await screen.findByRole("button", { name: panel("Thursday") });
 
-    const today = container.querySelectorAll('[data-today="true"]');
+    const today = container.querySelectorAll('.day-section[data-today="true"]');
     expect(today).toHaveLength(1);
   });
 
@@ -181,7 +190,7 @@ describe("WeeklyProgressBoard", () => {
     render(<WeeklyProgressBoard />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Friday/ })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: panel("Friday") })).toHaveAttribute(
         "aria-expanded",
         "true",
       );
@@ -196,7 +205,7 @@ describe("WeeklyProgressBoard", () => {
     render(<WeeklyProgressBoard />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Tuesday/ })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: panel("Tuesday") })).toHaveAttribute(
         "aria-expanded",
         "false",
       );
@@ -207,9 +216,9 @@ describe("WeeklyProgressBoard", () => {
     const user = userEvent.setup();
     respond([], JSON.stringify([]));
     render(<WeeklyProgressBoard />);
-    await screen.findByRole("button", { name: /Monday/ });
+    await screen.findByRole("button", { name: panel("Monday") });
 
-    await user.click(screen.getByRole("button", { name: /Monday/ }));
+    await user.click(screen.getByRole("button", { name: panel("Monday") }));
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith("ui_state_set", {
@@ -256,7 +265,7 @@ describe("WeeklyProgressBoard", () => {
     mockOnTaskChanged.mockResolvedValue(stop);
     respond();
     const { unmount } = render(<WeeklyProgressBoard />);
-    await screen.findByRole("button", { name: /Monday/ });
+    await screen.findByRole("button", { name: panel("Monday") });
 
     unmount();
 
@@ -339,5 +348,39 @@ describe("WeeklyProgressBoard paging", () => {
         end: "2026-08-16",
       });
     });
+  });
+});
+
+describe("WeeklyProgressBoard day strip", () => {
+  it("marks the days that have work in the strip", async () => {
+    respond([
+      task({
+        id: "a",
+        title: "done thing",
+        scheduledDate: "2026-08-17",
+        status: "completed",
+      }),
+      task({ id: "b", title: "open thing", scheduledDate: "2026-08-19" }),
+    ]);
+
+    render(<WeeklyProgressBoard />);
+
+    expect(await screen.findByLabelText(/Monday 17, all done/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Wednesday 19, tasks left/)).toBeInTheDocument();
+  });
+
+  it("opens a day when it is picked in the strip", async () => {
+    const user = userEvent.setup();
+    respond(
+      [task({ id: "b", title: "thursday errand", scheduledDate: "2026-08-20" })],
+      "[]",
+    );
+    render(<WeeklyProgressBoard />);
+    await screen.findByText("This week");
+    expect(screen.queryByText("thursday errand")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Thursday 20/ }));
+
+    expect(await screen.findByText("thursday errand")).toBeInTheDocument();
   });
 });

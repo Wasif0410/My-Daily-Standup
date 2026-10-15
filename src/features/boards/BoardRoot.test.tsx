@@ -60,7 +60,13 @@ describe("BoardRoot board content", () => {
   it("puts the weekly board in the weekly-tasks window", async () => {
     mockInvoke.mockImplementation((command: string) => {
       if (command === "week_current")
-        return Promise.resolve({ start: "2026-08-17", end: "2026-08-23" });
+        return Promise.resolve({
+          start: "2026-08-17",
+          end: "2026-08-23",
+          label: "2026-W34",
+          today: "2026-08-18",
+          days: [],
+        });
       return Promise.resolve([]);
     });
 
@@ -95,7 +101,11 @@ describe("BoardRoot progress window", () => {
 
     render(<BoardRoot kind="weekly-progress" />);
 
-    expect(await screen.findByRole("button", { name: /Monday/ })).toBeInTheDocument();
+    // The day panel, not the strip above it ("Monday 17"), which also names
+    // the day.
+    expect(
+      await screen.findByRole("button", { name: /^Monday(?! [0-9]+(,|$))/ }),
+    ).toBeInTheDocument();
   });
 });
 
