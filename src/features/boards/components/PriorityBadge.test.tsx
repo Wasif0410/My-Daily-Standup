@@ -4,16 +4,38 @@ import userEvent from "@testing-library/user-event";
 import { PriorityBadge } from "@/features/boards/components/PriorityBadge";
 
 describe("PriorityBadge", () => {
-  it("shows the number, never colour alone", () => {
+  it("shows priority as a colour, with no number on the row", () => {
+    // A row reads at a glance: red is urgent, amber is medium, grey is low.
+    // The exact level is in the picker, where it is chosen.
     render(<PriorityBadge priority={8} />);
 
-    expect(screen.getByText("P8")).toBeInTheDocument();
+    const badge = screen.getByLabelText("Priority 8");
+    expect(badge).toHaveAttribute("data-tier", "high");
+    expect(badge).toHaveTextContent("");
   });
 
-  it("shows a dash for unprioritised work", () => {
+  it("grades the colour into urgent, medium and low", () => {
+    const { rerender } = render(<PriorityBadge priority={5} />);
+    expect(screen.getByLabelText("Priority 5")).toHaveAttribute("data-tier", "medium");
+
+    rerender(<PriorityBadge priority={2} />);
+    expect(screen.getByLabelText("Priority 2")).toHaveAttribute("data-tier", "low");
+  });
+
+  it("names the level in a tooltip, so colour is never the only way to tell", () => {
+    // Hue is lost to colour-blind users and to a board at low opacity, so
+    // pointing at the dot says what it means.
+    render(<PriorityBadge priority={9} />);
+
+    expect(screen.getByLabelText("Priority 9")).toHaveAttribute("title", "Urgent · P9");
+  });
+
+  it("marks unprioritised work as having no level", () => {
     render(<PriorityBadge priority={null} />);
 
-    expect(screen.getByText("—")).toBeInTheDocument();
+    const badge = screen.getByLabelText("No priority");
+    expect(badge).toHaveAttribute("data-tier", "none");
+    expect(badge).toHaveAttribute("title", "No priority");
   });
 
   it("stays inert when no change handler is given", () => {

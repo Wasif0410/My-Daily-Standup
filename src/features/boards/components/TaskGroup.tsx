@@ -92,7 +92,7 @@ export function TaskGroup({
           aria-label={`${collapsed ? "Expand" : "Collapse"} ${label}`}
           onClick={() => onToggle?.(!collapsed)}
         >
-          <span aria-hidden="true">{collapsed ? "›" : "⌄"}</span>
+          <span aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
         </button>
 
         {editing ? (

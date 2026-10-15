@@ -214,7 +214,7 @@ describe("MonthlyBoard", () => {
 
     render(<MonthlyBoard />);
 
-    expect(await screen.findByText(/no commitments this month/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no goals for this month yet/i)).toBeInTheDocument();
   });
 
   it("refetches when another window announces a change", async () => {

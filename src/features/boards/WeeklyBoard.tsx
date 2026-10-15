@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AddTaskHere } from "@/features/boards/components/AddTaskHere";
+import { BoardEmpty } from "@/features/boards/components/BoardEmpty";
 import { TaskContextMenu } from "@/features/boards/components/TaskContextMenu";
 import { TaskGroup } from "@/features/boards/components/TaskGroup";
 import { TaskRow } from "@/features/boards/components/TaskRow";
@@ -191,7 +192,16 @@ export function WeeklyBoard() {
       {week && <p className="board-week">{formatWeek(week)}</p>}
 
       {groups.length === 0 ? (
-        <p className="board-empty">Nothing planned this week.</p>
+        <BoardEmpty
+          title="Plan your week"
+          hint="Add what you want to get done this week. Name a section to group related tasks."
+        >
+          <AddTaskHere
+            label={UNSORTED_PROJECT}
+            text="Add a task"
+            onAdd={(title) => addToGroup(UNSORTED_PROJECT, title)}
+          />
+        </BoardEmpty>
       ) : (
         groups.map((group) => (
           <TaskGroup

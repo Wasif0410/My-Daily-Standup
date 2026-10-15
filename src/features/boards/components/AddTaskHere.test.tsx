@@ -110,3 +110,24 @@ describe("AddTaskHere", () => {
     expect(onAdd).toHaveBeenCalledWith("a thing");
   });
 });
+
+describe("AddTaskHere with visible text", () => {
+  it("shows its words when given text, for a board with nothing to hover", () => {
+    // On an empty board there is no heading to hover and nothing to discover a
+    // bare "+" by. The way in has to say what it does.
+    render(<AddTaskHere label="Unsorted" text="Add a task" onAdd={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Add a task" })).toBeVisible();
+  });
+
+  it("opens the same field and adds to the same group", async () => {
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    render(<AddTaskHere label="Unsorted" text="Add a task" onAdd={onAdd} />);
+
+    await user.click(screen.getByRole("button", { name: "Add a task" }));
+    await user.keyboard("Call the clinic{Enter}");
+
+    expect(onAdd).toHaveBeenCalledWith("Call the clinic");
+  });
+});

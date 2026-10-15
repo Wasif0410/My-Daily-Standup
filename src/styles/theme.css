@@ -19,7 +19,9 @@ body.board-window {
   display: flex;
   flex-direction: column;
   height: 100%;
+  font-family: var(--font-ui);
   font-size: var(--board-font-size);
+  line-height: var(--line-height-body);
   color: var(--text-primary);
   background: color-mix(
     in srgb,
@@ -41,12 +43,14 @@ body.board-window {
 
 /* ---- Header ------------------------------------------------------------ */
 
+/* No rule under the header. The title, the period line and the first group
+   read as one column; a hairline across the top cut the board into a title
+   bar and a document, which is the look of a dialog, not a note. */
 .board-header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-3) var(--space-3) var(--space-1) var(--space-4);
   /* The whole header is the drag handle: a frameless window has no OS title
      bar to grab. */
   cursor: grab;
@@ -63,8 +67,12 @@ body.board-window {
 .board-title {
   flex: 1;
   margin: 0;
+  font-family: var(--font-display);
   font-size: var(--font-size-title);
-  font-weight: 600;
+  font-weight: 700;
+  /* Display sizes look loose at default tracking; a hair tighter holds the
+     word together as a name rather than a sentence. */
+  letter-spacing: -0.01em;
   line-height: var(--line-height-tight);
   color: var(--board-accent);
   white-space: nowrap;
@@ -75,9 +83,9 @@ body.board-window {
 /* A subtitle carries the period, e.g. "2026-W34". Secondary to the title but
    always visible, since a week board without its week is ambiguous. */
 .board-subtitle {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: var(--font-size-label);
-  color: var(--text-dim);
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -101,8 +109,8 @@ body.board-window {
 .board-action {
   display: grid;
   place-items: center;
-  width: 1.4rem;
-  height: 1.4rem;
+  width: calc(var(--board-font-size) * 1.75);
+  height: calc(var(--board-font-size) * 1.75);
   padding: 0;
   border: 0;
   border-radius: var(--radius-control);
@@ -132,7 +140,7 @@ body.board-window {
 
 .board-body {
   flex: 1;
-  padding: var(--space-3);
+  padding: var(--space-1) var(--space-3) var(--space-4);
   overflow-y: auto;
   overscroll-behavior: contain;
   /* Task rows shed their duration below a certain width. A container query
@@ -162,16 +170,24 @@ body.board-window {
 /* ---- Sections ---------------------------------------------------------- */
 
 .board-section + .board-section {
-  margin-top: var(--space-6);
+  margin-top: var(--space-4);
 }
 
-/* A group heading — "Job Search", "Health". These were --text-dim at label
-   size, which is the treatment for figures the eye should skip, and they were
-   the one thing on the board actually organising it. Size, weight and letter
-   spacing carry the hierarchy on their own; the colour stops short of primary
-   so a heading never outweighs the tasks beneath it. No rule and no accent —
-   colour on a board this narrow is spent on the four window identities and on
-   status, and a heading is neither. */
+/* A group's rows sit on a panel one step lighter than the board. The panel,
+   not a rule under the heading, is what says "these belong together": layers
+   rather than lines, the way Windows 11 separates content from its frame. */
+.board-section > .task-list-plain {
+  padding: var(--space-1);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+}
+
+/* A group heading: "Job Search", "Health". Shown as the user typed it, in
+   sentence case. Tracked-out capitals read as a caption in a code editor, and
+   they flatten names into the same shape. Larger and heavier than a task, in
+   full-strength text, so the group reads as the owner of the rows under it.
+   No accent: colour on a board this narrow is spent on the four window
+   identities and on status, and a heading is neither. */
 .board-section-title {
   /* Takes the free width so the count is pushed to the board's edge. Without
      this it is only as wide as its own words, which left the figure floating
@@ -181,30 +197,22 @@ body.board-window {
   margin: 0;
   font-size: var(--font-size-heading);
   font-weight: 600;
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* The heading and whatever acts on the group, on one line. The heading keeps
-   its own bottom margin when it stands alone elsewhere, so the row takes it
-   over rather than leaving the button hanging above the baseline. */
-/* The heading row carries its own divider rather than the gap between two
-   groups carrying it. A rule under the words reads as "this heading owns what
-   follows"; a rule between groups reads as a boundary, which at this density
-   looked like the end of the board. */
+/* The heading and whatever acts on the group, on one line, sitting just above
+   the group's panel. No divider: the panel below already closes the heading. */
 .board-section-header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  /* A heading needs air under it before its first row, or the rule reads as
-     underlining the task rather than closing the title. */
-  margin: 0 0 var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--border-subtle);
+  min-height: calc(var(--board-font-size) * 2);
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-1);
 }
 
 /* Sized in ch so it holds its column as the board font scales, and never
@@ -239,28 +247,41 @@ body.board-window {
   flex: none;
   min-width: 2ch;
   text-align: right;
-  font-family: var(--font-mono);
   font-size: var(--font-size-label);
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
 }
 
-/* Adding stays out of the way until the pointer is on the group it belongs to,
-   the same rule the window controls follow. Held in the layout, so revealing
-   it never shifts the heading beside it. */
+/* Group controls. Deleting a group stays hidden until the pointer is on it,
+   so it is never hit by accident. Held in the layout, so revealing it never
+   shifts the heading beside it. */
 .board-section-action {
+  display: grid;
   flex: none;
-  padding: 0 var(--space-1);
+  place-items: center;
+  width: calc(var(--board-font-size) * 1.6);
+  height: calc(var(--board-font-size) * 1.6);
+  padding: 0;
   border: 0;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--text-dim);
   font: inherit;
+  font-size: var(--font-size-body);
   line-height: 1;
   cursor: pointer;
   opacity: 0;
   transition:
     opacity var(--transition-fast),
-    color var(--transition-fast);
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+/* Adding is always on screen, faintly. A "+" that only appeared on hover was
+   invisible to anyone who did not already know to look for it, and adding a
+   task is the thing a new board is for. */
+.board-section-add-button {
+  opacity: 0.55;
 }
 
 .board-section:hover .board-section-action,
@@ -270,6 +291,12 @@ body.board-window {
 
 .board-section-action:hover {
   color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.board-section-action:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
 }
 
 /* Entry reads as text, not as a box. A bordered input inside a group inside a
@@ -308,19 +335,69 @@ body.board-window {
   border-bottom-color: transparent;
   font-size: var(--font-size-heading);
   font-weight: 600;
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
-.board-section-new::placeholder {
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-label);
-}
-
+/* Secondary rather than dim: an empty board is the first thing a new user
+   reads, and it should be as easy to read as a task. */
 .board-empty {
-  color: var(--text-dim);
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  color: var(--text-secondary);
   font-size: var(--font-size-small);
+  line-height: var(--line-height-body);
+}
+
+.board-empty-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-heading);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+}
+
+.board-empty-hint {
+  margin: 0;
+}
+
+.board-empty-action {
+  margin-top: var(--space-3);
+}
+
+/* The one filled button on a board, because on an empty board it is the only
+   thing to do. Tinted with the board's accent rather than solid, so it reads
+   as part of this board and not as an alert. */
+.board-add-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--board-accent) 16%, transparent);
+  color: var(--board-accent);
+  font: inherit;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.board-add-button:hover {
+  background: color-mix(in srgb, var(--board-accent) 26%, transparent);
+}
+
+.board-add-button:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 2px;
+}
+
+/* The add field, opened from an empty board, gets a line to type on. */
+.board-empty-action .board-section-add {
+  padding: var(--space-1) 0;
+  border-bottom-color: var(--board-accent);
 }
 
 /* A board-local failure. Small and inline: a sticky note has no room for a
@@ -336,26 +413,55 @@ body.board-window {
    row is built to degrade in a fixed order: the duration collapses first, and
    the title truncates only after that. */
 
+/* Priority as a coloured dot at the end of the row: red urgent, amber medium,
+   grey low. The element is a comfortable target and the dot is drawn inside
+   it, so it is easy to click without looking heavy. The level is in the
+   tooltip and the accessible name, never in colour alone. */
 .priority-badge {
+  --tier: var(--priority-low);
+
+  display: grid;
   flex: none;
-  min-width: 2.1em;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-label);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  color: var(--priority-low);
+  place-items: center;
+  width: calc(var(--board-font-size) * 1.6);
+  height: calc(var(--board-font-size) * 1.6);
+  padding: 0;
+  border-radius: 50%;
+  background: none;
+}
+
+.priority-badge::before {
+  content: "";
+  width: calc(var(--board-font-size) * 0.62);
+  height: calc(var(--board-font-size) * 0.62);
+  border-radius: 50%;
+  background: var(--tier);
+}
+
+/* Urgent work gets a soft halo, so red stands out from amber at a glance
+   and does not rely on hue alone. */
+.priority-badge[data-tier="high"]::before {
+  box-shadow: 0 0 0 calc(var(--board-font-size) * 0.18)
+    color-mix(in srgb, var(--tier) 28%, transparent);
+}
+
+/* Nobody ranked it: an empty ring, shown only when the row is pointed at,
+   as the way to rank it. */
+.priority-badge[data-tier="none"]::before {
+  border: 1.5px dashed var(--tier);
+  background: none;
 }
 
 .priority-badge[data-tier="high"] {
-  color: var(--priority-high);
+  --tier: var(--priority-high);
 }
 
 .priority-badge[data-tier="medium"] {
-  color: var(--priority-medium);
+  --tier: var(--priority-medium);
 }
 
 .priority-badge[data-tier="none"] {
-  color: var(--text-dim);
+  --tier: var(--text-dim);
 }
 
 .duration-field {
@@ -369,9 +475,8 @@ body.board-window {
   border-radius: var(--radius-control);
   background: none;
   color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-label);
   font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-label);
   cursor: pointer;
   transition: color var(--transition-fast);
 }
@@ -395,10 +500,10 @@ body.board-window {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  width: 11rem;
+  width: calc(var(--board-font-size) * 13.5);
   padding: var(--space-2);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-card);
   background: var(--surface-raised);
   box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
 }
@@ -415,7 +520,7 @@ body.board-window {
   border-radius: var(--radius-control);
   background: none;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: var(--font-size-label);
   cursor: pointer;
 }
@@ -470,8 +575,51 @@ body.board-window {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) 0;
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-control);
   line-height: var(--line-height-body);
+  transition: background var(--transition-fast);
+}
+
+/* The row under the pointer lifts a step, so the eye can follow a line across
+   to its duration and rank in a narrow board. */
+.task-row:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.task-row:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: -2px;
+}
+
+/* A duration nobody recorded is a "—" that only shows on the row being
+   pointed at or worked in. A dash down every unlogged row was noise; the
+   control is still there the moment you reach for it. */
+.duration-value[data-empty="true"] {
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.task-row:hover .duration-value[data-empty="true"],
+.task-row:focus-within .duration-value[data-empty="true"] {
+  opacity: 1;
+}
+
+/* The same for a task nobody ranked: its empty ring is the way to rank it, so it
+   appears when the row is pointed at, and stays out of the way otherwise. */
+.priority-badge[data-tier="none"] {
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.task-row:hover .priority-badge[data-tier="none"],
+.task-row:focus-within .priority-badge[data-tier="none"] {
+  opacity: 1;
+}
+
+/* A finished task's rank no longer needs attention. */
+.task-row[data-completed="true"] .priority-badge:not([data-tier="none"]) {
+  opacity: 0.5;
 }
 
 /* Completed work stays on the board, dimmed. Removing it would turn a record
@@ -479,18 +627,76 @@ body.board-window {
 .task-row[data-completed="true"] .task-title {
   color: var(--status-done);
   text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--status-done) 70%, transparent);
 }
 
+/* A round tick in the board's colour: the one bold thing on a board. Round
+   rather than square, because a circle reads as "a thing to complete" and a
+   square as "an option to set". Drawn from the native checkbox with
+   appearance: none, so it is still a real checkbox to the keyboard and to a
+   screen reader. */
 .task-checkbox {
+  display: grid;
   flex: none;
+  place-content: center;
+  width: calc(var(--board-font-size) * 1.3);
+  height: calc(var(--board-font-size) * 1.3);
   margin: 0;
-  accent-color: var(--board-accent);
+  border: 1.5px solid var(--text-dim);
+  border-radius: 50%;
+  background: transparent;
   cursor: pointer;
+  appearance: none;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    transform var(--transition-pop);
+}
+
+.task-checkbox:hover {
+  border-color: var(--board-accent);
+  background: color-mix(in srgb, var(--board-accent) 12%, transparent);
+}
+
+/* The tick itself: two borders of a rotated box, hidden until checked. */
+.task-checkbox::after {
+  content: "";
+  width: 0.32em;
+  height: 0.58em;
+  margin-top: -0.12em;
+  border: solid var(--surface-base);
+  border-width: 0 0.14em 0.14em 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform var(--transition-pop);
+}
+
+.task-checkbox:checked {
+  border-color: var(--board-accent);
+  background: var(--board-accent);
+  animation: tick-pop 220ms ease-out;
+}
+
+/* A short swell when a task is ticked off: the moment of finishing something
+   should be felt, briefly, and then get out of the way. */
+@keyframes tick-pop {
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-checkbox:checked {
+    animation: none;
+  }
+}
+
+.task-checkbox:checked::after {
+  transform: rotate(45deg) scale(1);
 }
 
 .task-checkbox:focus-visible {
   outline: 2px solid var(--board-accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 /* min-width: 0 is load-bearing — without it a flex item refuses to shrink
@@ -521,26 +727,27 @@ body.board-window {
   outline: none;
 }
 
-/* Hover-revealed, like the board's own controls. Opacity rather than display,
-   so they stay in the layout and stay focusable. */
+/* Row actions take no room until the row is pointed at or focused. Held in
+   the layout while hidden, they left a blank strip down the right of every
+   board, so the priority dots never lined up with its edge. The row itself is
+   focusable, so Tab reaches the row first, which reveals these, and then
+   moves on into them. */
 .task-actions {
-  display: flex;
+  display: none;
   flex: none;
   gap: var(--space-1);
-  opacity: 0;
-  transition: opacity var(--transition-fast);
 }
 
 .task-row:hover .task-actions,
 .task-row:focus-within .task-actions {
-  opacity: 1;
+  display: flex;
 }
 
 .task-action {
   display: grid;
   place-items: center;
-  width: 1.2rem;
-  height: 1.2rem;
+  width: calc(var(--board-font-size) * 1.5);
+  height: calc(var(--board-font-size) * 1.5);
   padding: 0;
   border: 0;
   border-radius: var(--radius-control);
@@ -587,10 +794,10 @@ body.board-window {
   z-index: 10;
   display: flex;
   flex-direction: column;
-  min-width: 12rem;
+  min-width: calc(var(--board-font-size) * 14.75);
   padding: var(--space-1);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-card);
   background: var(--surface-raised);
   box-shadow: 0 8px 24px rgb(0 0 0 / 50%);
 }
@@ -634,7 +841,7 @@ body.board-window {
 }
 
 .context-menu-priorities .context-menu-item {
-  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   text-align: center;
 }
 
@@ -647,9 +854,7 @@ body.board-window {
 
 .context-menu-prompt-label {
   font-size: var(--font-size-label);
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--text-secondary);
 }
 
 .context-menu-input {
@@ -697,11 +902,13 @@ body.board-window {
 
 /* The week a board is showing. Always visible: a week board without its week
    is ambiguous the moment you look away from it. */
+/* Sits directly under the title, as the title's second line, with no rule
+   between: "Weekly Tasks / Oct 12–18 · Week 42" is one label. */
 .board-week {
-  margin: 0 0 var(--space-2);
-  font-family: var(--font-mono);
+  margin: 0 0 var(--space-3) var(--space-1);
+  font-variant-numeric: tabular-nums;
   font-size: var(--font-size-label);
-  color: var(--text-dim);
+  color: var(--text-secondary);
 }
 
 /* ---- Day sections ------------------------------------------------------
@@ -714,9 +921,9 @@ body.board-window {
    panel also gives an expanded day's tasks something to sit inside, so the
    nesting survives without an indent guide. */
 .day-section {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-3);
   border: 1px solid transparent;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-card);
   background: var(--surface-raised);
   transition:
     background var(--transition-fast),
@@ -724,7 +931,7 @@ body.board-window {
 }
 
 .day-section + .day-section {
-  margin-top: var(--space-1);
+  margin-top: calc(var(--space-1) * 1.5);
 }
 
 .day-section:hover {
@@ -740,15 +947,15 @@ body.board-window {
 
 .day-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
   width: 100%;
-  padding: var(--space-1) 0;
+  padding: calc(var(--space-1) * 1.5) 0;
   border: 0;
   background: none;
   color: var(--text-primary);
   font: inherit;
-  font-size: var(--font-size-heading);
+  font-size: var(--font-size-small);
   text-align: left;
   cursor: pointer;
 }
@@ -767,12 +974,13 @@ body.board-window {
   flex: none;
   width: 1ch;
   color: var(--text-dim);
+  font-size: var(--font-size-label);
 }
 
 .day-name {
   flex: 1;
   min-width: 0;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -788,37 +996,57 @@ body.board-window {
 .day-summary {
   display: flex;
   flex: none;
+  align-items: center;
   gap: var(--space-2);
-  font-family: var(--font-mono);
   font-size: var(--font-size-label);
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
 }
 
-/* Fixed columns so seven rows of figures line up rather than jitter. */
+.day-time {
+  text-align: right;
+}
+
+/* Fixed width so seven rows of figures line up rather than jitter. */
 .day-count {
   min-width: 3ch;
+  color: var(--text-secondary);
   text-align: right;
 }
 
-.day-time {
-  min-width: 6ch;
-  text-align: right;
+/* A short bar for how much of the day got done. It says where to look
+   first; the count beside it is what the user acts on. A fixed width, so
+   seven bars line up into a chart of the week. */
+.day-bar {
+  width: calc(var(--board-font-size) * 3.6);
+  height: calc(var(--board-font-size) * 0.4);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 12%, transparent);
 }
 
-/* The fraction of the day that got done. Sits beside the count rather than
-   replacing it: "67%" alone cannot distinguish 2 of 3 from 200 of 300, and the
-   count is what the user reasons about when planning tomorrow. */
-.day-percent {
-  min-width: 4ch;
-  text-align: right;
+.day-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--board-accent);
+  transition: width var(--transition-collapse);
 }
 
-/* A day that came out whole. The only colour in the summary, so it means one
-   thing and is not competing with anything for attention. */
-.day-percent[data-complete="true"] {
+/* A day that came out whole. The only extra colour in the summary, so it
+   means one thing and is not competing with anything for attention. */
+.day-summary[data-complete="true"] .day-count {
   color: var(--status-complete);
   font-weight: 600;
+}
+
+.day-summary[data-complete="true"] .day-bar-fill {
+  background: var(--status-complete);
+}
+
+.day-none {
+  color: var(--text-dim);
 }
 
 .day-empty {
@@ -831,7 +1059,7 @@ body.board-window {
    already-narrow rows further right. A small inset keeps them clear of the
    chevron without stealing width from the titles. */
 .day-section .task-list-plain {
-  margin-left: var(--space-2);
+  margin: 0 calc(var(--space-2) * -1) 0 calc(var(--space-1) * -1);
   padding-bottom: var(--space-1);
 }
 
@@ -839,7 +1067,6 @@ body.board-window {
    precise but not readable at a glance. */
 .board-week-dates {
   color: var(--text-dim);
-  opacity: 0.75;
 }
 
 /* ---- Progress bar ------------------------------------------------------
@@ -856,7 +1083,7 @@ body.board-window {
 .progress-track {
   flex: 1;
   min-width: 0;
-  height: 0.5rem;
+  height: calc(var(--board-font-size) * 0.6);
   border-radius: var(--radius-pill);
   /* A visible empty track, so 0% still reads as a bar rather than as nothing
      having rendered. */
@@ -879,7 +1106,6 @@ body.board-window {
 .progress-percent {
   flex: none;
   min-width: 4ch;
-  font-family: var(--font-mono);
   font-size: var(--font-size-label);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -889,20 +1115,28 @@ body.board-window {
 /* ---- Monthly commitments -----------------------------------------------
    Outcomes rather than tasks (spec §6.5): a name, a figure, and a bar. */
 
-.commitment + .commitment {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border-subtle);
+/* Each commitment is its own card on the same raised layer as a group of
+   tasks, so a month of goals reads as a short stack of things, not a form. */
+.commitment {
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
 }
 
-/* The figure carries the meaning; the bar only shows the shape of it. Larger
-   than a label, and never dimmed. */
+.commitment + .commitment {
+  margin-top: var(--space-2);
+}
+
+.commitment .board-section-title {
+  white-space: normal;
+}
+
+/* The figure carries the meaning; the bar only shows the shape of it. */
 .commitment-figure {
-  margin: 0 0 var(--space-1);
-  font-family: var(--font-mono);
+  margin: var(--space-1) 0 var(--space-2);
   font-size: var(--font-size-small);
   font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 /* ---- Board menu --------------------------------------------------------
@@ -911,14 +1145,14 @@ body.board-window {
 .board-menu {
   position: absolute;
   right: var(--space-2);
-  top: 2rem;
+  top: calc(var(--board-font-size) * 2.5);
   z-index: 20;
   display: flex;
   flex-direction: column;
-  min-width: 13rem;
+  min-width: calc(var(--board-font-size) * 16);
   padding: var(--space-1);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-card);
   background: var(--surface-raised);
   box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
 }
@@ -975,16 +1209,15 @@ body.board-window {
 
 .board-menu-stepper-value {
   min-width: 4ch;
-  font-family: var(--font-mono);
-  font-size: var(--font-size-label);
   font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-label);
   text-align: center;
   color: var(--text-secondary);
 }
 
 .board-menu-step {
-  width: 1.4rem;
-  height: 1.4rem;
+  width: calc(var(--board-font-size) * 1.75);
+  height: calc(var(--board-font-size) * 1.75);
   padding: 0;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-control);
@@ -1107,8 +1340,12 @@ body.board-window {
   cursor: text;
 }
 
+/* The heading is already full-strength text, so the hover cue is a faint
+   underline rather than a colour change. */
 .board-section-title[data-renameable]:hover {
-  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 0.2em;
 }
 
 .board-section-title[data-renameable]:focus-visible {
@@ -1125,12 +1362,10 @@ body.board-window {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font: inherit;
   font-size: var(--font-size-heading);
   font-weight: 600;
-  letter-spacing: var(--letter-spacing-label);
-  text-transform: uppercase;
 }
 
 .board-section-rename:focus {
@@ -1160,7 +1395,7 @@ body.board-window {
   gap: var(--space-1);
   padding: var(--space-2);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-card);
   background: var(--surface-raised);
   box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
 }
@@ -1180,9 +1415,8 @@ body.board-window {
   border-radius: var(--radius-control);
   background: none;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-small);
   font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-small);
   cursor: pointer;
   transition:
     background var(--transition-fast),
@@ -1234,15 +1468,18 @@ body.board-window {
 }
 
 /* A badge that is a control still reads as a badge, not a button. */
+/* The badge doubles as the control, dressed exactly like the read-only tag. */
 button.priority-badge {
-  padding: 0;
   border: 0;
-  background: none;
   cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+button.priority-badge:hover {
+  background: color-mix(in srgb, var(--tier) 18%, transparent);
 }
 
 button.priority-badge:focus-visible {
   outline: 2px solid var(--board-accent);
   outline-offset: 1px;
-  border-radius: var(--radius-control);
 }

@@ -139,7 +139,7 @@ describe("WeeklyBoard", () => {
 
     render(<WeeklyBoard />);
 
-    expect(await screen.findByText(/nothing planned this week/i)).toBeInTheDocument();
+    expect(await screen.findByText(/plan your week/i)).toBeInTheDocument();
   });
 
   it("hides archived work without deleting it", async () => {

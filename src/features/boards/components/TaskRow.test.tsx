@@ -47,10 +47,10 @@ function props(overrides: Record<string, unknown> = {}) {
 }
 
 describe("TaskRow", () => {
-  it("shows priority, title, and duration together", () => {
+  it("shows the priority colour, title, and duration together", () => {
     render(<TaskRow {...props({ task: task({ timeSpentMinutes: 35 }) })} />);
 
-    expect(screen.getByText("P8")).toBeInTheDocument();
+    expect(screen.getByLabelText("Priority 8")).toHaveAttribute("data-tier", "high");
     expect(screen.getByText("submit applications")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /35m/ })).toBeInTheDocument();
   });
@@ -404,5 +404,24 @@ describe("TaskRow editing on request", () => {
     render(<TaskRow {...props()} />);
 
     expect(screen.queryByLabelText("Edit title")).toBeNull();
+  });
+});
+
+describe("TaskRow layout", () => {
+  it("puts the checkbox first and the priority after the title", () => {
+    // The to-do convention: tick on the left, where the eye starts a line, and
+    // the rank as a tag at the end. The DOM order is the visual order so that
+    // Tab moves through the row the way it reads.
+    render(<TaskRow {...props()} />);
+
+    const checkbox = screen.getByRole("checkbox");
+    const title = screen.getByText("submit applications");
+    const priority = screen.getByLabelText("Priority 8");
+
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+    expect(follows(checkbox, title)).toBe(true);
+    expect(follows(title, priority)).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AddTaskHere } from "@/features/boards/components/AddTaskHere";
+import { BoardEmpty } from "@/features/boards/components/BoardEmpty";
 import { TaskContextMenu } from "@/features/boards/components/TaskContextMenu";
 import { TaskGroup } from "@/features/boards/components/TaskGroup";
 import { TaskRow } from "@/features/boards/components/TaskRow";
@@ -156,7 +157,16 @@ export function PriorityBoard({
       )}
 
       {groups.length === 0 ? (
-        <p className="board-empty">Nothing at priority {threshold} or above.</p>
+        <BoardEmpty
+          title="Nothing urgent"
+          hint={`Tasks ranked P${threshold} or higher show up here. Add one, or raise a task's priority on Weekly Tasks.`}
+        >
+          <AddTaskHere
+            label={UNSORTED_AREA}
+            text="Add a task"
+            onAdd={(title) => addToGroup(UNSORTED_AREA, title)}
+          />
+        </BoardEmpty>
       ) : (
         groups.map((group) => (
           <TaskGroup
