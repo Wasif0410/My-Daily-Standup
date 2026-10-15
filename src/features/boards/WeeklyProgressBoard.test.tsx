@@ -282,14 +282,15 @@ describe("WeeklyProgressBoard", () => {
     expect(await screen.findByText("finished thing")).toBeInTheDocument();
   });
 
-  it("shows the week as dates and a number, like Weekly Tasks", async () => {
+  it("shows the week as dates and a number, like Weekly Backlog", async () => {
     respond();
 
     render(<WeeklyProgressBoard />);
 
     // "2026-W34" is precise but nobody reads it at a glance; the two week
     // boards also have to name the same week the same way.
-    expect(await screen.findByText("Aug 17–23 · Week 34")).toBeInTheDocument();
+    expect(await screen.findByText("Aug 17 – 23")).toBeInTheDocument();
+    expect(screen.getByText("Week 34")).toBeInTheDocument();
   });
 
   it("surfaces a failure rather than failing silently", async () => {
@@ -302,5 +303,41 @@ describe("WeeklyProgressBoard", () => {
     render(<WeeklyProgressBoard />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("disk is full");
+  });
+});
+
+describe("WeeklyProgressBoard paging", () => {
+  it("loads the previous week's days when paged back", async () => {
+    const user = userEvent.setup();
+    const LAST = {
+      ...WEEK,
+      start: "2026-08-10",
+      end: "2026-08-16",
+      label: "2026-W33",
+      days: WEEK.days.map((day) => ({
+        ...day,
+        date: day.date.replace("2026-08-1", "2026-08-0"),
+      })),
+    };
+    mockInvoke.mockImplementation((command: string, args?: unknown) => {
+      if (command === "week_current") {
+        const offset = (args as { offset?: number } | undefined)?.offset ?? 0;
+        return Promise.resolve(offset === -1 ? LAST : WEEK);
+      }
+      if (command === "ui_state_get") return Promise.resolve(null);
+      return Promise.resolve([]);
+    });
+    render(<WeeklyProgressBoard />);
+    await screen.findByText("This week");
+
+    await user.click(screen.getByRole("button", { name: "Previous week" }));
+
+    expect(await screen.findByText("Last week")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("task_list_scheduled_between", {
+        start: "2026-08-10",
+        end: "2026-08-16",
+      });
+    });
   });
 });

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatWeek } from "@/features/boards/weekLabel";
+import {
+  formatRange,
+  formatWeek,
+  relativeWeek,
+  weekNumber,
+} from "@/features/boards/weekLabel";
 import type { Week } from "@/types/task";
 
 function week(overrides: Partial<Week> = {}): Week {
@@ -58,5 +63,40 @@ describe("formatWeek", () => {
     const odd = week({ label: "this week" });
 
     expect(formatWeek(odd)).toBe("Aug 24–30");
+  });
+});
+
+describe("formatRange", () => {
+  it("gives the dates alone, spaced for a heading", () => {
+    expect(formatRange(week())).toBe("Aug 24 – 30");
+  });
+
+  it("names both months across a boundary", () => {
+    expect(formatRange(week({ start: "2026-08-31", end: "2026-09-06" }))).toBe(
+      "Aug 31 – Sep 6",
+    );
+  });
+});
+
+describe("weekNumber", () => {
+  it("reads the number out of the ISO label", () => {
+    expect(weekNumber(week({ label: "2026-W05" }))).toBe(5);
+  });
+
+  it("is null when the label carries no number", () => {
+    expect(weekNumber(week({ label: "garbled" }))).toBeNull();
+  });
+});
+
+describe("relativeWeek", () => {
+  it("names the nearby weeks in words", () => {
+    expect(relativeWeek(0)).toBe("This week");
+    expect(relativeWeek(1)).toBe("Next week");
+    expect(relativeWeek(-1)).toBe("Last week");
+  });
+
+  it("counts further weeks", () => {
+    expect(relativeWeek(3)).toBe("In 3 weeks");
+    expect(relativeWeek(-2)).toBe("2 weeks ago");
   });
 });

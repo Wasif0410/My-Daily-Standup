@@ -76,6 +76,12 @@ pub fn task_list_priority(
     state.list_by_priority(threshold)
 }
 
+/// Tasks for the General board: tied to no week and no day, any priority.
+#[tauri::command]
+pub fn task_list_general(state: State<'_, AppState>) -> Result<Vec<Task>, CommandError> {
+    state.list_general()
+}
+
 /// Records how long a task took. `minutes: null` clears it.
 #[tauri::command]
 pub fn task_set_time_spent(
@@ -156,9 +162,16 @@ pub fn task_add_comment(
 /// Still returns a `Week` rather than a `Result`: a settings read that fails
 /// falls back to the default. Which column a board draws first is not worth a
 /// board that will not open.
+///
+/// `offset` pages the week boards: `-1` is last week, `1` next week, and
+/// omitted means this week.
 #[tauri::command]
-pub fn week_current(state: State<'_, AppState>, starts_on: Option<String>) -> crate::domain::Week {
-    state.current_week(starts_on.as_deref())
+pub fn week_current(
+    state: State<'_, AppState>,
+    starts_on: Option<String>,
+    offset: Option<i32>,
+) -> crate::domain::Week {
+    state.week_at(starts_on.as_deref(), offset.unwrap_or(0))
 }
 
 /// The month today falls in, for the Monthly Progress board.

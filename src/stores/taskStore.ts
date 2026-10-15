@@ -18,6 +18,7 @@ import {
   listTasksByHorizon,
   listTasksForDate,
   listPriorityTasks,
+  listGeneralTasks,
   listTasksForPeriod,
   listTasksScheduledBetween,
   rescheduleTask,
@@ -34,6 +35,7 @@ export type TaskFilter =
   | { kind: "date"; date: string }
   | { kind: "period"; start: string; end: string }
   | { kind: "priority"; threshold: number }
+  | { kind: "general" }
   | { kind: "scheduled"; start: string; end: string };
 
 /**
@@ -90,6 +92,8 @@ function fetchFor(filter: TaskFilter): Promise<Task[]> {
       return listTasksForPeriod(filter.start, filter.end);
     case "priority":
       return listPriorityTasks(filter.threshold);
+    case "general":
+      return listGeneralTasks();
     case "scheduled":
       return listTasksScheduledBetween(filter.start, filter.end);
   }

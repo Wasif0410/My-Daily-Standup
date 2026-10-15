@@ -102,6 +102,11 @@ export function listTasksByHorizon(horizon: TaskHorizon): Promise<Task[]> {
   return call<Task[]>("task_list_by_horizon", { horizon });
 }
 
+/** Tasks tied to no week and no day, at any priority, for the General board. */
+export function listGeneralTasks(): Promise<Task[]> {
+  return call<Task[]>("task_list_general");
+}
+
 /** Tasks scheduled for one day. `date` is ISO-8601, e.g. "2026-08-21". */
 export function listTasksForDate(date: string): Promise<Task[]> {
   return call<Task[]>("task_list_for_date", { date });
@@ -194,8 +199,8 @@ export function archiveTask(id: string): Promise<Task> {
  * "today" from the browser clock is how a board and its database end up
  * disagreeing about which week it is.
  */
-export function currentWeek(startsOn?: string): Promise<Week> {
-  return call<Week>("week_current", { startsOn: startsOn ?? null });
+export function currentWeek(startsOn?: string, offset = 0): Promise<Week> {
+  return call<Week>("week_current", { startsOn: startsOn ?? null, offset });
 }
 
 /**

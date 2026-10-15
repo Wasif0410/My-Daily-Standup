@@ -31,7 +31,9 @@ describe("BoardRoot", () => {
   it("puts the priority board inside the priority window", async () => {
     render(<BoardRoot kind="priority" />);
 
-    expect(await screen.findByText(/ranked P5 or higher/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/not tied to a particular week/i),
+    ).toBeInTheDocument();
   });
 
   it("puts the monthly board in the monthly-progress window", async () => {
@@ -230,7 +232,7 @@ describe("BoardRoot closing and failure", () => {
     render(<BoardRoot kind="priority" />);
 
     await screen.findByText("no IPC here");
-    expect(screen.getByRole("heading", { name: "Priority Tasks" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "General Tasks" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /close board/i })).toBeInTheDocument();
   });
 });

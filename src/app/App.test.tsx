@@ -63,6 +63,21 @@ describe("App", () => {
     ).toBeInTheDocument();
   });
 
+  it("names the boards the way their windows do", () => {
+    // The buttons were built from internal ids, so "priority" read "Priority"
+    // here while its window said something else.
+    respond({ task_list_by_horizon: [] });
+
+    render(<App />);
+
+    expect(screen.getByRole("button", { name: "General Tasks" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Weekly Backlog" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Weekly Progress" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Monthly Progress" }),
+    ).toBeInTheDocument();
+  });
+
   it("lists tasks loaded from the backend", async () => {
     respond({ task_list_by_horizon: [task({ title: "call the clinic" })] });
 

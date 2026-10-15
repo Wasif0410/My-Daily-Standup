@@ -653,3 +653,43 @@ fn list_by_horizon_in_period_excludes_a_commitment_with_no_period() {
 
     assert!(found.is_empty());
 }
+
+#[test]
+fn list_general_returns_work_tied_to_no_week_or_day_at_any_priority() {
+    let (db, repo) = repo();
+    let conn = db.conn();
+
+    let mut ranked = NewTask::new("ranked loose task", TaskHorizon::Weekly, TaskSource::Manual);
+    ranked.priority = Some(2);
+    repo.create(conn, ranked).unwrap();
+    repo.create(
+        conn,
+        NewTask::new(
+            "unranked loose task",
+            TaskHorizon::Weekly,
+            TaskSource::Manual,
+        ),
+    )
+    .unwrap();
+
+    let mut in_a_week = NewTask::new("this week only", TaskHorizon::Weekly, TaskSource::Manual);
+    in_a_week.period_start = Some("2026-10-12".to_string());
+    in_a_week.period_end = Some("2026-10-18".to_string());
+    in_a_week.priority = Some(9);
+    repo.create(conn, in_a_week).unwrap();
+
+    let mut on_a_day = NewTask::new("a scheduled day", TaskHorizon::Weekly, TaskSource::Manual);
+    on_a_day.scheduled_date = Some("2026-10-14".to_string());
+    repo.create(conn, on_a_day).unwrap();
+
+    repo.create(conn, daily("a daily task")).unwrap();
+
+    let titles: Vec<String> = repo
+        .list_general(conn)
+        .unwrap()
+        .into_iter()
+        .map(|task| task.title)
+        .collect();
+
+    assert_eq!(titles, vec!["ranked loose task", "unranked loose task"]);
+}

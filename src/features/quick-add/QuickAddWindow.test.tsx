@@ -82,7 +82,10 @@ describe("QuickAddWindow", () => {
     render(<QuickAddWindow />);
 
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith("week_current", { startsOn: null });
+      expect(mockInvoke).toHaveBeenCalledWith("week_current", {
+        startsOn: null,
+        offset: 0,
+      });
     });
   });
 

@@ -202,3 +202,44 @@ fn the_derived_date_falls_inside_the_week_it_produced() {
 
     assert!(week.days.iter().any(|d| d.date == week.today));
 }
+
+#[test]
+fn week_offset_steps_whole_weeks_forward_and_back() {
+    // 2026-10-14 is a Wednesday.
+    let next = week_offset(date("2026-10-14"), Weekday::Mon, 1);
+    let last = week_offset(date("2026-10-14"), Weekday::Mon, -1);
+
+    assert_eq!(
+        (next.start.as_str(), next.end.as_str()),
+        ("2026-10-19", "2026-10-25")
+    );
+    assert_eq!(
+        (last.start.as_str(), last.end.as_str()),
+        ("2026-10-05", "2026-10-11")
+    );
+}
+
+#[test]
+fn week_offset_zero_is_the_current_week() {
+    let week = week_offset(date("2026-10-14"), Weekday::Mon, 0);
+
+    assert_eq!(week, week_containing(date("2026-10-14"), Weekday::Mon));
+}
+
+#[test]
+fn week_offset_keeps_today_as_the_real_today() {
+    // The boards mark today from this field. A week browsed to must not claim
+    // that one of its own days is today.
+    let week = week_offset(date("2026-10-14"), Weekday::Mon, 3);
+
+    assert_eq!(week.today, "2026-10-14");
+    assert!(week.days.iter().all(|day| day.date != week.today));
+}
+
+#[test]
+fn week_offset_crosses_a_year_boundary() {
+    let week = week_offset(date("2026-12-30"), Weekday::Mon, 1);
+
+    assert_eq!(week.start, "2027-01-04");
+    assert_eq!(week.label, "2027-W01");
+}

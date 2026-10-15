@@ -50,7 +50,7 @@ body.board-window {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-3) var(--space-1) var(--space-4);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
   /* The whole header is the drag handle: a frameless window has no OS title
      bar to grab. */
   cursor: grab;
@@ -170,7 +170,7 @@ body.board-window {
 /* ---- Sections ---------------------------------------------------------- */
 
 .board-section + .board-section {
-  margin-top: var(--space-4);
+  margin-top: var(--space-6);
 }
 
 /* A group's rows sit on a panel one step lighter than the board. The panel,
@@ -211,7 +211,7 @@ body.board-window {
   align-items: center;
   gap: var(--space-2);
   min-height: calc(var(--board-font-size) * 2);
-  margin: 0 0 var(--space-1);
+  margin: 0 0 var(--space-2);
   padding: 0 var(--space-1);
 }
 
@@ -902,10 +902,120 @@ body.board-window {
 
 /* The week a board is showing. Always visible: a week board without its week
    is ambiguous the moment you look away from it. */
+/* ---- Week header -------------------------------------------------------
+   Which week, in words, then its dates; the paging controls grouped on the
+   right as one small segmented control, so they read as one tool and not
+   three stray glyphs. */
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+}
+
+.week-nav-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: calc(var(--space-1) * 0.5);
+}
+
+.week-nav-relative {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+}
+
+/* Away from the current week, the label takes the board's colour: a quiet
+   reminder that this is not now, without a banner saying so. */
+.week-nav-relative[data-current="false"] {
+  color: var(--board-accent);
+}
+
+.week-nav-dates {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-tight);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.week-nav-number {
+  padding: 0.05em 0.5em;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-dim);
+}
+
+.week-nav-controls {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.week-nav-step,
+.week-nav-today {
+  display: grid;
+  place-items: center;
+  min-width: calc(var(--board-font-size) * 1.75);
+  height: calc(var(--board-font-size) * 1.75);
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--font-size-body);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.week-nav-today {
+  padding: 0 0.55em;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+}
+
+.week-nav-step:hover,
+.week-nav-today:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-primary);
+}
+
+.week-nav-today:not(:disabled) {
+  color: var(--board-accent);
+}
+
+.week-nav-today:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.week-nav-step:focus-visible,
+.week-nav-today:focus-visible {
+  outline: 2px solid var(--board-accent);
+  outline-offset: 1px;
+}
+
 /* Sits directly under the title, as the title's second line, with no rule
    between: "Weekly Tasks / Oct 12–18 · Week 42" is one label. */
 .board-week {
-  margin: 0 0 var(--space-3) var(--space-1);
+  margin: 0 0 var(--space-4) var(--space-1);
   font-variant-numeric: tabular-nums;
   font-size: var(--font-size-label);
   color: var(--text-secondary);

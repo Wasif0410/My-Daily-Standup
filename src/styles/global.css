@@ -187,7 +187,6 @@ body {
   font-size: 0.92rem;
   font-weight: 600;
   text-align: left;
-  text-transform: capitalize;
   cursor: pointer;
   transition:
     border-color 120ms ease,
