@@ -69,13 +69,9 @@ function task(overrides: Partial<Task> = {}): Task {
 }
 
 /** Answers each command by name; `saved` is the stored expansion, if any. */
-/**
- * A day panel's toggle, by day name. The week strip above has a button per
- * day too ("Monday 17, all done"), so a bare /Monday/ would match both; a
- * panel's name is the day followed by its summary, never by a bare date.
- */
+/** A day panel's toggle, by day name: the day followed by its summary. */
 function panel(day: string): RegExp {
-  return new RegExp(`^${day}(?! [0-9]+(,|$))`);
+  return new RegExp(`^${day}`);
 }
 
 function respond(
@@ -291,15 +287,26 @@ describe("WeeklyProgressBoard", () => {
     expect(await screen.findByText("finished thing")).toBeInTheDocument();
   });
 
-  it("shows the week as dates and a number, like Weekly Backlog", async () => {
+  it("says which week it shows, in one quiet line", async () => {
+    // A report on the current week: it names the week, but the planning
+    // controls (paging, the day strip) live on Weekly Backlog.
     respond();
 
     render(<WeeklyProgressBoard />);
 
-    // "2026-W34" is precise but nobody reads it at a glance; the two week
-    // boards also have to name the same week the same way.
-    expect(await screen.findByText("Aug 17 – 23")).toBeInTheDocument();
-    expect(screen.getByText("Week 34")).toBeInTheDocument();
+    expect(await screen.findByText("Aug 17–23 · Week 34")).toBeInTheDocument();
+  });
+
+  it("has no week navigation of its own", async () => {
+    respond();
+
+    render(<WeeklyProgressBoard />);
+    await screen.findByText("Aug 17–23 · Week 34");
+
+    expect(screen.queryByRole("navigation", { name: "Week" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Previous week" }),
+    ).not.toBeInTheDocument();
   });
 
   it("surfaces a failure rather than failing silently", async () => {
@@ -312,75 +319,5 @@ describe("WeeklyProgressBoard", () => {
     render(<WeeklyProgressBoard />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("disk is full");
-  });
-});
-
-describe("WeeklyProgressBoard paging", () => {
-  it("loads the previous week's days when paged back", async () => {
-    const user = userEvent.setup();
-    const LAST = {
-      ...WEEK,
-      start: "2026-08-10",
-      end: "2026-08-16",
-      label: "2026-W33",
-      days: WEEK.days.map((day) => ({
-        ...day,
-        date: day.date.replace("2026-08-1", "2026-08-0"),
-      })),
-    };
-    mockInvoke.mockImplementation((command: string, args?: unknown) => {
-      if (command === "week_current") {
-        const offset = (args as { offset?: number } | undefined)?.offset ?? 0;
-        return Promise.resolve(offset === -1 ? LAST : WEEK);
-      }
-      if (command === "ui_state_get") return Promise.resolve(null);
-      return Promise.resolve([]);
-    });
-    render(<WeeklyProgressBoard />);
-    await screen.findByText("This week");
-
-    await user.click(screen.getByRole("button", { name: "Previous week" }));
-
-    expect(await screen.findByText("Last week")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith("task_list_scheduled_between", {
-        start: "2026-08-10",
-        end: "2026-08-16",
-      });
-    });
-  });
-});
-
-describe("WeeklyProgressBoard day strip", () => {
-  it("marks the days that have work in the strip", async () => {
-    respond([
-      task({
-        id: "a",
-        title: "done thing",
-        scheduledDate: "2026-08-17",
-        status: "completed",
-      }),
-      task({ id: "b", title: "open thing", scheduledDate: "2026-08-19" }),
-    ]);
-
-    render(<WeeklyProgressBoard />);
-
-    expect(await screen.findByLabelText(/Monday 17, all done/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Wednesday 19, tasks left/)).toBeInTheDocument();
-  });
-
-  it("opens a day when it is picked in the strip", async () => {
-    const user = userEvent.setup();
-    respond(
-      [task({ id: "b", title: "thursday errand", scheduledDate: "2026-08-20" })],
-      "[]",
-    );
-    render(<WeeklyProgressBoard />);
-    await screen.findByText("This week");
-    expect(screen.queryByText("thursday errand")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /Thursday 20/ }));
-
-    expect(await screen.findByText("thursday errand")).toBeInTheDocument();
   });
 });

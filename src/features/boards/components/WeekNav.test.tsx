@@ -84,36 +84,4 @@ describe("WeekNav day strip", () => {
 
     expect(screen.queryByLabelText(/today$/)).not.toBeInTheDocument();
   });
-
-  it("shows which days have work and which are finished", () => {
-    render(
-      <WeekNav
-        week={WEEK}
-        offset={0}
-        onOffset={vi.fn()}
-        marks={{ "2026-10-12": "done", "2026-10-13": "open" }}
-      />,
-    );
-
-    expect(screen.getByLabelText("Monday 12, all done")).toBeInTheDocument();
-    expect(screen.getByLabelText("Tuesday 13, tasks left")).toBeInTheDocument();
-  });
-
-  it("opens a day when it is chosen, where the board allows it", async () => {
-    const user = userEvent.setup();
-    const onDay = vi.fn();
-    render(<WeekNav week={WEEK} offset={0} onOffset={vi.fn()} onDay={onDay} />);
-
-    await user.click(screen.getByRole("button", { name: /Thursday 15/ }));
-
-    expect(onDay).toHaveBeenCalledWith("2026-10-15");
-  });
-
-  it("keeps days as plain labels where nothing opens", () => {
-    render(<WeekNav week={WEEK} offset={0} onOffset={vi.fn()} />);
-
-    expect(
-      screen.queryByRole("button", { name: /Thursday 15/ }),
-    ).not.toBeInTheDocument();
-  });
 });

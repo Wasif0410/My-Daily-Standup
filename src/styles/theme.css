@@ -1095,19 +1095,6 @@ body.board-window {
   transition: background var(--transition-fast);
 }
 
-button.week-strip-day {
-  cursor: pointer;
-}
-
-button.week-strip-day:hover {
-  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
-}
-
-button.week-strip-day:focus-visible {
-  outline: 2px solid var(--board-accent);
-  outline-offset: -1px;
-}
-
 .week-strip-name {
   font-size: calc(var(--board-font-size) * 0.8);
   font-weight: 600;
@@ -1150,24 +1137,6 @@ button.week-strip-day:focus-visible {
   color: var(--surface-base);
   box-shadow: 0 0 0 calc(var(--board-font-size) * 0.22)
     color-mix(in srgb, var(--board-accent) 22%, transparent);
-}
-
-/* The dot under a day: grey while work is left, green once it is all done,
-   nothing on a day with no tasks. Solid in both cases: a ring this small
-   reads as the letter "o". Space is held either way, so the
-   dates never jump. */
-.week-strip-mark {
-  width: calc(var(--board-font-size) * 0.42);
-  height: calc(var(--board-font-size) * 0.42);
-  border-radius: 50%;
-}
-
-.week-strip-mark[data-mark="open"] {
-  background: var(--text-dim);
-}
-
-.week-strip-mark[data-mark="done"] {
-  background: var(--status-complete);
 }
 
 /* Sits directly under the title, as the title's second line, with no rule

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DaySection } from "@/features/boards/components/DaySection";
 import { TaskRow } from "@/features/boards/components/TaskRow";
 import { bucketByDay } from "@/features/boards/daySummary";
-import { WeekNav, type DayMark } from "@/features/boards/components/WeekNav";
+import { formatWeek } from "@/features/boards/weekLabel";
 import { currentWeek, getUiState, setUiState, toCommandError } from "@/lib/ipc";
 import { onTaskChanged } from "@/lib/taskEvents";
 import { useTaskStore } from "@/stores/taskStore";
@@ -24,8 +24,6 @@ const EXPANDED_KEY = "weekly-progress.expanded";
  */
 export function WeeklyProgressBoard() {
   const [week, setWeek] = useState<Week | null>(null);
-  /** Weeks away from the current one, paged by the header. */
-  const [offset, setOffset] = useState(0);
   const [failure, setFailure] = useState<CommandError | null>(null);
   /** Null until the saved state has been read, so the default is not applied
    *  over the top of a choice that is still loading. */
@@ -44,29 +42,10 @@ export function WeeklyProgressBoard() {
 
     void (async () => {
       try {
-        const found = await currentWeek(undefined, offset);
+        const found = await currentWeek();
         if (ignore) return;
         setWeek(found);
-      } catch (caught) {
-        if (!ignore) setFailure(toCommandError(caught));
-      }
-    })();
 
-    return () => {
-      ignore = true;
-    };
-  }, [offset]);
-
-  // Which days are open is read once, when the first week arrives. Paging
-  // keeps it: the saved set holds dates, so another week simply has none of
-  // its days open unless the user opens them.
-  const today = week?.today;
-  useEffect(() => {
-    if (today === undefined) return;
-    let ignore = false;
-
-    void (async () => {
-      try {
         const saved = await getUiState(EXPANDED_KEY);
         if (ignore) return;
 
@@ -74,11 +53,9 @@ export function WeeklyProgressBoard() {
         // Re-opening today every launch after someone deliberately closed it
         // is the app arguing with the user.
         setExpanded(
-          (current) =>
-            current ??
-            (saved === null
-              ? new Set([today])
-              : new Set(JSON.parse(saved) as string[])),
+          saved === null
+            ? new Set([found.today])
+            : new Set(JSON.parse(saved) as string[]),
         );
       } catch (caught) {
         if (!ignore) setFailure(toCommandError(caught));
@@ -88,7 +65,7 @@ export function WeeklyProgressBoard() {
     return () => {
       ignore = true;
     };
-  }, [today]);
+  }, []);
 
   const reload = useCallback(() => {
     if (!week) return;
@@ -121,17 +98,6 @@ export function WeeklyProgressBoard() {
     [week, tasks],
   );
 
-  // The strip's dots: a day with tasks is "open" until every one is done.
-  const marks = useMemo(() => {
-    const found: Record<string, DayMark> = {};
-    for (const day of days) {
-      if (day.totals.total > 0) {
-        found[day.date] = day.totals.completed >= day.totals.total ? "done" : "open";
-      }
-    }
-    return found;
-  }, [days]);
-
   function toggle(date: string, open: boolean) {
     const next = new Set(expanded ?? []);
     if (open) next.add(date);
@@ -157,25 +123,10 @@ export function WeeklyProgressBoard() {
         </p>
       )}
 
-      {week && (
-        <WeekNav
-          week={week}
-          offset={offset}
-          onOffset={setOffset}
-          marks={marks}
-          onDay={(date) => {
-            toggle(date, true);
-            // After the day has opened, bring it into view: on a short board
-            // the day picked in the strip may be below the fold.
-            requestAnimationFrame(() => {
-              document
-                .getElementById(`day-${date}`)
-                ?.closest(".day-section")
-                ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-            });
-          }}
-        />
-      )}
+      {/* The week in one quiet line. Paging and the day strip live on Weekly
+          Backlog, where weeks are planned; this board reports on the current
+          one. */}
+      {week && <p className="board-week">{formatWeek(week)}</p>}
 
       {days.map((day) => (
         <DaySection
