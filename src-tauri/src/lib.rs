@@ -123,9 +123,18 @@ pub fn run() {
 
             api.prevent_close();
 
-            // A board must also record that it is hidden, or it reopens at the
-            // next launch. close_board hides and writes in one step.
+            // A board the user closed must also record that it is hidden, or it
+            // reopens at the next launch; close_board hides and writes in one
+            // step. A close nobody asked for — a bare WM_CLOSE from another
+            // program or from the process being torn down — only hides it, so
+            // the board comes back with the rest instead of being lost.
             if let Some(kind) = storage::BoardKind::from_window_label(&label) {
+                let source = windows::close_watch::take_source(window);
+                if !windows::remembers_close(source) {
+                    let _ = window.hide();
+                    return;
+                }
+
                 if let Err(error) = windows::close_board(window.app_handle(), kind) {
                     eprintln!("could not close the {kind:?} board: {}", error.message);
                 }
