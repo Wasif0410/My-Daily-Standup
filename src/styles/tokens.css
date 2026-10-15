@@ -40,6 +40,20 @@
   /* Set per window by BoardShell; this is the fallback. */
   --board-accent: var(--accent-weekly-tasks);
 
+  /* ---- Section colours ------------------------------------------------
+     One per section, picked from its name (sectionColor.ts), so groups on a
+     board are told apart at a glance instead of being identical grey boxes.
+     Muted rather than saturated: saturated hues glow against a dark surface,
+     and these sit next to text all day. */
+  --section-1: #6cb6ff;
+  --section-2: #b392f0;
+  --section-3: #5ccfc0;
+  --section-4: #f0937a;
+  --section-5: #e6c07b;
+  --section-6: #8ccf7e;
+  --section-7: #e88dc4;
+  --section-8: #c5d86d;
+
   /* ---- Status --------------------------------------------------------- */
   --status-blocked: #f7768e;
   --status-done: var(--text-dim);
@@ -178,6 +192,15 @@
   --priority-high: #c2405a;
   --priority-medium: #a8721c;
   --priority-low: #6e6b65;
+
+  --section-1: #2f6fb8;
+  --section-2: #7550c0;
+  --section-3: #1f8a7c;
+  --section-4: #c0573b;
+  --section-5: #9a7420;
+  --section-6: #4b8b3a;
+  --section-7: #b0457f;
+  --section-8: #66791c;
 
   color-scheme: light;
 }
