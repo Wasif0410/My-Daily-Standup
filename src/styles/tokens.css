@@ -11,19 +11,23 @@
 
 :root {
   /* ---- Surfaces ------------------------------------------------------- */
-  --surface-base: #1a1b1e;
-  --surface-raised: #212327;
-  --surface-sunken: #151619;
+  --surface-base: #17181b;
+  --surface-raised: #1f2125;
+  --surface-sunken: #121316;
 
   /* Hairlines and dividers, expressed as a tint of the foreground so they
      stay correct if the surface changes. */
-  --border-subtle: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --border-subtle: color-mix(in srgb, var(--text-primary) 8%, transparent);
   --border-strong: color-mix(in srgb, var(--text-primary) 18%, transparent);
 
-  /* ---- Text ----------------------------------------------------------- */
+  /* ---- Text -----------------------------------------------------------
+     Dim is the quietest text on a board (counts, durations, finished tasks)
+     and still clears 4.5:1 on --surface-raised, the lighter of the two surfaces it
+     sits on. It was #6b6862, about 3.1:1,
+     which is below the minimum for text this small. */
   --text-primary: #e8e6e3;
   --text-secondary: #9a9691;
-  --text-dim: #6b6862;
+  --text-dim: #8f8b85;
 
   /* ---- Accents --------------------------------------------------------
      One per board. Four scattered windows are far easier to tell apart by
@@ -50,54 +54,30 @@
      colour alone fails for colour-blind users and at low opacity. */
   --priority-high: #f7768e;
   --priority-medium: #e0af68;
-  --priority-low: #6b6862;
+  --priority-low: #8f8b85;
 
-  /* ---- Typography ------------------------------------------------------ */
-  --font-ui: "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* ---- Typography ------------------------------------------------------
+     Windows 11's own face. The Variable cut has optical sizes: Text is drawn
+     for small sizes and stays crisp at 12px, Display is tighter and reads as a
+     title. It ships with the OS, so the app stays offline with no bundled
+     font, and older Windows falls back to plain Segoe UI. */
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  /* Only for things that really are code: shortcut keys and error details.
+     Figures use --font-ui with tabular digits, which line up just as well
+     without making the board look like a terminal. */
   --font-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
 
-  /* User-adjustable in PR 16. Everything else scales from it.
-   *
-   * Every size below is a multiple of this one value, and deliberately not a
-   * `rem` or an `em`.
-   *
-   * `rem` resolves against the document root, which the board's size control
-   * cannot reach — it sets --board-font-size on `.board`. The control was
-   * moving a number that almost nothing read, so the whole board rendered at
-   * one fixed size no matter where the user put the slider.
-   *
-   * `em` would read it, but it compounds: a label inside a day header inside
-   * a board multiplies three times over and collapses to a few pixels.
-   *
-   * A multiple of the one variable scales everything from the setting exactly
-   * once, however deeply it is nested. The default multipliers are chosen to
-   * land within half a pixel of the sizes these tokens had before, so nothing
-   * moves until the user actually changes the setting. */
+  /* The board's text-size setting. Set per window by BoardShell. */
   --board-font-size: 13px;
-  --font-size-label: calc(var(--board-font-size) * 0.85);
-  --font-size-small: calc(var(--board-font-size) * 1);
-  --font-size-body: calc(var(--board-font-size) * 1.2);
 
-  /* A board's own name, and the day and group headings under it. Larger than
-     body text: these are what the eye lands on first across four scattered
-     windows, and at label size they read as captions rather than headings. */
-  --font-size-title: calc(var(--board-font-size) * 1.3);
-  --font-size-heading: calc(var(--board-font-size) * 1.05);
-
-  --letter-spacing-label: 0.09em;
   --line-height-tight: 1.25;
   --line-height-body: 1.5;
 
-  /* ---- Space ----------------------------------------------------------
-     A 4px scale. Boards are narrow and dense, so the steps are small. */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-
   /* ---- Shape ----------------------------------------------------------- */
-  --radius-board: 10px;
+  --radius-board: 12px;
+  /* Groups of rows, day panels, commitments: the layer inside a board. */
+  --radius-card: 8px;
   --radius-control: 6px;
   --radius-pill: 999px;
 
@@ -108,10 +88,52 @@
      Hover reveals must feel immediate; anything slower reads as lag. */
   --transition-fast: 120ms ease;
   --transition-collapse: 160ms ease;
+  /* A tick that lands: quick out, slight overshoot. */
+  --transition-pop: 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* ---- Board window ----------------------------------------------------
      Set per window by BoardShell from saved state. */
   --board-opacity: 1;
+}
+
+/*
+ * The type and space scale.
+ *
+ * Every size is a multiple of --board-font-size, so the board's text-size
+ * setting moves all of it: text, gaps and controls together. Not `rem`, which
+ * only follows the page root, and not `em`, which compounds when nested.
+ *
+ * Declared on `.board` as well as `:root`, and that part is load-bearing. A
+ * custom property is resolved where it is declared, so a scale declared only
+ * on `:root` is worked out once against the root's 13px and inherited as fixed
+ * pixels. BoardShell sets --board-font-size on `.board`, which then reached
+ * nothing but the board's own font-size: at 20px, task titles stayed at 13px.
+ * Declaring the scale here resolves it again inside every board.
+ *
+ * At the default 13px this gives 12 / 14 / 15.6 / 19.5px.
+ */
+:root,
+.board,
+.quick-add-window {
+  /* Figures and metadata: counts, durations, dates. */
+  --font-size-label: calc(var(--board-font-size) * 0.92);
+  /* Task titles, menu items and inputs: the text people actually read. */
+  --font-size-small: calc(var(--board-font-size) * 1.08);
+  /* Icon glyphs in the board's controls. */
+  --font-size-body: calc(var(--board-font-size) * 1.2);
+  /* Group and day headings. Larger than a task and heavier, so the group
+     reads as the owner of the rows under it. */
+  --font-size-heading: calc(var(--board-font-size) * 1.2);
+  /* The board's own name: the first thing the eye finds across four windows. */
+  --font-size-title: calc(var(--board-font-size) * 1.5);
+
+  /* A 4px-ish scale at the default size, growing with the text so a larger
+     setting does not cram bigger words into the same gaps. */
+  --space-1: calc(var(--board-font-size) * 0.3);
+  --space-2: calc(var(--board-font-size) * 0.6);
+  --space-3: calc(var(--board-font-size) * 0.9);
+  --space-4: calc(var(--board-font-size) * 1.2);
+  --space-6: calc(var(--board-font-size) * 1.8);
 }
 
 /*
@@ -122,6 +144,7 @@
   :root {
     --transition-fast: 0ms;
     --transition-collapse: 0ms;
+    --transition-pop: 0ms;
   }
 }
 
@@ -140,7 +163,8 @@
 
   --text-primary: #1f1e1c;
   --text-secondary: #55524d;
-  --text-dim: #83807a;
+  /* About 4.9:1 on --surface-base. #83807a was about 3.6:1. */
+  --text-dim: #6e6b65;
 
   /* Darkened from the dark-theme values: the originals are tuned for contrast
      against charcoal and wash out on a light surface. */
@@ -153,7 +177,7 @@
   --status-complete: #4b8b28;
   --priority-high: #c2405a;
   --priority-medium: #a8721c;
-  --priority-low: #83807a;
+  --priority-low: #6e6b65;
 
   color-scheme: light;
 }
@@ -165,11 +189,11 @@
  * steps, so density needs no component to know it exists.
  */
 .board[data-compact="true"] {
-  --space-1: 0.15rem;
-  --space-2: 0.3rem;
-  --space-3: 0.45rem;
-  --space-4: 0.6rem;
-  --space-6: 0.9rem;
+  --space-1: calc(var(--board-font-size) * 0.18);
+  --space-2: calc(var(--board-font-size) * 0.36);
+  --space-3: calc(var(--board-font-size) * 0.54);
+  --space-4: calc(var(--board-font-size) * 0.72);
+  --space-6: calc(var(--board-font-size) * 1.08);
 
   --line-height-tight: 1.15;
   --line-height-body: 1.35;

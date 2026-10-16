@@ -145,7 +145,7 @@ describe("DaySection", () => {
     );
 
     expect(screen.getByRole("button", { name: /Tuesday/ })).toBeInTheDocument();
-    expect(screen.getByText("0/0")).toBeInTheDocument();
+    expect(screen.getByText("No tasks")).toBeInTheDocument();
   });
 
   it("says an expanded day is empty rather than showing a blank space", () => {

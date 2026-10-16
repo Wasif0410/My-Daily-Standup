@@ -31,9 +31,7 @@ describe("BoardRoot", () => {
   it("puts the priority board inside the priority window", async () => {
     render(<BoardRoot kind="priority" />);
 
-    expect(
-      await screen.findByText(/nothing at priority 5 or above/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/ranked P5 or higher/i)).toBeInTheDocument();
   });
 
   it("puts the monthly board in the monthly-progress window", async () => {
@@ -66,7 +64,7 @@ describe("BoardRoot board content", () => {
 
     render(<BoardRoot kind="weekly-tasks" />);
 
-    expect(await screen.findByText(/nothing planned this week/i)).toBeInTheDocument();
+    expect(await screen.findByText(/plan your week/i)).toBeInTheDocument();
   });
 });
 

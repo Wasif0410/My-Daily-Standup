@@ -282,12 +282,14 @@ describe("WeeklyProgressBoard", () => {
     expect(await screen.findByText("finished thing")).toBeInTheDocument();
   });
 
-  it("shows the ISO week", async () => {
+  it("shows the week as dates and a number, like Weekly Tasks", async () => {
     respond();
 
     render(<WeeklyProgressBoard />);
 
-    expect(await screen.findByText("2026-W34")).toBeInTheDocument();
+    // "2026-W34" is precise but nobody reads it at a glance; the two week
+    // boards also have to name the same week the same way.
+    expect(await screen.findByText("Aug 17–23 · Week 34")).toBeInTheDocument();
   });
 
   it("surfaces a failure rather than failing silently", async () => {

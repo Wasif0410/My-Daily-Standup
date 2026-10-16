@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { BoardEmpty } from "@/features/boards/components/BoardEmpty";
 import { ProgressBar } from "@/features/boards/components/ProgressBar";
 import { currentMonth, monthlyProgress, toCommandError } from "@/lib/ipc";
 import { onTaskChanged } from "@/lib/taskEvents";
@@ -102,7 +103,10 @@ export function MonthlyBoard() {
       {commitments.length === 0 ? (
         // Distinct from "everything is at 0%": a month with nothing committed
         // is a different state from a month going badly.
-        <p className="board-empty">No commitments this month.</p>
+        <BoardEmpty
+          title="No goals for this month yet"
+          hint="Monthly commitments show up here with a bar for how far along each one is."
+        />
       ) : (
         commitments.map(({ task, progress, fraction }) => (
           <section className="commitment" key={task.id}>

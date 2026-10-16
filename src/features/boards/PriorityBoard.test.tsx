@@ -116,9 +116,7 @@ describe("PriorityBoard", () => {
 
     render(<PriorityBoard />);
 
-    expect(
-      await screen.findByText(/nothing at priority 5 or above/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/ranked P5 or higher/i)).toBeInTheDocument();
   });
 
   it("completes a task through the store", async () => {

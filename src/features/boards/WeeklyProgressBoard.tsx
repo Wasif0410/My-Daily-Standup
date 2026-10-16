@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DaySection } from "@/features/boards/components/DaySection";
 import { TaskRow } from "@/features/boards/components/TaskRow";
 import { bucketByDay } from "@/features/boards/daySummary";
+import { formatWeek } from "@/features/boards/weekLabel";
 import { currentWeek, getUiState, setUiState, toCommandError } from "@/lib/ipc";
 import { onTaskChanged } from "@/lib/taskEvents";
 import { useTaskStore } from "@/stores/taskStore";
@@ -122,7 +123,7 @@ export function WeeklyProgressBoard() {
         </p>
       )}
 
-      {week && <p className="board-week">{week.label}</p>}
+      {week && <p className="board-week">{formatWeek(week)}</p>}
 
       {days.map((day) => (
         <DaySection
