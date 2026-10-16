@@ -136,8 +136,6 @@ export function TaskRow({
         onOpenMenu({ x: event.clientX, y: event.clientY });
       }}
     >
-      <PriorityBadge priority={task.priority} onChange={onSetPriority} />
-
       <input
         type="checkbox"
         className="task-checkbox"
@@ -177,6 +175,10 @@ export function TaskRow({
       )}
 
       <DurationField minutes={task.timeSpentMinutes} onChange={onSetTimeSpent} />
+
+      {/* After the title, as a tag: the tick is where a line starts, and the
+          rank is read once the task is. */}
+      <PriorityBadge priority={task.priority} onChange={onSetPriority} />
 
       <span className="task-actions">
         {onMove && (

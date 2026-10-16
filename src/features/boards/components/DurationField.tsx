@@ -57,6 +57,7 @@ export function DurationField({ minutes, onChange }: DurationFieldProps) {
       <button
         type="button"
         className="duration-value"
+        data-empty={minutes === null}
         aria-label={label}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}

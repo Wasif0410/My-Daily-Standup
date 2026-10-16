@@ -80,6 +80,27 @@ pub fn week_containing(date: NaiveDate, starts_on: Weekday) -> Week {
     }
 }
 
+/// The week `offset` weeks away from the one `today` falls in: `-1` is last
+/// week, `1` next week.
+///
+/// `today` stays the real today rather than becoming a day inside the week
+/// browsed to. The boards mark today from it, and a week in the past has no
+/// day that is today.
+///
+/// An offset that would leave chrono's date range clamps to `today`'s own week.
+/// Nobody pages a hundred thousand years out, and a board that opens beats a
+/// panic.
+pub fn week_offset(today: NaiveDate, starts_on: Weekday, offset: i32) -> Week {
+    let anchor = today
+        .checked_add_signed(chrono::Duration::weeks(i64::from(offset)))
+        .unwrap_or(today);
+
+    Week {
+        today: today.format("%Y-%m-%d").to_string(),
+        ..week_containing(anchor, starts_on)
+    }
+}
+
 /// The week today falls in.
 ///
 /// `Local`, never `Utc`: a planner whose day rolls over at 8pm because the user

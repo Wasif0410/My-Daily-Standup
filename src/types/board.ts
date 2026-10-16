@@ -12,6 +12,15 @@ export const BOARD_KINDS: BoardKind[] = [
   "monthly-progress",
 ];
 
+/** What each board is called, in its window title and everywhere else. One
+ *  place, so the main window and the board cannot name it differently. */
+export const BOARD_TITLES: Record<BoardKind, string> = {
+  priority: "General Tasks",
+  "weekly-tasks": "Weekly Backlog",
+  "weekly-progress": "Weekly Progress",
+  "monthly-progress": "Monthly Progress",
+};
+
 /** A board window's saved state. */
 export interface BoardWindow {
   kind: BoardKind;

@@ -4,7 +4,7 @@ import { openBoard, unlockAllBoards } from "@/lib/ipc";
 import { Chat } from "@/features/chat/Chat";
 import { Context } from "@/features/chat/Context";
 import { Settings } from "@/features/settings/Settings";
-import { BOARD_KINDS } from "@/types/board";
+import { BOARD_KINDS, BOARD_TITLES } from "@/types/board";
 
 /**
  * Development shell.
@@ -56,7 +56,7 @@ export function App() {
       <div className="board-launcher">
         {BOARD_KINDS.map((kind) => (
           <button key={kind} type="button" onClick={() => void openBoard(kind)}>
-            {kind.replace(/-/g, " ")}
+            {BOARD_TITLES[kind]}
           </button>
         ))}
       </div>

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MonthlyBoard } from "@/features/boards/MonthlyBoard";
+import { sectionColor } from "@/features/boards/sectionColor";
 import { onTaskChanged } from "@/lib/taskEvents";
 import type { Commitment, Task, TaskProgress } from "@/types/task";
 
@@ -214,7 +215,7 @@ describe("MonthlyBoard", () => {
 
     render(<MonthlyBoard />);
 
-    expect(await screen.findByText(/no commitments this month/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no goals for this month yet/i)).toBeInTheDocument();
   });
 
   it("refetches when another window announces a change", async () => {
@@ -268,5 +269,23 @@ describe("MonthlyBoard", () => {
     render(<MonthlyBoard />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("disk is full");
+  });
+});
+
+describe("MonthlyBoard colour", () => {
+  it("gives each commitment its own colour", async () => {
+    respond([
+      commitment({ kind: "binary", completed: false }, 0, {
+        title: "Apply to 20 jobs",
+      }),
+    ]);
+
+    const { container } = render(<MonthlyBoard />);
+    await screen.findByText("Apply to 20 jobs");
+
+    const card = container.querySelector<HTMLElement>(".commitment");
+    expect(card?.style.getPropertyValue("--section-color")).toBe(
+      sectionColor("Apply to 20 jobs"),
+    );
   });
 });

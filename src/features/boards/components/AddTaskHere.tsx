@@ -3,6 +3,9 @@ import { useState } from "react";
 interface AddTaskHereProps {
   /** The group's heading, used to name the control and nothing else. */
   label: string;
+  /** Words to show instead of a bare "+", for places with no heading to
+   *  hover, such as an empty board. Also becomes the button's name. */
+  text?: string | undefined;
   onAdd: (title: string) => void;
 }
 
@@ -30,7 +33,7 @@ interface AddTaskHereProps {
  * untitled row, which would be invisible on the board and impossible to name
  * afterwards.
  */
-export function AddTaskHere({ label, onAdd }: AddTaskHereProps) {
+export function AddTaskHere({ label, text, onAdd }: AddTaskHereProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -41,11 +44,19 @@ export function AddTaskHere({ label, onAdd }: AddTaskHereProps) {
     setOpen(false);
   }
 
+  if (!open && text) {
+    return (
+      <button type="button" className="board-add-button" onClick={() => setOpen(true)}>
+        <span aria-hidden="true">+</span> {text}
+      </button>
+    );
+  }
+
   if (!open) {
     return (
       <button
         type="button"
-        className="board-section-action"
+        className="board-section-action board-section-add-button"
         // Named after the group: every heading on the board carries one of
         // these, and "Add a task" alone would be a row of identical buttons to
         // anyone not looking at the screen.

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { BoardEmpty } from "@/features/boards/components/BoardEmpty";
 import { ProgressBar } from "@/features/boards/components/ProgressBar";
+import { sectionColor } from "@/features/boards/sectionColor";
 import { currentMonth, monthlyProgress, toCommandError } from "@/lib/ipc";
 import { onTaskChanged } from "@/lib/taskEvents";
 import type { Commitment, CommandError, Month, TaskProgress } from "@/types/task";
@@ -102,10 +104,19 @@ export function MonthlyBoard() {
       {commitments.length === 0 ? (
         // Distinct from "everything is at 0%": a month with nothing committed
         // is a different state from a month going badly.
-        <p className="board-empty">No commitments this month.</p>
+        <BoardEmpty
+          title="No goals for this month yet"
+          hint="Monthly commitments show up here with a bar for how far along each one is."
+        />
       ) : (
         commitments.map(({ task, progress, fraction }) => (
-          <section className="commitment" key={task.id}>
+          <section
+            className="commitment"
+            key={task.id}
+            // Each goal in its own colour, so a month of them reads as
+            // separate things rather than one stack of grey cards.
+            style={{ "--section-color": sectionColor(task.title) } as CSSProperties}
+          >
             <h2 className="board-section-title">{task.title}</h2>
             <p className="commitment-figure">{figure(progress, task.progressUnit)}</p>
             <ProgressBar fraction={fraction} label={task.title} />

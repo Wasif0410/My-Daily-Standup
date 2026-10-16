@@ -69,6 +69,11 @@ function task(overrides: Partial<Task> = {}): Task {
 }
 
 /** Answers each command by name; `saved` is the stored expansion, if any. */
+/** A day panel's toggle, by day name: the day followed by its summary. */
+function panel(day: string): RegExp {
+  return new RegExp(`^${day}`);
+}
+
 function respond(
   tasks: Task[] = [],
   saved: string | null = null,
@@ -108,7 +113,7 @@ describe("WeeklyProgressBoard", () => {
       "Sunday",
     ]) {
       expect(
-        await screen.findByRole("button", { name: new RegExp(name) }),
+        await screen.findByRole("button", { name: panel(name) }),
       ).toBeInTheDocument();
     }
   });
@@ -157,9 +162,9 @@ describe("WeeklyProgressBoard", () => {
 
     render(<WeeklyProgressBoard />);
 
-    const tuesday = await screen.findByRole("button", { name: /Tuesday/ });
+    const tuesday = await screen.findByRole("button", { name: panel("Tuesday") });
     expect(tuesday).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: /Monday/ })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: panel("Monday") })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
@@ -169,9 +174,9 @@ describe("WeeklyProgressBoard", () => {
     respond([], null, "2026-08-20");
 
     const { container } = render(<WeeklyProgressBoard />);
-    await screen.findByRole("button", { name: /Thursday/ });
+    await screen.findByRole("button", { name: panel("Thursday") });
 
-    const today = container.querySelectorAll('[data-today="true"]');
+    const today = container.querySelectorAll('.day-section[data-today="true"]');
     expect(today).toHaveLength(1);
   });
 
@@ -181,7 +186,7 @@ describe("WeeklyProgressBoard", () => {
     render(<WeeklyProgressBoard />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Friday/ })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: panel("Friday") })).toHaveAttribute(
         "aria-expanded",
         "true",
       );
@@ -196,7 +201,7 @@ describe("WeeklyProgressBoard", () => {
     render(<WeeklyProgressBoard />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Tuesday/ })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: panel("Tuesday") })).toHaveAttribute(
         "aria-expanded",
         "false",
       );
@@ -207,9 +212,9 @@ describe("WeeklyProgressBoard", () => {
     const user = userEvent.setup();
     respond([], JSON.stringify([]));
     render(<WeeklyProgressBoard />);
-    await screen.findByRole("button", { name: /Monday/ });
+    await screen.findByRole("button", { name: panel("Monday") });
 
-    await user.click(screen.getByRole("button", { name: /Monday/ }));
+    await user.click(screen.getByRole("button", { name: panel("Monday") }));
 
     await waitFor(() => {
       expect(mockInvoke).toHaveBeenCalledWith("ui_state_set", {
@@ -256,7 +261,7 @@ describe("WeeklyProgressBoard", () => {
     mockOnTaskChanged.mockResolvedValue(stop);
     respond();
     const { unmount } = render(<WeeklyProgressBoard />);
-    await screen.findByRole("button", { name: /Monday/ });
+    await screen.findByRole("button", { name: panel("Monday") });
 
     unmount();
 
@@ -282,12 +287,26 @@ describe("WeeklyProgressBoard", () => {
     expect(await screen.findByText("finished thing")).toBeInTheDocument();
   });
 
-  it("shows the ISO week", async () => {
+  it("says which week it shows, in one quiet line", async () => {
+    // A report on the current week: it names the week, but the planning
+    // controls (paging, the day strip) live on Weekly Backlog.
     respond();
 
     render(<WeeklyProgressBoard />);
 
-    expect(await screen.findByText("2026-W34")).toBeInTheDocument();
+    expect(await screen.findByText("Aug 17–23 · Week 34")).toBeInTheDocument();
+  });
+
+  it("has no week navigation of its own", async () => {
+    respond();
+
+    render(<WeeklyProgressBoard />);
+    await screen.findByText("Aug 17–23 · Week 34");
+
+    expect(screen.queryByRole("navigation", { name: "Week" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Previous week" }),
+    ).not.toBeInTheDocument();
   });
 
   it("surfaces a failure rather than failing silently", async () => {

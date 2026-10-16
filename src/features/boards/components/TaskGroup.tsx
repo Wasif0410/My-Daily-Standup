@@ -1,4 +1,5 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { sectionColor } from "@/features/boards/sectionColor";
 import type { Task } from "@/types/task";
 
 interface TaskGroupProps {
@@ -75,8 +76,17 @@ export function TaskGroup({
     onRename?.(next);
   }
 
+  // The section's own colour, set as a variable so the stylesheet decides
+  // where it shows. The catch-all heading has none and stays neutral.
+  const color = sectionColor(label);
+  const style = color ? ({ "--section-color": color } as CSSProperties) : undefined;
+
   return (
-    <section className="board-section">
+    <section
+      className="board-section"
+      data-tone={color ? "colored" : "neutral"}
+      style={style}
+    >
       {/* The action sits beside the heading, not inside it: a button nested in
           the h2 becomes part of the heading's accessible name, so "Health"
           would be announced as "Health +". */}
@@ -92,7 +102,7 @@ export function TaskGroup({
           aria-label={`${collapsed ? "Expand" : "Collapse"} ${label}`}
           onClick={() => onToggle?.(!collapsed)}
         >
-          <span aria-hidden="true">{collapsed ? "›" : "⌄"}</span>
+          <span aria-hidden="true">{collapsed ? "▸" : "▾"}</span>
         </button>
 
         {editing ? (

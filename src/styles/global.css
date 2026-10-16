@@ -5,17 +5,13 @@
  */
 
 :root {
-  --bg: #1a1b1e;
+  --bg: var(--surface-base);
   --fg: #e8e6e3;
   --muted: #9a9691;
   --accent: #7aa2f7;
 
   color-scheme: dark;
-  font-family:
-    "Segoe UI",
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-ui);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -37,27 +33,34 @@ body {
   color: var(--fg);
 }
 
+/* One left-aligned column, centred in the window. Every block in it takes the
+   column's width, so the title, the boards and the settings share one edge
+   instead of each centring on its own. */
 .shell {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 2rem;
-  text-align: center;
+  padding: 2.5rem 2rem;
+  text-align: left;
+}
+
+.shell > * {
+  width: min(46rem, 100%);
 }
 
 .shell h1 {
   margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
 .tagline {
-  max-width: 34rem;
-  margin: 0;
+  margin: -0.5rem 0 0.5rem;
   color: var(--muted);
   line-height: 1.55;
 }
@@ -77,7 +80,7 @@ body {
 .add-task {
   display: flex;
   gap: 0.5rem;
-  width: min(28rem, 100%);
+  width: 100%;
 }
 
 .add-task input {
@@ -101,7 +104,7 @@ body {
 }
 
 .task-list {
-  width: min(28rem, 100%);
+  width: 100%;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -161,28 +164,64 @@ body {
 /* Board chrome now lives in theme.css, driven by tokens.css. */
 
 /* Dev-shell launcher. The tray menu replaces this in PR 16. */
+/* The four boards as cards, each marked with its own colour so the card here
+   and the window on the desktop are recognisably the same thing. */
 .board-launcher {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.5rem;
 }
 
 .board-launcher button {
-  padding: 0.3rem 0.7rem;
-  border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
-  border-radius: 999px;
-  background: none;
-  color: var(--muted);
+  --launch-accent: var(--accent-priority);
+
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  color: var(--fg);
   font: inherit;
-  font-size: 0.8rem;
-  text-transform: capitalize;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
   cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.board-launcher button::before {
+  content: "";
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--launch-accent);
+}
+
+.board-launcher button:nth-child(2) {
+  --launch-accent: var(--accent-weekly-tasks);
+}
+
+.board-launcher button:nth-child(3) {
+  --launch-accent: var(--accent-weekly-progress);
+}
+
+.board-launcher button:nth-child(4) {
+  --launch-accent: var(--accent-monthly-progress);
 }
 
 .board-launcher button:hover {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  border-color: color-mix(in srgb, var(--launch-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--launch-accent) 8%, var(--surface-raised));
+}
+
+.board-launcher button:focus-visible {
+  outline: 2px solid var(--launch-accent);
+  outline-offset: 2px;
 }
 
 /* The unlock escape hatch (spec §6.7). Deliberately plain and always present:
@@ -191,8 +230,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  align-items: center;
-  max-width: 30rem;
+  align-items: flex-start;
 }
 
 .escape-hatch button {
@@ -230,9 +268,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  margin: 1.5rem 0;
+  margin: 0;
   padding: 1rem;
-  border: 1px solid rgb(255 255 255 / 10%);
+  border: 0;
+  background: var(--surface-raised);
   border-radius: 8px;
 }
 
@@ -258,7 +297,18 @@ body {
 .settings-field select {
   align-self: flex-start;
   min-width: 12rem;
-  padding: 0.3rem 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-sunken);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.settings-field select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* Says what a setting does, not what it is called. The threshold is the one
@@ -286,9 +336,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin: 1.5rem 0;
+  margin: 0;
   padding: 1rem;
-  border: 1px solid rgb(255 255 255 / 10%);
+  border: 0;
+  background: var(--surface-raised);
   border-radius: 8px;
 }
 
@@ -382,9 +433,10 @@ body {
    was dropped — and a bad prompt and a bad answer look identical from outside. */
 
 .context-preview {
-  margin: 1.5rem 0;
+  margin: 0;
   padding: 1rem;
-  border: 1px solid rgb(255 255 255 / 10%);
+  border: 0;
+  background: var(--surface-raised);
   border-radius: 8px;
 }
 
@@ -459,7 +511,6 @@ body {
 .context-preview,
 .settings-panel,
 .chat-panel {
-  align-self: stretch;
   width: 100%;
   max-width: 46rem;
   text-align: left;
