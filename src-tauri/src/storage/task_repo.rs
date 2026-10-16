@@ -265,6 +265,26 @@ impl TaskRepo {
         )
     }
 
+    /// Tasks the General board shows: work tied to no week and no day.
+    ///
+    /// Anything with a period or a scheduled date already has a home on a
+    /// week board, and daily tasks belong to their day, so neither is listed
+    /// here. Every priority is included, unranked last: this is the catch-all
+    /// for things that matter but have no slot yet, not a filter for urgency.
+    pub fn list_general(&self, conn: &Connection) -> Result<Vec<Task>, StorageError> {
+        self.query(
+            conn,
+            &format!(
+                "SELECT {COLUMNS} FROM tasks \
+                 WHERE horizon != 'daily' \
+                   AND period_start IS NULL AND period_end IS NULL \
+                   AND scheduled_date IS NULL \
+                 ORDER BY priority DESC NULLS LAST, created_at"
+            ),
+            &[],
+        )
+    }
+
     /// Tasks at one horizon whose period overlaps `[start, end]`.
     ///
     /// Overlap rather than containment, matching [`Self::list_for_period`]: a

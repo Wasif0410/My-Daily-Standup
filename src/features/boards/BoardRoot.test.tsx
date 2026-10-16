@@ -31,7 +31,9 @@ describe("BoardRoot", () => {
   it("puts the priority board inside the priority window", async () => {
     render(<BoardRoot kind="priority" />);
 
-    expect(await screen.findByText(/ranked P5 or higher/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/not tied to a particular week/i),
+    ).toBeInTheDocument();
   });
 
   it("puts the monthly board in the monthly-progress window", async () => {
@@ -58,7 +60,13 @@ describe("BoardRoot board content", () => {
   it("puts the weekly board in the weekly-tasks window", async () => {
     mockInvoke.mockImplementation((command: string) => {
       if (command === "week_current")
-        return Promise.resolve({ start: "2026-08-17", end: "2026-08-23" });
+        return Promise.resolve({
+          start: "2026-08-17",
+          end: "2026-08-23",
+          label: "2026-W34",
+          today: "2026-08-18",
+          days: [],
+        });
       return Promise.resolve([]);
     });
 
@@ -93,7 +101,11 @@ describe("BoardRoot progress window", () => {
 
     render(<BoardRoot kind="weekly-progress" />);
 
-    expect(await screen.findByRole("button", { name: /Monday/ })).toBeInTheDocument();
+    // The day panel, not the strip above it ("Monday 17"), which also names
+    // the day.
+    expect(
+      await screen.findByRole("button", { name: /^Monday(?! [0-9]+(,|$))/ }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -230,7 +242,7 @@ describe("BoardRoot closing and failure", () => {
     render(<BoardRoot kind="priority" />);
 
     await screen.findByText("no IPC here");
-    expect(screen.getByRole("heading", { name: "Priority Tasks" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "General Tasks" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /close board/i })).toBeInTheDocument();
   });
 });

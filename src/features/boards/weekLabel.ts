@@ -59,3 +59,39 @@ export function formatWeek(week: Week): string {
   const range = `${from}–${to}`;
   return number ? `${range} · Week ${number}` : range;
 }
+
+/**
+ * Just the dates, spaced for a heading: `Oct 12 – 18`, or `Aug 31 – Sep 6`
+ * across a month. The spaced dash reads better at heading size than the
+ * tight one in {@link formatWeek}.
+ */
+export function formatRange(week: Week): string {
+  const start = parts(week.start);
+  const end = parts(week.end);
+  if (!start || !end) return week.label;
+
+  const from = `${MONTHS[start.month - 1]} ${start.day}`;
+  const to =
+    start.month === end.month ? `${end.day}` : `${MONTHS[end.month - 1]} ${end.day}`;
+
+  return `${from} – ${to}`;
+}
+
+/** The ISO week number from the label Rust sends, or null without one. */
+export function weekNumber(week: Week): number | null {
+  const match = /W(\d{1,2})$/.exec(week.label);
+  return match ? Number(match[1]) : null;
+}
+
+/**
+ * Which week this is relative to the current one, in words.
+ *
+ * Takes the offset the board paged by, not dates: no calendar arithmetic
+ * happens here, only naming a whole number.
+ */
+export function relativeWeek(offset: number): string {
+  if (offset === 0) return "This week";
+  if (offset === 1) return "Next week";
+  if (offset === -1) return "Last week";
+  return offset > 0 ? `In ${offset} weeks` : `${-offset} weeks ago`;
+}

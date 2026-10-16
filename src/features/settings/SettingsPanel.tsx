@@ -1,10 +1,6 @@
 import type { Settings, SettingsPatch, WeekStart } from "@/types/settings";
 import type { CommandError } from "@/types/task";
 
-/** The scale the schema allows. Ten is not a magic number here — `priority` is
- *  `CHECK (priority BETWEEN 0 AND 10)`, and the threshold is compared to it. */
-const LEVELS = Array.from({ length: 11 }, (_, level) => level);
-
 const WEEK_STARTS: { value: WeekStart; label: string }[] = [
   { value: "monday", label: "Monday" },
   { value: "sunday", label: "Sunday" },
@@ -47,30 +43,6 @@ export function SettingsPanel({ settings, onChange, error }: SettingsPanelProps)
           {error.message}
         </p>
       )}
-
-      <div className="settings-field">
-        <label htmlFor="setting-priority-threshold">Priority board shows</label>
-        <select
-          id="setting-priority-threshold"
-          value={String(settings.priorityThreshold)}
-          onChange={(event) =>
-            onChange({ priorityThreshold: Number(event.target.value) })
-          }
-        >
-          {LEVELS.map((level) => (
-            <option key={level} value={String(level)}>
-              P{level} and above
-            </option>
-          ))}
-        </select>
-        {/* The setting that most needs explaining. Below the threshold a task
-            is simply not on that board, which reads as the task having been
-            lost rather than filtered. */}
-        <p className="settings-hint">
-          Tasks below this never appear on the Priority board. They are still on Weekly
-          Tasks.
-        </p>
-      </div>
 
       <div className="settings-field">
         <label htmlFor="setting-week-starts-on">Week starts on</label>

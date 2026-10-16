@@ -15,15 +15,6 @@ import { useSectionStore } from "@/stores/sectionStore";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
 import type { Task } from "@/types/task";
 
-/**
- * The lowest priority the board shows.
- *
- * Priority runs 0-10, so this is the midpoint: "more important than average".
- * A prop rather than a constant at the call site, so PR 16 can drive it from
- * settings without this component changing.
- */
-export const DEFAULT_PRIORITY_THRESHOLD = 5;
-
 /** Which row's menu is open, and where it was summoned. */
 interface OpenMenu {
   taskId: string;
@@ -32,7 +23,7 @@ interface OpenMenu {
 }
 
 /**
- * Important work that outlives a single day, grouped by area (spec §6.2).
+ * Work tied to no week and no day, at any priority, grouped by area.
  *
  * Its headings come from two places at once. Most are derived from the areas
  * the tasks themselves carry; the rest were declared by the user through the
@@ -44,11 +35,7 @@ interface OpenMenu {
  * takes props, which is what lets PRs 13-15 reuse the same row and group
  * against entirely different queries.
  */
-export function PriorityBoard({
-  threshold = DEFAULT_PRIORITY_THRESHOLD,
-}: {
-  threshold?: number | undefined;
-}) {
+export function GeneralBoard() {
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -76,8 +63,8 @@ export function PriorityBoard({
   const removeSection = useSectionStore((state) => state.removeSection);
 
   useEffect(() => {
-    void load({ kind: "priority", threshold });
-  }, [load, threshold]);
+    void load({ kind: "general" });
+  }, [load]);
 
   useEffect(() => {
     void loadSections("priority");
@@ -109,12 +96,10 @@ export function PriorityBoard({
   const error = taskError ?? sectionError;
 
   /**
-   * Creates a task that will actually appear on the board that made it.
+   * Creates a task filed under the heading it was typed into.
    *
-   * The priority is the threshold, not a default and not nothing. The query
-   * behind this board is `priority >= threshold`, and `priority IS NULL` never
-   * satisfies it — a task created without one would be filed correctly and
-   * then vanish from the only screen the user was looking at.
+   * No priority is forced on it. This board shows every priority, so the
+   * task appears whatever its rank, and it gets one when the user decides.
    */
   function addToGroup(label: string, title: string) {
     void add({
@@ -126,7 +111,6 @@ export function PriorityBoard({
       horizon: "weekly",
       status: "planned",
       sourceType: "manual",
-      priority: threshold,
     });
   }
 
@@ -158,8 +142,8 @@ export function PriorityBoard({
 
       {groups.length === 0 ? (
         <BoardEmpty
-          title="Nothing urgent"
-          hint={`Tasks ranked P${threshold} or higher show up here. Add one, or raise a task's priority on Weekly Tasks.`}
+          title="Your general list"
+          hint="Tasks that are not tied to a particular week live here, at any priority. Group them under sections."
         >
           <AddTaskHere
             label={UNSORTED_AREA}

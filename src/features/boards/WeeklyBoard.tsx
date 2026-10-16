@@ -11,7 +11,7 @@ import {
   withDeclaredGroups,
 } from "@/features/boards/grouping";
 import { currentWeek, toCommandError } from "@/lib/ipc";
-import { formatWeek } from "@/features/boards/weekLabel";
+import { WeekNav } from "@/features/boards/components/WeekNav";
 import { useCollapsedGroups } from "@/features/boards/useCollapsedGroups";
 import { useSectionStore } from "@/stores/sectionStore";
 import { sortTasks, useTaskStore } from "@/stores/taskStore";
@@ -62,6 +62,9 @@ function shift(date: string, days: number): string {
  */
 export function WeeklyBoard() {
   const [week, setWeek] = useState<Week | null>(null);
+  /** Weeks away from the current one, paged by the header. Not persisted:
+   *  a board reopened tomorrow should open on the week it is. */
+  const [offset, setOffset] = useState(0);
   const [weekError, setWeekError] = useState<CommandError | null>(null);
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -95,7 +98,7 @@ export function WeeklyBoard() {
 
     void (async () => {
       try {
-        const found = await currentWeek();
+        const found = await currentWeek(undefined, offset);
         if (!ignore) setWeek(found);
       } catch (caught) {
         if (!ignore) setWeekError(toCommandError(caught));
@@ -105,7 +108,7 @@ export function WeeklyBoard() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [offset]);
 
   useEffect(() => {
     if (!week) return;
@@ -189,7 +192,7 @@ export function WeeklyBoard() {
         </p>
       )}
 
-      {week && <p className="board-week">{formatWeek(week)}</p>}
+      {week && <WeekNav week={week} offset={offset} onOffset={setOffset} />}
 
       {groups.length === 0 ? (
         <BoardEmpty

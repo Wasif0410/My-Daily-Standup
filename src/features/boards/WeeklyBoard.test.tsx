@@ -98,7 +98,10 @@ describe("WeeklyBoard", () => {
     render(<WeeklyBoard />);
 
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith("week_current", { startsOn: null });
+      expect(mockInvoke).toHaveBeenCalledWith("week_current", {
+        startsOn: null,
+        offset: 0,
+      });
     });
   });
 
@@ -430,7 +433,9 @@ describe("WeeklyBoard", () => {
 
     render(<WeeklyBoard />);
 
-    expect(await screen.findByText("Aug 17–23 · Week 34")).toBeInTheDocument();
+    expect(await screen.findByText("Aug 17 – 23")).toBeInTheDocument();
+    expect(screen.getByText("Week 34")).toBeInTheDocument();
+    expect(screen.getByText("This week")).toBeInTheDocument();
   });
 
   it("surfaces a failure rather than failing silently", async () => {
@@ -442,5 +447,34 @@ describe("WeeklyBoard", () => {
     render(<WeeklyBoard />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("disk is full");
+  });
+});
+
+describe("WeeklyBoard paging", () => {
+  it("loads the next week's tasks when paged forward", async () => {
+    const user = userEvent.setup();
+    const NEXT = { ...WEEK, start: "2026-08-24", end: "2026-08-30", label: "2026-W35" };
+    mockInvoke.mockImplementation((command: string, args?: unknown) => {
+      if (command === "week_current") {
+        const offset = (args as { offset?: number } | undefined)?.offset ?? 0;
+        return Promise.resolve(offset === 1 ? NEXT : WEEK);
+      }
+      if (command === "section_list") return Promise.resolve([]);
+      return Promise.resolve([]);
+    });
+    render(<WeeklyBoard />);
+    await screen.findByText("This week");
+
+    await user.click(screen.getByRole("button", { name: "Next week" }));
+
+    expect(
+      await screen.findByText("Next week", { selector: ".week-nav-relative" }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith("task_list_for_period", {
+        start: "2026-08-24",
+        end: "2026-08-30",
+      });
+    });
   });
 });

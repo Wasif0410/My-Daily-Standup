@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { TaskGroup } from "@/features/boards/components/TaskGroup";
+import { sectionColor } from "@/features/boards/sectionColor";
 import type { Task } from "@/types/task";
 
 function task(overrides: Partial<Task> = {}): Task {
@@ -242,5 +243,37 @@ describe("TaskGroup header layout", () => {
     // wherever the heading's words happen to end, which reads as floating in
     // the middle of the row rather than as a column of figures.
     expect(header?.lastElementChild?.textContent).toBe("1");
+  });
+});
+
+describe("TaskGroup colour", () => {
+  it("wears its section's colour", () => {
+    const { container } = render(
+      <TaskGroup
+        label="Job search"
+        tasks={[task()]}
+        renderTask={(t) => <li key={t.id}>{t.title}</li>}
+      />,
+    );
+
+    const section = container.querySelector<HTMLElement>(".board-section");
+    expect(section?.style.getPropertyValue("--section-color")).toBe(
+      sectionColor("Job search"),
+    );
+    expect(section).toHaveAttribute("data-tone", "colored");
+  });
+
+  it("stays neutral for the catch-all heading", () => {
+    const { container } = render(
+      <TaskGroup
+        label="Unsorted"
+        tasks={[task()]}
+        renderTask={(t) => <li key={t.id}>{t.title}</li>}
+      />,
+    );
+
+    const section = container.querySelector<HTMLElement>(".board-section");
+    expect(section?.style.getPropertyValue("--section-color")).toBe("");
+    expect(section).toHaveAttribute("data-tone", "neutral");
   });
 });

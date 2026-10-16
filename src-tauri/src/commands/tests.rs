@@ -546,3 +546,61 @@ fn the_preview_shows_the_same_prompt_the_model_is_sent() {
         "the preview and the chat must render from one source"
     );
 }
+
+#[test]
+fn week_at_an_offset_is_that_many_weeks_from_the_current_one() {
+    let state = state();
+    let now = state.current_week(None);
+
+    let next = state.week_at(None, 1);
+    let last = state.week_at(None, -1);
+
+    let shift = |date: &str, days: i64| {
+        (chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").unwrap()
+            + chrono::Duration::days(days))
+        .format("%Y-%m-%d")
+        .to_string()
+    };
+    assert_eq!(next.start, shift(&now.start, 7));
+    assert_eq!(last.start, shift(&now.start, -7));
+    assert_eq!(next.today, now.today, "browsing must not move today");
+}
+
+#[test]
+fn week_at_follows_the_configured_week_start_too() {
+    let state = state();
+    let effect = recording(&calls());
+    state
+        .update_settings(
+            SettingsPatch {
+                week_starts_on: Some("sunday".to_string()),
+                ..Default::default()
+            },
+            effect,
+        )
+        .unwrap();
+
+    assert_eq!(state.week_at(None, 2).days[0].name, "Sunday");
+}
+
+#[test]
+fn general_tasks_come_back_through_the_command_layer() {
+    let state = state();
+    state
+        .create_task(NewTask::new(
+            "loose task",
+            crate::storage::TaskHorizon::Weekly,
+            TaskSource::Manual,
+        ))
+        .unwrap();
+    state.create_task(daily("a daily task")).unwrap();
+
+    let titles: Vec<String> = state
+        .list_general()
+        .unwrap()
+        .into_iter()
+        .map(|task| task.title)
+        .collect();
+
+    assert_eq!(titles, vec!["loose task"]);
+}

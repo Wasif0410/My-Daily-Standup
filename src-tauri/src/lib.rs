@@ -143,6 +143,7 @@ pub fn run() {
             commands::tasks::task_list_for_date,
             commands::tasks::task_list_for_period,
             commands::tasks::task_list_priority,
+            commands::tasks::task_list_general,
             commands::tasks::task_list_scheduled_between,
             commands::tasks::task_set_time_spent,
             commands::tasks::task_reschedule,

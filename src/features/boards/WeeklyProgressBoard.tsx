@@ -123,6 +123,9 @@ export function WeeklyProgressBoard() {
         </p>
       )}
 
+      {/* The week in one quiet line. Paging and the day strip live on Weekly
+          Backlog, where weeks are planned; this board reports on the current
+          one. */}
       {week && <p className="board-week">{formatWeek(week)}</p>}
 
       {days.map((day) => (

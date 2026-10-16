@@ -26,7 +26,6 @@ describe("SettingsPanel", () => {
       />,
     );
 
-    expect(screen.getByLabelText(/priority/i)).toHaveValue("7");
     expect(screen.getByLabelText(/week starts/i)).toHaveValue("sunday");
     expect(screen.getByLabelText(/launch at login/i)).toBeChecked();
   });
@@ -44,21 +43,12 @@ describe("SettingsPanel", () => {
     expect(onChange).toHaveBeenCalledWith({ weekStartsOn: "saturday" });
   });
 
-  it("offers every priority from 0 to 10", () => {
+  it("no longer offers a priority cut-off", () => {
+    // The General board shows every priority, so a threshold would be a
+    // control that changes nothing.
     render(<SettingsPanel settings={settings()} onChange={vi.fn()} />);
 
-    const options = screen.getByLabelText(/priority/i).querySelectorAll("option");
-    expect([...options].map((o) => o.textContent?.trim())).toHaveLength(11);
-  });
-
-  it("says what the priority threshold actually does", () => {
-    render(<SettingsPanel settings={settings()} onChange={vi.fn()} />);
-
-    // The setting that most needs explaining: below it, a task simply is not
-    // on the Priority board, which reads as the task having vanished. The
-    // label alone does not say that, so the hint has to.
-    expect(screen.getByText(/never appear on the Priority board/i)).toBeInTheDocument();
-    expect(screen.getByText(/still on\s+Weekly Tasks/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/priority/i)).not.toBeInTheDocument();
   });
 
   it("toggles launch at login", async () => {
@@ -76,11 +66,11 @@ describe("SettingsPanel", () => {
       <SettingsPanel
         settings={settings()}
         onChange={vi.fn()}
-        error={{ kind: "invalid-input", message: "priority must be between 0 and 10" }}
+        error={{ kind: "invalid-input", message: "week must start on a known day" }}
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/between 0 and 10/);
+    expect(screen.getByRole("alert")).toHaveTextContent(/known day/);
   });
 
   it("keeps showing the stored value when a change was rejected", () => {
@@ -89,12 +79,12 @@ describe("SettingsPanel", () => {
     // accept.
     render(
       <SettingsPanel
-        settings={settings({ priorityThreshold: 5 })}
+        settings={settings({ weekStartsOn: "sunday" })}
         onChange={vi.fn()}
         error={{ kind: "invalid-input", message: "nope" }}
       />,
     );
 
-    expect(screen.getByLabelText(/priority/i)).toHaveValue("5");
+    expect(screen.getByLabelText(/week starts/i)).toHaveValue("sunday");
   });
 });

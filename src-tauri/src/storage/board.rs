@@ -110,8 +110,8 @@ impl BoardKind {
     /// Title shown in the taskbar and by screen readers.
     pub fn title(self) -> &'static str {
         match self {
-            Self::Priority => "Priority Tasks",
-            Self::WeeklyTasks => "Weekly Tasks",
+            Self::Priority => "General Tasks",
+            Self::WeeklyTasks => "Weekly Backlog",
             Self::WeeklyProgress => "Weekly Progress",
             Self::MonthlyProgress => "Monthly Progress",
         }

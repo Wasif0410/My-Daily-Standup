@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PriorityBoard } from "@/features/boards/PriorityBoard";
+import { GeneralBoard } from "@/features/boards/GeneralBoard";
 import { useSectionStore } from "@/stores/sectionStore";
 import { useTaskStore } from "@/stores/taskStore";
 import type { BoardSection } from "@/types/section";
@@ -60,7 +60,7 @@ function respond(
 ) {
   mockInvoke.mockImplementation((command: string) => {
     if (command in overrides) return Promise.resolve(overrides[command]);
-    if (command === "task_list_priority") return Promise.resolve(tasks);
+    if (command === "task_list_general") return Promise.resolve(tasks);
     if (command === "section_list") return Promise.resolve(sections);
     return Promise.resolve(tasks[0] ?? null);
   });
@@ -72,25 +72,31 @@ beforeEach(() => {
   useSectionStore.setState({ sections: [], loading: false, error: null });
 });
 
-describe("PriorityBoard", () => {
-  it("loads through the priority filter at the default threshold", async () => {
+describe("GeneralBoard", () => {
+  it("loads the tasks tied to no week or day", async () => {
     respond();
 
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
 
     await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith("task_list_priority", { threshold: 5 });
+      expect(mockInvoke).toHaveBeenCalledWith("task_list_general", undefined);
     });
   });
 
-  it("honours a threshold it is given", async () => {
-    respond();
+  it("shows tasks of every priority, unranked ones included", async () => {
+    // The catch-all for things with no slot yet: a P2 errand and a task nobody
+    // ranked belong here as much as an urgent one.
+    respond([
+      task({ id: "a", title: "urgent thing", priority: 9 }),
+      task({ id: "b", title: "low errand", priority: 2 }),
+      task({ id: "c", title: "unranked idea", priority: null }),
+    ]);
 
-    render(<PriorityBoard threshold={8} />);
+    render(<GeneralBoard />);
 
-    await waitFor(() => {
-      expect(mockInvoke).toHaveBeenCalledWith("task_list_priority", { threshold: 8 });
-    });
+    expect(await screen.findByText("urgent thing")).toBeInTheDocument();
+    expect(screen.getByText("low errand")).toBeInTheDocument();
+    expect(screen.getByText("unranked idea")).toBeInTheDocument();
   });
 
   it("groups tasks under their areas", async () => {
@@ -99,7 +105,7 @@ describe("PriorityBoard", () => {
       task({ id: "b", title: "book eye exam", area: "Health", priority: 6 }),
     ]);
 
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
 
     expect(
       await screen.findByRole("heading", { name: /job search/i }),
@@ -109,20 +115,22 @@ describe("PriorityBoard", () => {
     expect(screen.getByText("book eye exam")).toBeInTheDocument();
   });
 
-  it("says so when there is nothing above the threshold", async () => {
-    // An empty board must not look broken. Naming the threshold explains why
-    // it is empty to a user who knows they have tasks.
+  it("explains what belongs here when it is empty", async () => {
+    // An empty board must not look broken, and a new user has to learn what
+    // this board is for from the board itself.
     respond();
 
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
 
-    expect(await screen.findByText(/ranked P5 or higher/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/not tied to a particular week/i),
+    ).toBeInTheDocument();
   });
 
   it("completes a task through the store", async () => {
     const user = userEvent.setup();
     respond([task()], [], { task_update: task({ status: "completed" }) });
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
     await screen.findByText("submit applications");
 
     await user.click(screen.getByRole("checkbox", { name: "submit applications" }));
@@ -139,7 +147,7 @@ describe("PriorityBoard", () => {
   it("records a duration through the store", async () => {
     const user = userEvent.setup();
     respond([task()], [], { task_set_time_spent: task({ timeSpentMinutes: 30 }) });
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
     await screen.findByText("submit applications");
 
     await user.click(screen.getByRole("button", { name: /not recorded/i }));
@@ -156,7 +164,7 @@ describe("PriorityBoard", () => {
   it("commits an inline edit through the store", async () => {
     const user = userEvent.setup();
     respond([task()], [], { task_update: task({ title: "submit six applications" }) });
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
     await screen.findByText("submit applications");
 
     await user.dblClick(screen.getByText("submit applications"));
@@ -177,7 +185,7 @@ describe("PriorityBoard", () => {
   it("deletes a task through the store", async () => {
     const user = userEvent.setup();
     respond([task()], [], { task_delete: undefined });
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
     await screen.findByText("submit applications");
 
     await user.click(screen.getByRole("button", { name: "Delete task" }));
@@ -193,7 +201,7 @@ describe("PriorityBoard", () => {
       return Promise.reject(new Error("disk is full"));
     });
 
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("disk is full");
   });
@@ -202,7 +210,7 @@ describe("PriorityBoard", () => {
     it("loads the groups declared for this board", async () => {
       respond();
 
-      render(<PriorityBoard />);
+      render(<GeneralBoard />);
 
       await waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith("section_list", {
@@ -216,7 +224,7 @@ describe("PriorityBoard", () => {
       // user made on purpose has to stand there waiting to be filled.
       respond([], [section("Job Search")]);
 
-      render(<PriorityBoard />);
+      render(<GeneralBoard />);
 
       expect(
         await screen.findByRole("heading", { name: /job search/i }),
@@ -226,7 +234,7 @@ describe("PriorityBoard", () => {
     it("does not render a declared group twice when tasks already made it", async () => {
       respond([task({ id: "a", area: "Health", priority: 7 })], [section("health")]);
 
-      render(<PriorityBoard />);
+      render(<GeneralBoard />);
       await screen.findByRole("heading", { name: /health/i });
 
       expect(screen.getAllByRole("heading", { name: /health/i })).toHaveLength(1);
@@ -234,15 +242,14 @@ describe("PriorityBoard", () => {
   });
 
   describe("adding a task to a group", () => {
-    it("files the task under that group's area, at the board's threshold", async () => {
-      // THE point of the board: `priority IS NULL` is never returned by the
-      // priority query, so a task created without one would vanish the instant
-      // it was made.
+    it("files the task under that group's area, with no priority set", async () => {
+      // Every priority shows here, so nothing is forced on a new task: it is
+      // ranked when the user decides, not by the board that happened to make it.
       const user = userEvent.setup();
       respond([task({ id: "a", area: "Job search", priority: 9 })], [], {
         task_create: task({ id: "new", title: "email two contacts" }),
       });
-      render(<PriorityBoard threshold={8} />);
+      render(<GeneralBoard />);
       await screen.findByRole("heading", { name: /job search/i });
 
       await user.click(
@@ -261,32 +268,6 @@ describe("PriorityBoard", () => {
             horizon: "weekly",
             status: "planned",
             sourceType: "manual",
-            priority: 8,
-          },
-        });
-      });
-    });
-
-    it("uses the default threshold when the board was given none", async () => {
-      const user = userEvent.setup();
-      respond([task({ id: "a", area: "Health", priority: 7 })], [], {
-        task_create: task({ id: "new", title: "book eye exam" }),
-      });
-      render(<PriorityBoard />);
-      await screen.findByRole("heading", { name: /health/i });
-
-      await user.click(screen.getByRole("button", { name: "Add a task to Health" }));
-      await user.type(screen.getByLabelText("Add to Health"), "book eye exam{Enter}");
-
-      await waitFor(() => {
-        expect(mockInvoke).toHaveBeenCalledWith("task_create", {
-          input: {
-            title: "book eye exam",
-            area: "Health",
-            horizon: "weekly",
-            status: "planned",
-            sourceType: "manual",
-            priority: 5,
           },
         });
       });
@@ -297,7 +278,7 @@ describe("PriorityBoard", () => {
       respond([], [section("Job Search")], {
         task_create: task({ id: "new", title: "rewrite the resume" }),
       });
-      render(<PriorityBoard />);
+      render(<GeneralBoard />);
       await screen.findByRole("heading", { name: /job search/i });
 
       await user.click(
@@ -316,7 +297,6 @@ describe("PriorityBoard", () => {
             horizon: "weekly",
             status: "planned",
             sourceType: "manual",
-            priority: 5,
           },
         });
       });
@@ -329,7 +309,7 @@ describe("PriorityBoard", () => {
       respond([task({ id: "a", area: null, priority: 9 })], [], {
         task_create: task({ id: "new", title: "pay the invoice", area: null }),
       });
-      render(<PriorityBoard />);
+      render(<GeneralBoard />);
       await screen.findByRole("heading", { name: /unsorted/i });
 
       await user.click(screen.getByRole("button", { name: "Add a task to Unsorted" }));
@@ -346,7 +326,6 @@ describe("PriorityBoard", () => {
             horizon: "weekly",
             status: "planned",
             sourceType: "manual",
-            priority: 5,
           },
         });
       });
@@ -358,7 +337,7 @@ describe("PriorityBoard", () => {
     // board that is defined by it must be able to change it.
     const user = userEvent.setup();
     respond([task()], [], { task_update: task({ priority: 10 }) });
-    render(<PriorityBoard />);
+    render(<GeneralBoard />);
     await screen.findByText("submit applications");
 
     await user.pointer({

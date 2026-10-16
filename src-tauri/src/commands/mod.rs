@@ -167,6 +167,11 @@ impl AppState {
         self.with_conn(|repo, conn| repo.list_by_priority(conn, threshold))
     }
 
+    /// Work tied to no week and no day, for the General Tasks board.
+    pub fn list_general(&self) -> Result<Vec<Task>, CommandError> {
+        self.with_conn(|repo, conn| repo.list_general(conn))
+    }
+
     /// Monthly commitments overlapping `[start, end]`, each with its progress
     /// rolled up from the work beneath it.
     ///
@@ -408,6 +413,13 @@ impl AppState {
     /// decides which column a board draws first, and a broken database must
     /// not be able to make a board unopenable.
     pub fn current_week(&self, starts_on: Option<&str>) -> crate::domain::Week {
+        self.week_at(starts_on, 0)
+    }
+
+    /// The week `offset` weeks from the current one, for paging the week
+    /// boards back and forward. Same start-day rules as
+    /// [`Self::current_week`]; `today` stays the real today.
+    pub fn week_at(&self, starts_on: Option<&str>, offset: i32) -> crate::domain::Week {
         let configured = match starts_on {
             Some(_) => None,
             None => self.settings().ok().map(|s| s.week_starts_on),
@@ -415,7 +427,11 @@ impl AppState {
 
         let day = starts_on.or(configured.as_deref());
 
-        crate::domain::current_week(crate::domain::parse_weekday(day))
+        crate::domain::week_offset(
+            chrono::Local::now().date_naive(),
+            crate::domain::parse_weekday(day),
+            offset,
+        )
     }
 }
 
