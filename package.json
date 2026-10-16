@@ -30,14 +30,14 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/api": "2.12.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zustand": "5.0.15"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@tauri-apps/cli": "2.11.4",
+    "@tauri-apps/cli": "2.12.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.7",
