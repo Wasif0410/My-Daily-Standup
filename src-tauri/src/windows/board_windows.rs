@@ -59,6 +59,11 @@ pub fn open_board(app: &AppHandle, kind: BoardKind) -> Result<(), CommandError> 
     // `commands::boards::board_open` is what guarantees that.
     let window = builder.build().map_err(window_error)?;
 
+    // So Alt+F4 can be told apart from a close the user never asked for. Once
+    // per window: a closed board is hidden, never rebuilt, so this is the only
+    // place its window is born.
+    super::close_watch::watch(&window);
+
     if saved.locked {
         // A locked board is scenery: clicks pass through to whatever is
         // behind it. PR 15 adds the unlock escape hatch in the tray.

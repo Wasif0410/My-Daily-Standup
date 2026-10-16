@@ -44,6 +44,16 @@ reqwest = { version = "0.13.4", default-features = false, features = ["json"] }
 # direct name for one already there.
 tokio = { version = "1.53.1", default-features = false, features = ["time"] }
 
+# Only to subclass board windows, so a close the user asked for (Alt+F4) can be
+# told apart from a bare WM_CLOSE sent by something else. The same version
+# Tauri already uses, so its window handles fit and no crates are added.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61.3", features = [
+    "Win32_Foundation",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 [profile.release]
 codegen-units = 1
 lto = true
